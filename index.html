@@ -1,0 +1,3499 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f2027">
+    <title>CBT Консулт — Система за управление v6</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --ink: #0f1923;
+            --ink-2: #1e2d3d;
+            --ink-3: #2c4058;
+            --slate: #4a6785;
+            --muted: #7b93ab;
+            --border: #d0dbe6;
+            --border-light: #e8f0f7;
+            --surface: #f4f8fb;
+            --surface-2: #eaf1f8;
+            --white: #ffffff;
+            --gold: #c9952a;
+            --gold-light: #f0d080;
+            --green: #2d7d52;
+            --green-light: #e6f4ec;
+            --red: #b33030;
+            --red-light: #fce8e8;
+            --blue: #1f6bb5;
+            --blue-light: #e5f0fa;
+            --r: 12px;
+            --r-sm: 8px;
+            --shadow: 0 2px 12px rgba(15,25,35,0.08);
+            --shadow-md: 0 4px 24px rgba(15,25,35,0.12);
+            --shadow-lg: 0 8px 40px rgba(15,25,35,0.16);
+            --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--surface);
+            color: var(--ink);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ═══════════════════════════════════
+           LAYOUT
+        ═══════════════════════════════════ */
+        .app-shell {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            grid-template-rows: auto 1fr;
+            min-height: 100vh;
+        }
+
+        /* ═══════════════════════════════════
+           TOP BAR
+        ═══════════════════════════════════ */
+        .topbar {
+            grid-column: 1 / -1;
+            background: var(--ink);
+            padding: 0 32px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-mark {
+            width: 36px;
+            height: 36px;
+            background: var(--gold);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'DM Serif Display', serif;
+            font-size: 16px;
+            color: var(--ink);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 20px;
+            color: var(--white);
+            letter-spacing: -0.3px;
+        }
+
+        .brand-name span {
+            color: var(--gold-light);
+        }
+
+        .topbar-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .topbar-date {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        #dropbox-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        #dropbox-indicator.connected {
+            background: rgba(45,125,82,0.2);
+            color: #6fcf97;
+        }
+
+        #dropbox-indicator.disconnected {
+            background: rgba(179,48,48,0.2);
+            color: #f4a4a4;
+        }
+
+        #dropbox-indicator .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* ═══════════════════════════════════
+           SIDEBAR
+        ═══════════════════════════════════ */
+        .sidebar {
+            background: var(--ink-2);
+            padding: 24px 0;
+            position: sticky;
+            top: 60px;
+            height: calc(100vh - 60px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section-label {
+            padding: 12px 24px 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 24px;
+            color: #8fa8c0;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            color: var(--white);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .nav-item.active {
+            color: var(--white);
+            background: rgba(201,149,42,0.15);
+            border-left-color: var(--gold);
+        }
+
+        .nav-item .nav-icon {
+            width: 20px;
+            text-align: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--gold);
+            color: var(--ink);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 12px;
+            color: rgba(139,160,180,0.6);
+        }
+
+        /* ═══════════════════════════════════
+           MAIN CONTENT
+        ═══════════════════════════════════ */
+        .main-content {
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Page header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 28px;
+            gap: 16px;
+        }
+
+        .page-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 32px;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--slate);
+            margin-top: 4px;
+        }
+
+        /* ═══════════════════════════════════
+           CARDS
+        ═══════════════════════════════════ */
+        .card {
+            background: var(--white);
+            border-radius: var(--r);
+            border: 1px solid var(--border-light);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .card-subtitle {
+            font-size: 13px;
+            color: var(--slate);
+            margin-top: 2px;
+        }
+
+        /* ═══════════════════════════════════
+           FORMS
+        ═══════════════════════════════════ */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .form-grid-full {
+            grid-column: 1 / -1;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-label.required::after {
+            content: ' *';
+            color: var(--red);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--r-sm);
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--ink);
+            background: var(--white);
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,149,42,0.12);
+        }
+
+        .form-input::placeholder { color: var(--muted); }
+
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* ═══════════════════════════════════
+           BUTTONS
+        ═══════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border: none;
+            border-radius: var(--r-sm);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            text-decoration: none;
+        }
+
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary {
+            background: var(--gold);
+            color: var(--ink);
+        }
+        .btn-primary:hover:not(:disabled) { background: #b8841e; }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--ink-3);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover:not(:disabled) { background: var(--border-light); }
+
+        .btn-success {
+            background: var(--green);
+            color: white;
+        }
+        .btn-success:hover:not(:disabled) { background: #236040; }
+
+        .btn-danger {
+            background: var(--red-light);
+            color: var(--red);
+            border: 1px solid rgba(179,48,48,0.2);
+        }
+        .btn-danger:hover:not(:disabled) { background: #f5cece; }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--slate);
+        }
+        .btn-ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+
+        .btn-lg {
+            padding: 13px 28px;
+            font-size: 15px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* ═══════════════════════════════════
+           ALERTS
+        ═══════════════════════════════════ */
+        .alert {
+            padding: 14px 18px;
+            border-radius: var(--r-sm);
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-success {
+            background: var(--green-light);
+            color: var(--green);
+            border: 1px solid rgba(45,125,82,0.2);
+        }
+
+        .alert-error {
+            background: var(--red-light);
+            color: var(--red);
+            border: 1px solid rgba(179,48,48,0.2);
+        }
+
+        .alert-info {
+            background: var(--blue-light);
+            color: var(--blue);
+            border: 1px solid rgba(31,107,181,0.2);
+        }
+
+        /* ═══════════════════════════════════
+           BADGES
+        ═══════════════════════════════════ */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green { background: var(--green-light); color: var(--green); }
+        .badge-blue { background: var(--blue-light); color: var(--blue); }
+        .badge-gold { background: rgba(201,149,42,0.12); color: var(--gold); }
+        .badge-gray { background: var(--surface-2); color: var(--slate); }
+
+        /* ═══════════════════════════════════
+           STATS ROW
+        ═══════════════════════════════════ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: var(--r);
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-family: 'DM Serif Display', serif;
+            font-size: 36px;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .stat-meta {
+            font-size: 12px;
+            color: var(--slate);
+            margin-top: 4px;
+        }
+
+        /* ═══════════════════════════════════
+           PASSPORT LIST / TABLE
+        ═══════════════════════════════════ */
+        .search-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .search-input-wrap {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-input-wrap .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .search-input-wrap input {
+            padding-left: 38px;
+        }
+
+        .filter-select {
+            width: 180px;
+        }
+
+        .passport-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .passport-card {
+            background: var(--white);
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--r);
+            padding: 18px 20px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 16px;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+        }
+
+        .passport-card:hover {
+            border-color: var(--gold);
+            box-shadow: var(--shadow-md);
+        }
+
+        .passport-card.selected {
+            border-color: var(--gold);
+            background: rgba(201,149,42,0.03);
+        }
+
+        .passport-pi {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .passport-pi-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+        }
+
+        .passport-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .passport-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .passport-details {
+            font-size: 13px;
+            color: var(--slate);
+        }
+
+        .passport-docs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .passport-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* ═══════════════════════════════════
+           EXCEL EXPORT STATUS
+        ═══════════════════════════════════ */
+        .export-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .export-indicator.exported {
+            background: var(--green-light);
+            color: var(--green);
+        }
+
+        .export-indicator.not-exported {
+            background: rgba(201,149,42,0.1);
+            color: var(--gold);
+        }
+
+        /* ═══════════════════════════════════
+           HISTORY TIMELINE
+        ═══════════════════════════════════ */
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -24px;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--white);
+            border: 2px solid var(--border);
+            z-index: 1;
+        }
+
+        .timeline-dot.create { border-color: var(--green); background: var(--green); }
+        .timeline-dot.edit { border-color: var(--gold); background: var(--gold); }
+        .timeline-dot.export { border-color: var(--blue); background: var(--blue); }
+        .timeline-dot.generate { border-color: var(--ink-3); background: var(--ink-3); }
+
+        .timeline-content {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--r-sm);
+            padding: 12px 14px;
+        }
+
+        .timeline-action {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .timeline-date {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .timeline-detail {
+            font-size: 12px;
+            color: var(--slate);
+            margin-top: 4px;
+        }
+
+        /* ═══════════════════════════════════
+           CONSULTANT / EMPLOYEE CARDS
+        ═══════════════════════════════════ */
+        .consultant-card {
+            background: var(--white);
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--r);
+            overflow: hidden;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .consultant-card-header {
+            background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .consultant-card-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--white);
+        }
+
+        .consultant-card-eik {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .consultant-card-body {
+            padding: 16px 20px;
+        }
+
+        .emp-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin: 3px;
+        }
+
+        .emp-chip .spec {
+            color: var(--slate);
+        }
+
+        /* ═══════════════════════════════════
+           DYNAMIC ROW (employees/projectants)
+        ═══════════════════════════════════ */
+        .dynamic-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--r-sm);
+        }
+
+        .dynamic-row input, .dynamic-row select {
+            margin: 0;
+        }
+
+        /* ═══════════════════════════════════
+           DROPBOX SECTION
+        ═══════════════════════════════════ */
+        .dropbox-card {
+            background: linear-gradient(135deg, #0061ff15, #60efff10);
+            border: 1.5px solid #0061ff30;
+            border-radius: var(--r);
+            padding: 24px;
+        }
+
+        /* ═══════════════════════════════════
+           MODAL
+        ═══════════════════════════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15,25,35,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            animation: fadeIn 0.15s ease;
+        }
+
+        .modal {
+            background: var(--white);
+            border-radius: 16px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            border-bottom: 1px solid var(--border-light);
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1;
+        }
+
+        .modal-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px;
+            color: var(--ink);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* ═══════════════════════════════════
+           TABS (within cards)
+        ═══════════════════════════════════ */
+        .card-tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 2px solid var(--border-light);
+            margin-bottom: 20px;
+        }
+
+        .card-tab {
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--slate);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .card-tab.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+
+        /* ═══════════════════════════════════
+           EMPTY STATE
+        ═══════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 14px;
+            color: var(--slate);
+            margin-bottom: 20px;
+        }
+
+        /* ═══════════════════════════════════
+           SPINNER
+        ═══════════════════════════════════ */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ═══════════════════════════════════
+           DIVIDERS
+        ═══════════════════════════════════ */
+        .divider {
+            height: 1px;
+            background: var(--border-light);
+            margin: 20px 0;
+        }
+
+        /* ═══════════════════════════════════
+           SECTION SEPARATOR
+        ═══════════════════════════════════ */
+        .section-sep {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin: 24px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-sep::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-light);
+        }
+
+        /* ═══════════════════════════════════
+           CHECKBOX STYLED
+        ═══════════════════════════════════ */
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--r-sm);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .check-row:hover {
+            border-color: var(--gold);
+            background: rgba(201,149,42,0.03);
+        }
+
+        .check-row input[type="checkbox"], .check-row input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--gold);
+            cursor: pointer;
+        }
+
+        .check-row label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* ═══════════════════════════════════
+           RESPONSIVE
+        ═══════════════════════════════════ */
+        @media (max-width: 900px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+            .sidebar {
+                height: auto;
+                position: static;
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 8px;
+            }
+            .sidebar-section-label { display: none; }
+            .nav-item {
+                flex: none;
+                border-left: none;
+                border-radius: 6px;
+                padding: 8px 14px;
+            }
+            .nav-item.active { border-left: none; }
+        }
+
+        /* ═══════════════════════════════════
+           MATERIAL DESIGN ENHANCEMENTS
+        ═══════════════════════════════════ */
+
+        /* Ripple effect on buttons */
+        .btn { position: relative; overflow: hidden; }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,0.15);
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .btn:active::after { opacity: 1; }
+
+        /* Elevated cards with hover lift */
+        .card {
+            transition: box-shadow 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
+        }
+        .card:hover { box-shadow: var(--shadow-md); }
+
+        /* Material chips for specializations */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--surface-2);
+            color: var(--slate);
+            border: 1px solid var(--border);
+            margin: 2px;
+        }
+        .chip.chip-gold { background: rgba(201,149,42,0.1); color: var(--gold); border-color: rgba(201,149,42,0.3); }
+        .chip.chip-green { background: var(--green-light); color: var(--green); border-color: rgba(45,125,82,0.3); }
+        .chip.chip-blue { background: var(--blue-light); color: var(--blue); border-color: rgba(31,107,181,0.3); }
+
+        /* Timeline improvements */
+        .timeline { position: relative; padding-left: 0; }
+        .timeline-item {
+            display: flex;
+            gap: 14px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--muted);
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+        .timeline-dot.create { background: var(--green); }
+        .timeline-dot.edit { background: var(--blue); }
+        .timeline-dot.export { background: var(--gold); }
+        .timeline-dot.generate { background: #9b59b6; }
+        .timeline-dot.delete { background: var(--red); }
+        .timeline-content { flex: 1; }
+        .timeline-action { font-size: 13px; font-weight: 600; color: var(--ink); }
+        .timeline-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .timeline-detail { font-size: 12px; color: var(--slate); margin-top: 2px; }
+
+        /* Passport card hover indicator */
+        .passport-card { position: relative; }
+        .passport-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: transparent;
+            border-radius: var(--r) 0 0 var(--r);
+            transition: background 0.18s;
+        }
+        .passport-card:hover::before { background: var(--gold); }
+        .passport-card.selected::before { background: var(--gold); }
+
+        /* API status indicator reuse connected/disconnected */
+        #api-indicator.connected {
+            background: rgba(45,125,82,0.2);
+            color: #6fcf97;
+        }
+        #api-indicator.disconnected {
+            background: rgba(179,48,48,0.2);
+            color: #f4a4a4;
+        }
+
+        /* Projectant block improved */
+        .projectant-block {
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--r-sm);
+            padding: 14px;
+            margin-bottom: 10px;
+            background: var(--surface);
+            transition: border-color 0.18s;
+        }
+        .projectant-block:hover { border-color: var(--gold); }
+        .projectant-block-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .projectant-number {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: var(--gold);
+            color: var(--ink);
+            font-size: 12px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Progress indicator for passport completeness */
+        .completeness-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-light);
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        .completeness-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--green);
+            transition: width 0.4s ease;
+        }
+
+        /* Section separator */
+        .section-sep {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            padding: 10px 0 6px;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 14px;
+        }
+
+        /* Generated docs list */
+        .doc-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--r-sm);
+            margin-bottom: 6px;
+            font-size: 13px;
+            background: var(--white);
+        }
+        .doc-list-item:hover { background: var(--surface); }
+        .doc-list-item .doc-type { font-weight: 600; color: var(--ink); }
+        .doc-list-item .doc-date { font-size: 11px; color: var(--muted); }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+    <!-- TOP BAR -->
+    <header class="topbar">
+        <div class="topbar-brand">
+            <div class="brand-mark">СБТ</div>
+            <div class="brand-name">CBT <span>Консулт</span></div>
+        </div>
+        <div class="topbar-info">
+            <div class="topbar-date" id="current-date"></div>
+            <button onclick="syncWithCloud()" id="cloud-sync-btn"
+                style="background:none;border:1px solid var(--border-light);color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:var(--transition)"
+                title="Синхронизирай с Dropbox">
+                ☁️ Sync
+            </button>
+            <div id="api-indicator" class="disconnected" onclick="navigateTo('settings')" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;cursor:pointer;transition:var(--transition)">
+                <span class="dot" style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>
+                <span id="api-indicator-text">API: не е конфигуриран</span>
+            </div>
+            <div id="dropbox-indicator" class="disconnected" onclick="navigateTo('settings')">
+                <span class="dot"></span>
+                <span id="dropbox-indicator-text">Dropbox: не е свързан</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+        <div class="sidebar-section-label">Основни</div>
+        <button class="nav-item active" onclick="navigateTo('dashboard')" id="nav-dashboard">
+            <span class="nav-icon">📊</span> Табло
+        </button>
+        <button class="nav-item" onclick="navigateTo('passports')" id="nav-passports">
+            <span class="nav-icon">📋</span> Паспорти
+            <span class="nav-badge" id="nav-passports-count">0</span>
+        </button>
+        <button class="nav-item" onclick="navigateTo('new-passport')" id="nav-new-passport">
+            <span class="nav-icon">➕</span> Нов паспорт
+        </button>
+
+        <div class="sidebar-section-label" style="margin-top:8px">Документи</div>
+        <button class="nav-item" onclick="navigateTo('generate')" id="nav-generate">
+            <span class="nav-icon">📄</span> Генериране
+        </button>
+        <button class="nav-item" onclick="navigateTo('history')" id="nav-history">
+            <span class="nav-icon">🕐</span> История
+        </button>
+
+        <div class="sidebar-section-label" style="margin-top:8px">Конфигурация</div>
+        <button class="nav-item" onclick="navigateTo('consultants')" id="nav-consultants">
+            <span class="nav-icon">🏢</span> Консултанти
+        </button>
+        <button class="nav-item" onclick="navigateTo('settings')" id="nav-settings">
+            <span class="nav-icon">⚙️</span> Настройки
+        </button>
+
+        <div class="sidebar-footer">CBT v6 · 2026</div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <div id="alerts-container"></div>
+
+        <!-- ═══════════ DASHBOARD ═══════════ -->
+        <div class="page active" id="page-dashboard">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Добре дошла, Таня</h1>
+                    <p class="page-subtitle">Преглед на CBT Консулт документна система</p>
+                </div>
+                <button class="btn btn-primary" onclick="navigateTo('new-passport')">
+                    ➕ Нов паспорт
+                </button>
+            </div>
+
+            <div class="stats-grid" id="stats-grid">
+                <!-- rendered by JS -->
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Последни паспорти</div>
+                            <div class="card-subtitle">Последно добавени проекти</div>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" onclick="navigateTo('passports')">Виж всички →</button>
+                    </div>
+                    <div id="dashboard-recent"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Последни действия</div>
+                            <div class="card-subtitle">История на промените</div>
+                        </div>
+                        <button class="btn btn-ghost btn-sm" onclick="navigateTo('history')">Виж всички →</button>
+                    </div>
+                    <div id="dashboard-history" class="timeline"></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:0">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Python Автоматизация</div>
+                        <div class="card-subtitle">Workflow статус</div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+                    <div style="text-align:center;padding:16px;background:var(--green-light);border-radius:var(--r-sm)">
+                        <div style="font-size:24px">📝</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--green);margin-top:6px">1. PWA Паспорт</div>
+                        <div style="font-size:11px;color:var(--slate);margin-top:2px">Попълни данни</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;background:var(--blue-light);border-radius:var(--r-sm)">
+                        <div style="font-size:24px">📊</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-top:6px">2. Excel → Dropbox</div>
+                        <div style="font-size:11px;color:var(--slate);margin-top:2px">passport.xlsx</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;background:rgba(201,149,42,0.1);border-radius:var(--r-sm)">
+                        <div style="font-size:24px">🐍</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-top:6px">3. Python Script</div>
+                        <div style="font-size:11px;color:var(--slate);margin-top:2px">Автоматично</div>
+                    </div>
+                    <div style="text-align:center;padding:16px;background:var(--surface-2);border-radius:var(--r-sm)">
+                        <div style="font-size:24px">📄</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--slate);margin-top:6px">4. .docx документи</div>
+                        <div style="font-size:11px;color:var(--slate);margin-top:2px">Готови в Dropbox</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ PASSPORTS LIST ═══════════ -->
+        <div class="page" id="page-passports">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Паспорти</h1>
+                    <p class="page-subtitle">Всички проекти в системата</p>
+                </div>
+                <button class="btn btn-primary" onclick="navigateTo('new-passport')">
+                    ➕ Нов паспорт
+                </button>
+            </div>
+
+            <div class="search-bar">
+                <div class="search-input-wrap" style="flex:1">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="form-input" id="search-pi" placeholder="Търси по ПИ, строеж, адрес..." oninput="filterPassports()">
+                </div>
+                <select class="form-select filter-select" id="filter-consultant" onchange="filterPassports()">
+                    <option value="">Всички консултанти</option>
+                </select>
+                <select class="form-select filter-select" id="filter-status" onchange="filterPassports()">
+                    <option value="">Всички статуси</option>
+                    <option value="exported">Експортирани</option>
+                    <option value="not-exported">Неекспортирани</option>
+                    <option value="with-docs">С генерирани документи</option>
+                </select>
+            </div>
+
+            <div id="passports-list" class="passport-list"></div>
+        </div>
+
+        <!-- ═══════════ NEW / EDIT PASSPORT ═══════════ -->
+        <div class="page" id="page-new-passport">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title" id="form-page-title">Нов паспорт</h1>
+                    <p class="page-subtitle" id="form-page-subtitle">Въведете данните за новия проект</p>
+                </div>
+            </div>
+
+            <div id="new-passport-content"></div>
+        </div>
+
+        <!-- ═══════════ GENERATE ═══════════ -->
+        <div class="page" id="page-generate">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Генериране на документи</h1>
+                    <p class="page-subtitle">HTML документи за печат / Excel паспорт за Python</p>
+                </div>
+            </div>
+            <div id="generate-content"></div>
+        </div>
+
+        <!-- ═══════════ HISTORY ═══════════ -->
+        <div class="page" id="page-history">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">История на промените</h1>
+                    <p class="page-subtitle">Пълен одит на всички действия в системата</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="if(confirm('Изчисти цялата история?')){appData.history=[];saveData();renderHistory();}">
+                    🗑️ Изчисти история
+                </button>
+            </div>
+
+            <div class="card">
+                <div id="history-filters" style="display:flex;gap:10px;margin-bottom:16px">
+                    <select class="form-select" style="width:auto" id="history-filter-type" onchange="renderHistory()">
+                        <option value="">Всички действия</option>
+                        <option value="create">Създаване</option>
+                        <option value="edit">Редакция</option>
+                        <option value="export">Експорт</option>
+                        <option value="generate">Генериране</option>
+                        <option value="delete">Изтриване</option>
+                    </select>
+                    <input type="text" class="form-input" style="width:220px" id="history-filter-pi" placeholder="Филтър по ПИ..." oninput="renderHistory()">
+                </div>
+                <div id="history-timeline" class="timeline"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ CONSULTANTS ═══════════ -->
+        <div class="page" id="page-consultants">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Консултанти</h1>
+                    <p class="page-subtitle">Управление на консултантски фирми и служители</p>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div>
+                    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--slate);text-transform:uppercase;letter-spacing:0.5px">Добавени консултанти</h3>
+                    <div id="consultants-list"></div>
+                </div>
+                <div>
+                    <div class="card" id="consultant-form-card">
+                        <div class="card-header">
+                            <div class="card-title" id="consultant-form-title">Добави консултант</div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label required">Фирма</label>
+                            <input type="text" id="consultant-name" class="form-input" placeholder="СиБиТи Консулт ООД">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">ЕИК</label>
+                            <input type="text" id="consultant-eik" class="form-input" placeholder="123456789">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">Управител (пълно)</label>
+                            <input type="text" id="consultant-manager" class="form-input" placeholder="инж. Таня Иванова Петрова">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">Адрес</label>
+                            <input type="text" id="consultant-address" class="form-input" placeholder="гр. София, ул. ...">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">Удостоверение №</label>
+                            <input type="text" id="consultant-cert" class="form-input" placeholder="РК-12-345">
+                        </div>
+
+                        <div class="section-sep">Служители</div>
+                        <div id="employees-container"></div>
+                        <button class="btn btn-ghost btn-sm" onclick="addEmployeeRow()" style="margin-bottom:16px">
+                            ➕ Добави служител
+                        </button>
+
+                        <div style="display:flex;gap:10px">
+                            <button class="btn btn-primary" onclick="saveConsultant()" id="consultant-save-btn">
+                                💾 Запази
+                            </button>
+                            <button class="btn btn-ghost" onclick="cancelConsultantEdit()" id="consultant-cancel-btn" style="display:none">
+                                Отказ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ SETTINGS ═══════════ -->
+        <div class="page" id="page-settings">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Настройки</h1>
+                    <p class="page-subtitle">Конфигурация на системата</p>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div class="card dropbox-card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">📦 Dropbox интеграция</div>
+                            <div class="card-subtitle">Синхронизация с облака</div>
+                        </div>
+                        <div id="settings-dropbox-status"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:14px">
+                        <label class="form-label">Access Token</label>
+                        <input type="password" id="dropbox-token" class="form-input" placeholder="sl.xxxxxxxxxxxxxxx">
+                        <span class="form-hint">
+                            Генерирайте от <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color:var(--blue)">Dropbox App Console</a>
+                        </span>
+                    </div>
+                    <div class="form-group" style="margin-bottom:14px">
+                        <label class="form-label">Папка в Dropbox</label>
+                        <input type="text" id="dropbox-folder" class="form-input" placeholder="/CBT_Test" value="/CBT_Test">
+                        <span class="form-hint">Базова папка за всички проекти</span>
+                    </div>
+                    <div style="display:flex;gap:10px">
+                        <button class="btn btn-primary" onclick="saveDropboxToken()">💾 Запази</button>
+                        <button class="btn btn-secondary" onclick="testDropboxConnection()">🔌 Тествай</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">🐍 Python REST API</div>
+                            <div class="card-subtitle">Flask/FastAPI на Railway сървър</div>
+                        </div>
+                        <div id="api-status-badge"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:14px">
+                        <label class="form-label">API URL (Railway)</label>
+                        <input type="text" id="api-url-input" class="form-input" placeholder="https://cbt-api.railway.app">
+                        <span class="form-hint">URL на Railway сървъра — напр. https://cbt-api-production.up.railway.app</span>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-bottom:16px">
+                        <button class="btn btn-primary" onclick="saveApiUrl()">💾 Запази URL</button>
+                        <button class="btn btn-secondary" onclick="testApiConnection()">🔌 Тествай връзка</button>
+                    </div>
+                    <div style="background:var(--surface);border-radius:var(--r-sm);padding:12px;font-size:12px;color:var(--slate)">
+                        <div style="font-weight:700;margin-bottom:6px;color:var(--ink-3)">Налични API endpoints:</div>
+                        <code style="display:block;margin:2px 0">GET  /health → статус на сървъра</code>
+                        <code style="display:block;margin:2px 0">POST /api/passports/{pi} → запис на паспорт</code>
+                        <code style="display:block;margin:2px 0">GET  /api/passports → списък паспорти</code>
+                        <code style="display:block;margin:2px 0">POST /api/generate/protokol2 → Протокол 2</code>
+                        <code style="display:block;margin:2px 0">POST /api/generate/akt7 → Акт 7</code>
+                        <code style="display:block;margin:2px 0">POST /api/generate/akt14 → Акт 14</code>
+                        <code style="display:block;margin:2px 0">POST /api/generate/obrazec3 → Образец 3</code>
+                        <code style="display:block;margin:2px 0">POST /api/generate/zapovedna → Заповедна книга</code>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">💾 Данни</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                        <button class="btn btn-secondary" onclick="exportAllData()">
+                            📥 Експорт на всички данни (JSON)
+                        </button>
+                        <button class="btn btn-secondary" onclick="importData()">
+                            📤 Импорт на данни (JSON)
+                        </button>
+                        <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(event)">
+                        <button class="btn btn-danger" onclick="if(confirm('ИЗТРИЕ ВСИЧКО! Сигурни ли сте?')){clearAllData();}">
+                            🗑️ Изчисти всички данни
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">ℹ️ Информация за системата</div>
+                    </div>
+                    <table style="width:100%;font-size:13px;border-collapse:collapse">
+                        <tr><td style="padding:6px 0;color:var(--slate)">Версия</td><td style="font-weight:600">CBT Full System v6.0</td></tr>
+                        <tr><td style="padding:6px 0;color:var(--slate)">Дата</td><td style="font-weight:600">Февруари 2026</td></tr>
+                        <tr><td style="padding:6px 0;color:var(--slate)">Excel библиотека</td><td style="font-weight:600">SheetJS (XLSX)</td></tr>
+                        <tr><td style="padding:6px 0;color:var(--slate)">Съхранение</td><td style="font-weight:600">localStorage + Dropbox + Railway API</td></tr>
+                        <tr><td style="padding:6px 0;color:var(--slate)">Документи</td><td style="font-weight:600">Протокол 2, Акт 7, Акт 14, Образец 3, Заповедна книга</td></tr>
+                        <tr><td style="padding:6px 0;color:var(--slate)">Нови функции</td><td style="font-weight:600">REST API интеграция, разширени проектанти, служители надзор в Excel</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- PASSPORT DETAIL MODAL -->
+<div class="modal-overlay" id="passport-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title" id="modal-passport-title">Паспорт</div>
+            <button class="btn btn-ghost btn-sm" onclick="closeModal('passport-modal')">✕ Затвори</button>
+        </div>
+        <div class="modal-body" id="modal-passport-body"></div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('passport-modal')">Затвори</button>
+            <button class="btn btn-secondary" id="modal-edit-btn">✏️ Редактирай</button>
+            <button class="btn btn-secondary" id="modal-export-btn">📊 Експорт Excel</button>
+            <button class="btn btn-blue" id="modal-sync-api-btn" style="background:var(--blue-light);color:var(--blue);border:1px solid rgba(31,107,181,0.3);display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;">🔄 Sync API</button>
+            <button class="btn btn-success" id="modal-generate-btn">📄 Генерирай документи</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA MODEL
+// ═══════════════════════════════════════════════════════════
+let appData = {
+    consultants: [],
+    projects: [],
+    currentProject: null,
+    dropboxToken: '',
+    dropboxFolder: '/CBT_Test',
+    apiUrl: '',
+    history: []
+};
+
+// ═══════════════════════════════════════════════════════════
+//  API INTEGRATION (Flask/FastAPI on Railway)
+// ═══════════════════════════════════════════════════════════
+async function apiCall(endpoint, method = 'GET', body = null) {
+    const url = (appData.apiUrl || '').replace(/\/$/, '');
+    if (!url) throw new Error('API URL не е конфигуриран');
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(`${url}${endpoint}`, opts);
+    if (!r.ok) {
+        const err = await r.json().catch(() => ({ detail: r.statusText }));
+        throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    return r.json();
+}
+
+async function testApiConnection() {
+    const badge = document.getElementById('api-status-badge');
+    try {
+        if (badge) badge.innerHTML = '<span class="badge badge-gray">● Тестване...</span>';
+        const data = await apiCall('/health');
+        if (badge) badge.innerHTML = '<span class="badge badge-green">● Свързан</span>';
+        showAlert('success', `✅ API е свързан! Версия: ${data.version || '1.0'}`);
+    } catch(e) {
+        if (badge) badge.innerHTML = '<span class="badge" style="background:var(--red-light);color:var(--red)">● Грешка</span>';
+        showAlert('error', `❌ API грешка: ${e.message}`);
+    }
+}
+
+function saveApiUrl() {
+    const url = document.getElementById('api-url-input').value.trim();
+    appData.apiUrl = url;
+    saveData();
+    updateApiIndicator();
+    showAlert('success', '🔌 API URL запазен!');
+}
+
+function updateApiIndicator() {
+    const el = document.getElementById('api-indicator');
+    if (!el) return;
+    const txt = document.getElementById('api-indicator-text');
+    el.className = appData.apiUrl ? 'connected' : 'disconnected';
+    if (txt) txt.textContent = appData.apiUrl ? 'API: свързан' : 'API: не е конфигуриран';
+}
+
+async function generateDocumentViaApi(projectId, docType) {
+    const project = appData.projects.find(p => p.id === projectId);
+    if (!project) return;
+    if (!appData.apiUrl) {
+        showAlert('error', 'Моля, конфигурирайте API URL в Настройки → Python API!');
+        return;
+    }
+    try {
+        showAlert('info', `⏳ Генериране на ${docType} чрез Python API...`);
+        const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+        const payload = buildExcelPayload(project, consultant);
+        const result = await apiCall(`/api/generate/${docType}`, 'POST', { passport: payload, pi: project.pi });
+        if (!project.generatedDocs) project.generatedDocs = [];
+        project.generatedDocs.push({ type: docType, url: result.file_url, date: new Date().toISOString() });
+        addHistory('generate', project.pi, `${docType} генериран чрез API`);
+        saveData();
+        filterPassports();
+        const dlLink = result.file_url ? ` <a href="${result.file_url}" target="_blank" style="color:var(--blue);font-weight:600">⬇ Свали</a>` : '';
+        showAlert('success', `✅ ${docType} генериран успешно!${dlLink}`);
+    } catch(e) {
+        showAlert('error', `❌ Грешка при генериране: ${e.message}`);
+    }
+}
+
+async function syncPassportToApi(projectId) {
+    const project = appData.projects.find(p => p.id === projectId);
+    if (!project) return;
+    if (!appData.apiUrl) { showAlert('error', 'API URL не е конфигуриран!'); return; }
+    try {
+        showAlert('info', `⏳ Синхронизация на PI-${project.pi}...`);
+        const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+        const payload = buildExcelPayload(project, consultant);
+        await apiCall(`/api/passports/${project.pi}`, 'POST', { passport: payload });
+        addHistory('export', project.pi, `Паспортът синхронизиран с API`);
+        saveData();
+        showAlert('success', `✅ PI-${project.pi} синхронизиран с Python API!`);
+    } catch(e) {
+        showAlert('error', `❌ Синхронизация неуспешна: ${e.message}`);
+    }
+}
+
+const specializations = [
+    'Архитектура','Конструктивна','ВиК','Електро','ОВК и ЕЕ',
+    'Геодезия','Паркоустройство и Благоустройство','Газоснабдяване','ПБ','СХИ','Пътна'
+];
+
+// ═══════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════
+function loadData() {
+    const saved = localStorage.getItem('cbt_v5');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            appData = { ...appData, ...parsed };
+            if (!appData.history) appData.history = [];
+            if (!appData.dropboxFolder) appData.dropboxFolder = '/CBT_Test';
+            if (!appData.apiUrl) appData.apiUrl = '';
+        } catch(e) {
+            console.warn('Failed to parse saved data');
+        }
+    }
+
+    // Check for old v4 data to migrate
+    const oldData = localStorage.getItem('cbtFullSystemData');
+    if (oldData && appData.projects.length === 0) {
+        try {
+            const old = JSON.parse(oldData);
+            if (old.projects) appData.projects = old.projects;
+            if (old.consultants) appData.consultants = old.consultants;
+            if (old.dropboxToken) appData.dropboxToken = old.dropboxToken;
+            addHistory('migrate', null, 'Мигрирани данни от v4');
+            saveData();
+            showAlert('info', '✅ Данните от предишната версия са мигрирани успешно!');
+        } catch(e) {}
+    }
+
+    // Auto-create default consultant if empty
+    if (appData.consultants.length === 0) {
+        appData.consultants.push({
+            id: Date.now(),
+            name: 'СиБиТи Консулт ООД',
+            eik: '',
+            manager: '',
+            address: '',
+            cert: '',
+            employees: [
+                { id: Date.now()+1, name: 'Надя Йорданова Спасова', specialization: 'Конструктивна' },
+                { id: Date.now()+2, name: 'Златан Златанов', specialization: 'Геодезия' }
+            ]
+        });
+        saveData();
+    }
+
+    document.getElementById('dropbox-token').value = appData.dropboxToken || '';
+    document.getElementById('dropbox-folder').value = appData.dropboxFolder || '/CBT_Test';
+    const apiInput = document.getElementById('api-url-input');
+    if (apiInput) apiInput.value = appData.apiUrl || '';
+    updateDropboxIndicator();
+    updateApiIndicator();
+    renderDashboard();
+    renderConsultants();
+    filterPassports();
+    updateNavBadge();
+
+    // Автоматично зареждане от Dropbox при стартиране
+    if (appData.dropboxToken) {
+        cloudLoadProjects().then(loaded => {
+            if (loaded) {
+                renderDashboard();
+                filterPassports();
+                updateNavBadge();
+                console.log('✅ Паспортите са заредени от Dropbox');
+            }
+        }).catch(() => {});
+    }
+}
+
+function saveData() {
+    appData.savedAt = new Date().toISOString();
+    localStorage.setItem('cbt_v5', JSON.stringify(appData));
+    // Автоматично синхронизира с Dropbox ако е свързан
+    if (appData.dropboxToken) {
+        cloudSaveProjects().catch(() => {}); // тихо — не блокира UI
+    }
+}
+
+// ── Cloud Sync (Dropbox) ──────────────────────────────────
+const CLOUD_FILE = () => `${appData.dropboxFolder}/_cbt_projects.json`;
+
+async function cloudSaveProjects() {
+    if (!appData.dropboxToken) return;
+    const payload = {
+        projects: appData.projects,
+        consultants: appData.consultants,
+        history: appData.history.slice(0, 100),
+        savedAt: new Date().toISOString(),
+        savedBy: appData.userName || 'Таня'
+    };
+    const data = JSON.stringify(payload, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    await fetch(`https://content.dropboxapi.com/2/files/upload`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${appData.dropboxToken}`,
+            'Dropbox-API-Arg': JSON.stringify({ path: CLOUD_FILE(), mode: 'overwrite', mute: true }),
+            'Content-Type': 'application/octet-stream'
+        },
+        body: blob
+    });
+}
+
+async function cloudLoadProjects(forceLoad = false) {
+    if (!appData.dropboxToken) return false;
+    try {
+        const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${appData.dropboxToken}`,
+                'Dropbox-API-Arg': JSON.stringify({ path: CLOUD_FILE() })
+            }
+        });
+        if (!res.ok) return false;
+        const payload = await res.json();
+        if (!payload.projects) return false;
+
+        // При ръчен Sync — винаги зарежда от Dropbox
+        // При автоматично зареждане — взима най-новото
+        if (forceLoad) {
+            appData.projects = payload.projects || [];
+            appData.consultants = payload.consultants || appData.consultants;
+            if (payload.history) appData.history = payload.history;
+            localStorage.setItem('cbt_v5', JSON.stringify(appData));
+            return true;
+        }
+
+        const cloudTime = new Date(payload.savedAt || 0).getTime();
+        const localSaved = localStorage.getItem('cbt_v5');
+        const localTime = localSaved ? new Date(JSON.parse(localSaved).savedAt || 0).getTime() : 0;
+
+        if (cloudTime > localTime || appData.projects.length === 0) {
+            appData.projects = payload.projects || [];
+            appData.consultants = payload.consultants || appData.consultants;
+            if (payload.history) appData.history = payload.history;
+            localStorage.setItem('cbt_v5', JSON.stringify(appData));
+            return true;
+        }
+        return false;
+    } catch(e) {
+        return false;
+    }
+}
+
+async function syncWithCloud() {
+    if (!appData.dropboxToken) {
+        showAlert('error', '❌ Dropbox не е свързан!');
+        return;
+    }
+    const btn = document.getElementById('cloud-sync-btn');
+    if (btn) btn.innerHTML = '⏳ Sync...';
+    showAlert('info', '🔄 Синхронизиране с Dropbox...');
+
+    // Винаги зарежда от Dropbox при ръчен Sync
+    const loaded = await cloudLoadProjects(true);
+    if (loaded) {
+        renderDashboard();
+        filterPassports();
+        updateNavBadge();
+        showAlert('success', `✅ Заредени ${appData.projects.length} паспорта от Dropbox!`);
+    } else {
+        // Файлът не съществува — запази текущите данни
+        await cloudSaveProjects();
+        showAlert('success', '✅ Данните са запазени в Dropbox!');
+    }
+    if (btn) btn.innerHTML = '☁️ Sync';
+}
+
+function addHistory(type, pi, detail) {
+    appData.history.unshift({
+        type,
+        pi: pi || null,
+        detail: detail || '',
+        date: new Date().toISOString()
+    });
+    if (appData.history.length > 500) appData.history.pop();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function navigateTo(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    document.getElementById(`page-${page}`).classList.add('active');
+    const navBtn = document.getElementById(`nav-${page}`);
+    if (navBtn) navBtn.classList.add('active');
+
+    // Render on navigate
+    if (page === 'dashboard') renderDashboard();
+    else if (page === 'passports') { filterPassports(); populateFilterDropdowns(); }
+    else if (page === 'new-passport') renderPassportForm(null);
+    else if (page === 'generate') renderGenerateSection();
+    else if (page === 'history') renderHistory();
+    else if (page === 'consultants') renderConsultants();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ALERTS
+// ═══════════════════════════════════════════════════════════
+function showAlert(type, message, duration = 6000) {
+    const container = document.getElementById('alerts-container');
+    const div = document.createElement('div');
+    div.className = `alert alert-${type}`;
+    div.innerHTML = `<span>` + (type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️') + `</span><span>${message}</span>`;
+    container.prepend(div);
+    setTimeout(() => div.remove(), duration);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function renderDashboard() {
+    // Stats
+    const totalProjects = appData.projects.length;
+    const totalExported = appData.projects.filter(p => p.exportedAt).length;
+    const totalDocs = appData.projects.reduce((acc, p) => acc + (p.generatedDocs || []).length, 0);
+    const totalConsultants = appData.consultants.length;
+
+    document.getElementById('stats-grid').innerHTML = `
+        <div class="stat-card">
+            <div class="stat-label">Общо паспорти</div>
+            <div class="stat-value">${totalProjects}</div>
+            <div class="stat-meta">проекта в системата</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Експортирани</div>
+            <div class="stat-value">${totalExported}</div>
+            <div class="stat-meta">Excel → Dropbox</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Генерирани документи</div>
+            <div class="stat-value">${totalDocs}</div>
+            <div class="stat-meta">HTML файла</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Консултанти</div>
+            <div class="stat-value">${totalConsultants}</div>
+            <div class="stat-meta">активни фирми</div>
+        </div>
+    `;
+
+    // Recent passports
+    const recent = [...appData.projects].sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0)).slice(0,4);
+    const recContainer = document.getElementById('dashboard-recent');
+    if (recent.length === 0) {
+        recContainer.innerHTML = `<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Няма паспорти</div></div>`;
+    } else {
+        recContainer.innerHTML = recent.map(p => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light);cursor:pointer" onclick="openPassportModal(${p.id})">
+                <div>
+                    <div style="font-weight:700;font-size:14px;color:var(--ink)">ПИ: ${p.pi}</div>
+                    <div style="font-size:12px;color:var(--slate)">${p.stroej || '—'}</div>
+                </div>
+                <div style="text-align:right">
+                    ${p.exportedAt ? '<span class="badge badge-green">✓ Excel</span>' : '<span class="badge badge-gold">⏳ Чака</span>'}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // History mini
+    const histContainer = document.getElementById('dashboard-history');
+    const recentHistory = appData.history.slice(0,6);
+    if (recentHistory.length === 0) {
+        histContainer.innerHTML = `<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Няма история</p>`;
+    } else {
+        histContainer.innerHTML = recentHistory.map(h => `
+            <div class="timeline-item">
+                <div class="timeline-dot ${h.type}"></div>
+                <div class="timeline-content">
+                    <div class="timeline-action">${historyActionLabel(h)}</div>
+                    <div class="timeline-date">${formatDateTime(h.date)}</div>
+                    ${h.detail ? `<div class="timeline-detail">${h.detail}</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function historyActionLabel(h) {
+    const icons = {create:'🆕', edit:'✏️', export:'📊', generate:'📄', delete:'🗑️', migrate:'🔄'};
+    const labels = {create:'Нов паспорт', edit:'Редакция', export:'Excel експорт', generate:'Генериране', delete:'Изтриване', migrate:'Миграция'};
+    return `${icons[h.type]||'•'} ${labels[h.type]||h.type}${h.pi ? ` — ПИ: ${h.pi}` : ''}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASSPORTS LIST + SEARCH + FILTER
+// ═══════════════════════════════════════════════════════════
+function populateFilterDropdowns() {
+    const consultantSelect = document.getElementById('filter-consultant');
+    const currentVal = consultantSelect.value;
+    consultantSelect.innerHTML = '<option value="">Всички консултанти</option>';
+    appData.consultants.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        if (c.id == currentVal) opt.selected = true;
+        consultantSelect.appendChild(opt);
+    });
+}
+
+function filterPassports() {
+    const search = (document.getElementById('search-pi')?.value || '').toLowerCase();
+    const consultantFilter = document.getElementById('filter-consultant')?.value || '';
+    const statusFilter = document.getElementById('filter-status')?.value || '';
+
+    let filtered = appData.projects;
+
+    if (search) {
+        filtered = filtered.filter(p =>
+            p.pi?.toLowerCase().includes(search) ||
+            p.stroej?.toLowerCase().includes(search) ||
+            p.address?.toLowerCase().includes(search) ||
+            p.client?.name?.toLowerCase().includes(search)
+        );
+    }
+
+    if (consultantFilter) {
+        filtered = filtered.filter(p => p.consultant?.id == consultantFilter);
+    }
+
+    if (statusFilter === 'exported') {
+        filtered = filtered.filter(p => p.exportedAt);
+    } else if (statusFilter === 'not-exported') {
+        filtered = filtered.filter(p => !p.exportedAt);
+    } else if (statusFilter === 'with-docs') {
+        filtered = filtered.filter(p => p.generatedDocs?.length > 0);
+    }
+
+    // Sort by newest first
+    filtered = [...filtered].sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+
+    renderPassportsList(filtered);
+}
+
+function renderPassportsList(projects) {
+    const container = document.getElementById('passports-list');
+    if (!container) return;
+
+    if (projects.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">Няма намерени паспорти</div>
+                <div class="empty-text">Опитайте с различни филтри или добавете нов паспорт</div>
+                <button class="btn btn-primary" onclick="navigateTo('new-passport')">➕ Нов паспорт</button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = projects.map(p => {
+        const isActive = appData.currentProject?.id === p.id;
+        const docs = p.generatedDocs || [];
+        return `
+        <div class="passport-card ${isActive ? 'selected' : ''}" onclick="openPassportModal(${p.id})">
+            <div>
+                <div class="passport-pi-label">ПИ</div>
+                <div class="passport-pi">${p.pi || '—'}</div>
+            </div>
+            <div class="passport-meta">
+                <div class="passport-name">${p.stroej || '(без строеж)'}</div>
+                <div class="passport-details">${p.address || ''} ${p.consultant?.name ? '· '+p.consultant.name : ''}</div>
+                <div class="passport-docs">
+                    ${p.exportedAt ? `<span class="badge badge-green">📊 Excel ${formatDate2(p.exportedAt)}</span>` : '<span class="badge badge-gold">⏳ Неекспортиран</span>'}
+                    ${docs.map(d => `<span class="badge badge-blue">${d.type}</span>`).join('')}
+                </div>
+            </div>
+            <div class="passport-actions">
+                <span style="font-size:12px;color:var(--muted)">${formatDate(p.date)}</span>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editPassport(${p.id})">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePassport(${p.id})">🗑️</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function updateNavBadge() {
+    const badge = document.getElementById('nav-passports-count');
+    if (badge) badge.textContent = appData.projects.length;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASSPORT MODAL
+// ═══════════════════════════════════════════════════════════
+function openPassportModal(id) {
+    const project = appData.projects.find(p => p.id === id);
+    if (!project) return;
+
+    document.getElementById('modal-passport-title').textContent = `ПИ: ${project.pi}`;
+
+    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    const docs = project.generatedDocs || [];
+
+    document.getElementById('modal-passport-body').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div>
+                <div class="section-sep">Основни данни</div>
+                ${detailRow('ПИ', project.pi)}
+                ${detailRow('Дата', formatDate(project.date))}
+                ${detailRow('Строеж', project.stroej)}
+                ${detailRow('Адрес', project.address)}
+                <div class="section-sep">Разрешение за строеж</div>
+                ${detailRow('Номер', project.permit?.number)}
+                ${detailRow('Дата РС', formatDate(project.permit?.date))}
+                ${detailRow('Издател', project.permit?.issuer)}
+                ${detailRow('В сила от', formatDate(project.permit?.effective))}
+            </div>
+            <div>
+                <div class="section-sep">Участници</div>
+                ${detailRow('Консултант', project.consultant?.name)}
+                ${detailRow('Възложител', project.client?.name)}
+                ${detailRow('Строител', project.builder?.company)}
+                ${detailRow('Управител строител', project.builder?.manager)}
+                ${detailRow('Техн. ръководител', project.builder?.tech)}
+                ${consultant?.employees?.length ? `
+                    <div class="section-sep">Служители надзор (${consultant.employees.length})</div>
+                    ${consultant.employees.map(e => `
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-light);font-size:12px">
+                            <span style="font-weight:600;color:var(--ink)">${e.name}</span>
+                            <span class="chip" style="font-size:10px;padding:2px 7px">${e.specialization}</span>
+                        </div>`).join('')}
+                ` : ''}
+            </div>
+        </div>
+        ${(project.projectants||[]).length > 0 ? `
+        <div class="section-sep" style="margin-top:16px">Проектанти (${project.projectants.length})</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
+            ${(project.projectants||[]).map(pp => `
+                <div style="border:1px solid var(--border-light);border-radius:var(--r-sm);padding:10px;background:var(--surface)">
+                    <div style="font-weight:700;font-size:13px;color:var(--ink)">${pp.name||'—'}</div>
+                    <div style="font-size:11px;color:var(--muted);margin:2px 0">ППП: ${pp.ppp||'—'} · <span class="chip" style="font-size:10px;padding:1px 6px">${pp.specialization}</span></div>
+                    ${pp.company ? `<div style="font-size:11px;color:var(--slate);margin-top:4px">🏢 ${pp.company}${pp.companyEik ? ` · ЕИК: ${pp.companyEik}` : ''}</div>` : ''}
+                    ${pp.companyManager ? `<div style="font-size:11px;color:var(--slate)">👤 ${pp.companyManager}</div>` : ''}
+                </div>
+            `).join('')}
+        </div>` : ''}
+        <div class="section-sep" style="margin-top:16px">Статус и документи</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            ${project.exportedAt ? `<span class="badge badge-green">✅ Excel на ${formatDateTime(project.exportedAt)}</span>` : '<span class="badge badge-gold">⏳ Не е експортиран</span>'}
+            ${appData.apiUrl ? '<span class="badge badge-blue">🔌 API конфигуриран</span>' : '<span class="badge badge-gray">API не е конфигуриран</span>'}
+        </div>
+        ${docs.length > 0 ? `
+        <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--slate);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Генерирани документи</div>
+            ${docs.map(d => `
+                <div class="doc-list-item">
+                    <div><span class="doc-type">📄 ${d.type}</span></div>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <span class="doc-date">${formatDateTime(d.date)}</span>
+                        ${d.url ? `<a href="${d.url}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">⬇ Свали</a>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>` : ''}
+        <div class="section-sep">История на проекта</div>
+        <div class="timeline" style="margin-top:8px">
+            ${appData.history.filter(h => h.pi === project.pi).slice(0,8).map(h => `
+                <div class="timeline-item">
+                    <div class="timeline-dot ${h.type}"></div>
+                    <div class="timeline-content">
+                        <div class="timeline-action">${historyActionLabel(h)}</div>
+                        <div class="timeline-date">${formatDateTime(h.date)}</div>
+                        ${h.detail ? `<div class="timeline-detail">${h.detail}</div>` : ''}
+                    </div>
+                </div>
+            `).join('') || '<p style="color:var(--muted);font-size:13px">Няма история за този проект</p>'}
+        </div>
+    `;
+
+    document.getElementById('modal-edit-btn').onclick = () => { closeModal('passport-modal'); editPassport(id); };
+    document.getElementById('modal-export-btn').onclick = () => exportPassportExcel(id);
+    document.getElementById('modal-sync-api-btn').onclick = () => syncPassportToApi(id);
+    document.getElementById('modal-generate-btn').onclick = () => { appData.currentProject = project; saveData(); closeModal('passport-modal'); navigateTo('generate'); };
+
+    document.getElementById('passport-modal').classList.add('open');
+}
+
+function detailRow(label, value) {
+    return `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-light)">
+        <span style="font-size:12px;color:var(--muted);min-width:130px;flex-shrink:0">${label}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--ink)">${value || '—'}</span>
+    </div>`;
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PASSPORT FORM (new + edit)
+// ═══════════════════════════════════════════════════════════
+let editingProjectId = null;
+let tempProjectants = [];
+
+function renderPassportForm(projectId) {
+    editingProjectId = projectId;
+    const isEdit = projectId !== null;
+    const project = isEdit ? appData.projects.find(p => p.id === projectId) : null;
+
+    document.getElementById('form-page-title').textContent = isEdit ? `Редакция: ПИ ${project?.pi}` : 'Нов паспорт';
+    document.getElementById('form-page-subtitle').textContent = isEdit ? 'Актуализирайте данните за проекта' : 'Въведете данните за новия проект';
+
+    if (appData.consultants.length === 0) {
+        document.getElementById('new-passport-content').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🏢</div>
+                <div class="empty-title">Няма консултанти</div>
+                <div class="empty-text">Добавете поне един консултант преди да създадете паспорт</div>
+                <button class="btn btn-primary" onclick="navigateTo('consultants')">⚙️ Управление на консултанти</button>
+            </div>
+        `;
+        return;
+    }
+
+    tempProjectants = project?.projectants ? JSON.parse(JSON.stringify(project.projectants)) : [];
+
+    const p = project || {};
+    const permit = p.permit || {};
+    const client = p.client || {};
+    const builder = p.builder || {};
+
+    document.getElementById('new-passport-content').innerHTML = `
+        <!-- BASIC INFO -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">📋 Основна информация</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label required">ПИ Номер</label>
+                    <input type="text" id="fp-pi" class="form-input" placeholder="00000.000.0000" value="${p.pi||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="date" id="fp-date" class="form-input" value="${p.date||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Строеж</label>
+                    <input type="text" id="fp-stroej" class="form-input" placeholder="Жилищна сграда с ..." value="${p.stroej||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Адрес / Местонахождение</label>
+                    <input type="text" id="fp-address" class="form-input" placeholder="гр. София, ул. ... №..." value="${p.address||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Консултант</label>
+                    <select id="fp-consultant" class="form-select">
+                        <option value="">— Изберете —</option>
+                        ${appData.consultants.map(c => `<option value="${c.id}" ${p.consultant?.id==c.id?'selected':''}>${c.name}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- РАЗРЕШЕНИЕ -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">📜 Разрешение за строеж</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Номер</label>
+                    <input type="text" id="fp-permit-num" class="form-input" placeholder="№ 123" value="${permit.number||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата на издаване</label>
+                    <input type="date" id="fp-permit-date" class="form-input" value="${permit.date||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Издател</label>
+                    <input type="text" id="fp-permit-issuer" class="form-input" placeholder="Главен архитект на Столична Община" value="${permit.issuer||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Влязло в сила на</label>
+                    <input type="date" id="fp-permit-effective" class="form-input" value="${permit.effective||''}">
+                </div>
+            </div>
+        </div>
+
+        <!-- ВЪЗЛОЖИТЕЛ -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">👤 Възложител</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Тип</label>
+                    <select id="fp-client-type" class="form-select">
+                        <option value="ФЛ" ${client.type==='ФЛ'?'selected':''}>Физическо лице</option>
+                        <option value="ЮЛ" ${client.type==='ЮЛ'?'selected':''}>Юридическо лице</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Имена / Фирма</label>
+                    <input type="text" id="fp-client-name" class="form-input" placeholder="Иван Иванов или Фирма ООД" value="${client.name||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ЕГН / ЕИК</label>
+                    <input type="text" id="fp-client-eik" class="form-input" value="${client.eik||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Представляван от</label>
+                    <input type="text" id="fp-client-rep" class="form-input" placeholder="(за ЮЛ)" value="${client.rep||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Адрес</label>
+                    <input type="text" id="fp-client-address" class="form-input" value="${client.address||''}">
+                </div>
+            </div>
+        </div>
+
+        <!-- СТРОИТЕЛ -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">🏗️ Строител</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Фирма</label>
+                    <input type="text" id="fp-builder-company" class="form-input" placeholder="Строителна фирма ООД" value="${builder.company||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ЕИК</label>
+                    <input type="text" id="fp-builder-eik" class="form-input" value="${builder.eik||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Адрес</label>
+                    <input type="text" id="fp-builder-address" class="form-input" value="${builder.address||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Управител</label>
+                    <input type="text" id="fp-builder-manager" class="form-input" placeholder="инж. Иван Петров Иванов" value="${builder.manager||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Технически ръководител</label>
+                    <input type="text" id="fp-builder-tech" class="form-input" placeholder="инж. Петър Петров Петров" value="${builder.tech||''}">
+                </div>
+            </div>
+        </div>
+
+        <!-- ПРОЕКТАНТИ -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📐 Проектанти</div>
+                <button class="btn btn-secondary btn-sm" onclick="addProjectantRow()">➕ Добави</button>
+            </div>
+            <div id="projectants-container">
+                ${tempProjectants.map((pp, i) => projectantRowHTML(pp, i)).join('')}
+            </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-bottom:40px">
+            <button class="btn btn-success btn-lg" onclick="savePassport()">
+                💾 ${isEdit ? 'Запази промените' : 'Запази паспорт'}
+            </button>
+            ${isEdit ? `<button class="btn btn-primary btn-lg" onclick="exportPassportExcel(${projectId})">📊 Запази и Експорт Excel</button>` : ''}
+            <button class="btn btn-secondary" onclick="navigateTo('passports')">Отказ</button>
+        </div>
+    `;
+}
+
+function projectantRowHTML(pp, i) {
+    const hasCompany = pp.company || pp.companyEik || pp.companyManager || pp.companyAddress;
+    return `
+    <div class="dynamic-row" id="proj-row-${i}" style="flex-direction:column;align-items:stretch;border:1px solid var(--border-light);border-radius:var(--r-sm);padding:14px;margin-bottom:10px;background:var(--surface)">
+        <div style="display:flex;gap:10px;margin-bottom:8px;align-items:center">
+            <div style="background:var(--gold);color:var(--ink);font-weight:700;font-size:12px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
+            <select class="form-select" onchange="updateProjectant(${i},'title',this.value)" style="flex:0 0 90px">
+                ${['инж.','арх.','д-р инж.','д-р арх.'].map(t=>`<option value="${t}" ${(pp.title||'инж.')===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+            <input type="text" class="form-input" placeholder="Три имена на проектанта" 
+                   value="${pp.name||''}" onchange="updateProjectant(${i},'name',this.value)" style="flex:3">
+            <input type="text" class="form-input" placeholder="ППП №" 
+                   value="${pp.ppp||''}" onchange="updateProjectant(${i},'ppp',this.value)" style="flex:1;min-width:80px">
+            <select class="form-select" onchange="updateProjectant(${i},'specialization',this.value)" style="flex:2">
+                ${specializations.map(s=>`<option value="${s}" ${pp.specialization===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button class="btn btn-danger btn-sm" onclick="removeProjectantRow(${i})">✕</button>
+        </div>
+        <div style="margin-top:4px">
+            <button type="button" onclick="toggleCompany(${i})" 
+                    style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:2px 0">
+                ${hasCompany ? '▼ Фирма (попълнена)' : '▶ + Добави фирма (по желание)'}
+            </button>
+        </div>
+        <div id="company-${i}" style="display:${hasCompany ? 'grid' : 'none'};grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Проектантска фирма</div>
+                <input type="text" class="form-input" placeholder="Архитектурно бюро ООД" 
+                       value="${pp.company||''}" onchange="updateProjectant(${i},'company',this.value)">
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">ЕИК на фирмата</div>
+                <input type="text" class="form-input" placeholder="123456789" 
+                       value="${pp.companyEik||''}" onchange="updateProjectant(${i},'companyEik',this.value)">
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Управител на фирмата</div>
+                <input type="text" class="form-input" placeholder="инж. Иван Петров" 
+                       value="${pp.companyManager||''}" onchange="updateProjectant(${i},'companyManager',this.value)">
+            </div>
+            <div>
+                <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Адрес на фирмата</div>
+                <input type="text" class="form-input" placeholder="гр. София, ул. ..." 
+                       value="${pp.companyAddress||''}" onchange="updateProjectant(${i},'companyAddress',this.value)">
+            </div>
+        </div>
+    </div>`;
+}
+
+function toggleCompany(i) {
+    const el = document.getElementById('company-' + i);
+    const btn = el.previousElementSibling.querySelector('button');
+    if (el.style.display === 'none') {
+        el.style.display = 'grid';
+        btn.textContent = '▼ Скрий фирма';
+    } else {
+        el.style.display = 'none';
+        btn.textContent = '▶ + Добави фирма (по желание)';
+    }
+}
+
+function addProjectantRow() {
+    const newPP = { id: Date.now(), name: '', ppp: '', specialization: 'Архитектура', title: 'инж.', company: '', companyEik: '', companyManager: '', companyAddress: '' };
+    tempProjectants.push(newPP);
+    const container = document.getElementById('projectants-container');
+    const div = document.createElement('div');
+    div.innerHTML = projectantRowHTML(newPP, tempProjectants.length - 1);
+    container.appendChild(div.firstElementChild);
+}
+
+function removeProjectantRow(i) {
+    tempProjectants.splice(i, 1);
+    const container = document.getElementById('projectants-container');
+    container.innerHTML = tempProjectants.map((pp, idx) => projectantRowHTML(pp, idx)).join('');
+}
+
+function updateProjectant(i, field, value) {
+    if (tempProjectants[i]) tempProjectants[i][field] = value;
+}
+
+function savePassport() {
+    const pi = document.getElementById('fp-pi').value.trim();
+    const consultantId = document.getElementById('fp-consultant').value;
+
+    if (!pi) { showAlert('error', 'Моля, въведете ПИ номер!'); return; }
+    if (!consultantId) { showAlert('error', 'Моля, изберете консултант!'); return; }
+
+    // Read projectants from DOM (in case oninput missed)
+    document.querySelectorAll('[id^="proj-row-"]').forEach((row, i) => {
+        const inputs = row.querySelectorAll('input');
+        const selects = row.querySelectorAll('select');
+        if (tempProjectants[i]) {
+            if (inputs[0]) tempProjectants[i].name = inputs[0].value.trim();
+            if (inputs[1]) tempProjectants[i].ppp = inputs[1].value.trim();
+            if (selects[0]) tempProjectants[i].title = selects[0].value;
+            if (selects[1]) tempProjectants[i].specialization = selects[1].value;
+        }
+    });
+
+    const consultant = appData.consultants.find(c => c.id == consultantId);
+
+    const projectData = {
+        pi,
+        date: document.getElementById('fp-date').value,
+        stroej: document.getElementById('fp-stroej').value,
+        address: document.getElementById('fp-address').value,
+        consultant: { id: consultant.id, name: consultant.name },
+        permit: {
+            number: document.getElementById('fp-permit-num').value,
+            date: document.getElementById('fp-permit-date').value,
+            issuer: document.getElementById('fp-permit-issuer').value,
+            effective: document.getElementById('fp-permit-effective').value
+        },
+        client: {
+            type: document.getElementById('fp-client-type').value,
+            name: document.getElementById('fp-client-name').value,
+            eik: document.getElementById('fp-client-eik').value,
+            rep: document.getElementById('fp-client-rep').value,
+            address: document.getElementById('fp-client-address').value
+        },
+        builder: {
+            company: document.getElementById('fp-builder-company').value,
+            eik: document.getElementById('fp-builder-eik').value,
+            address: document.getElementById('fp-builder-address').value,
+            manager: document.getElementById('fp-builder-manager').value,
+            tech: document.getElementById('fp-builder-tech').value
+        },
+        projectants: tempProjectants.filter(pp => pp.name || pp.ppp)
+    };
+
+    if (editingProjectId !== null) {
+        // Edit existing
+        const idx = appData.projects.findIndex(p => p.id === editingProjectId);
+        if (idx >= 0) {
+            const oldProject = appData.projects[idx];
+            appData.projects[idx] = {
+                ...oldProject,
+                ...projectData,
+                updatedAt: new Date().toISOString(),
+                exportedAt: null // Reset export status when edited
+            };
+            addHistory('edit', pi, `Редактирани данни за паспорт ПИ ${pi}`);
+            showAlert('success', `✅ Паспортът е актуализиран! Excel статусът е нулиран — моля, експортирайте отново.`);
+        }
+    } else {
+        // New project
+        const newProject = {
+            id: Date.now(),
+            ...projectData,
+            generatedDocs: [],
+            exportedAt: null,
+            createdAt: new Date().toISOString()
+        };
+        appData.projects.push(newProject);
+        appData.currentProject = newProject;
+        addHistory('create', pi, `Създаден нов паспорт за "${projectData.stroej}"`);
+        showAlert('success', '✅ Паспортът е създаден успешно!');
+    }
+
+    saveData();
+    updateNavBadge();
+    navigateTo('passports');
+}
+
+function editPassport(id) {
+    navigateTo('new-passport');
+    renderPassportForm(id);
+}
+
+function deletePassport(id) {
+    const project = appData.projects.find(p => p.id === id);
+    if (!project) return;
+    if (!confirm(`Изтрий паспорт ПИ: ${project.pi}?`)) return;
+
+    appData.projects = appData.projects.filter(p => p.id !== id);
+    if (appData.currentProject?.id === id) appData.currentProject = null;
+    addHistory('delete', project.pi, `Изтрит паспорт "${project.stroej}"`);
+    saveData();
+    filterPassports();
+    updateNavBadge();
+    showAlert('success', 'Паспортът е изтрит.');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXCEL EXPORT (passport.xlsx for Python)
+// ═══════════════════════════════════════════════════════════
+
+// Unified payload builder used by both Excel export and API sync
+function buildExcelPayload(project, consultant) {
+    const p = project;
+    const permit = p.permit || {};
+    const client = p.client || {};
+    const builder = p.builder || {};
+    const employees = consultant?.employees || [];
+
+    const rows = [
+        ['ПИ', p.pi || ''],
+        ['Дата', formatDateForExcel(p.date)],
+        ['Строеж', p.stroej || ''],
+        ['Адрес', p.address || ''],
+        // Консултант
+        ['Консултант_Фирма', consultant?.name || p.consultant?.name || ''],
+        ['Консултант_ЕИК', consultant?.eik || ''],
+        ['Консултант_Управител', consultant?.manager || ''],
+        ['Консултант_Адрес', consultant?.address || ''],
+        ['Консултант_Удостоверение', consultant?.cert || ''],
+        // Възложител
+        ['Възложител_Тип', client.type || 'ФЛ'],
+        ['Възложител_Фирма', client.name || ''],
+        ['Възложител_ЕИК', client.eik || ''],
+        ['Възложител_Адрес', client.address || ''],
+        ['Възложител_Представител', client.rep || client.name || ''],
+        // Строител
+        ['Строител_Фирма', builder.company || ''],
+        ['Строител_ЕИК', builder.eik || ''],
+        ['Строител_Адрес', builder.address || ''],
+        ['Строител_Управител', builder.manager || ''],
+        ['Строител_ТехРък', builder.tech || ''],
+        // Разрешение за строеж
+        ['РС_Номер', permit.number || ''],
+        ['РС_Дата', formatDateForExcel(permit.date)],
+        ['РС_Издател', permit.issuer || ''],
+        ['РС_ВСила', formatDateForExcel(permit.effective)],
+        // Служители надзор (брой)
+        ['Служители_Брой', employees.length],
+        // Проектанти брой
+        ['Проектанти_Брой', (p.projectants || []).length]
+    ];
+
+    // Служители надзор (всички специализации)
+    employees.forEach((e, i) => {
+        rows.push([`Служител_${i+1}_Име`, e.name || '']);
+        rows.push([`Служител_${i+1}_Специализация`, e.specialization || '']);
+        rows.push([`Служител_${i+1}_Титла`, e.title || 'инж.']);
+    });
+
+    // Геодезист (бърза референция)
+    rows.push(['Геодезист', getGeodezist(consultant) || '']);
+
+    // Проектанти — разширени полета (включително фирма, ЕИК, управител, адрес)
+    (p.projectants || []).forEach((pp, i) => {
+        rows.push([`Проектант_${i+1}_Име`, pp.name || '']);
+        rows.push([`Проектант_${i+1}_ППП`, pp.ppp || '']);
+        rows.push([`Проектант_${i+1}_Специализация`, pp.specialization || '']);
+        rows.push([`Проектант_${i+1}_Титла`, pp.title || 'инж.']);
+        rows.push([`Проектант_${i+1}_Фирма`, pp.company || '']);
+        rows.push([`Проектант_${i+1}_ЕИК`, pp.companyEik || '']);
+        rows.push([`Проектант_${i+1}_Управител`, pp.companyManager || '']);
+        rows.push([`Проектант_${i+1}_Адрес`, pp.companyAddress || '']);
+    });
+
+    return rows;
+}
+
+function exportPassportExcel(id) {
+    const project = appData.projects.find(p => p.id === id);
+    if (!project) { showAlert('error', 'Паспортът не е намерен'); return; }
+
+    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    const rows = buildExcelPayload(project, consultant);
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows.map(([k, v]) => [k, v]));
+
+    // Column widths
+    ws['!cols'] = [{ wch: 35 }, { wch: 60 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Паспорт');
+
+    const fileName = `passport.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    // Update project export status
+    const idx = appData.projects.findIndex(pp => pp.id === id);
+    if (idx >= 0) {
+        appData.projects[idx].exportedAt = new Date().toISOString();
+        if (appData.currentProject?.id === id) {
+            appData.currentProject = appData.projects[idx];
+        }
+    }
+    addHistory('export', project.pi, `Excel паспорт експортиран: ${fileName}`);
+    saveData();
+    filterPassports();
+
+    showAlert('success', `✅ passport.xlsx изтеглен! Качете го в Dropbox: ${appData.dropboxFolder}/PI-${project.pi}/`);
+}
+
+function getGeodezist(consultant) {
+    if (!consultant) return '';
+    const geo = consultant.employees?.find(e => e.specialization === 'Геодезия');
+    return geo ? geo.name : '';
+}
+
+async function exportAndUploadPassport(id) {
+    const project = appData.projects.find(p => p.id === id);
+    if (!project) return;
+
+    if (!appData.dropboxToken) {
+        showAlert('error', 'Моля, конфигурирайте Dropbox токен в Настройки!');
+        return;
+    }
+
+    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    const rows = buildExcelPayload(project, consultant);
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows.map(([k, v]) => [k, v]));
+    ws['!cols'] = [{ wch: 35 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Паспорт');
+
+    const wbOut = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const blob = new Blob([wbOut], { type: 'application/octet-stream' });
+
+    const folderPath = `${appData.dropboxFolder || '/CBT_Test'}/PI-${project.pi}`;
+    const filePath = `${folderPath}/passport.xlsx`;
+
+    try {
+        await createDropboxFolder(folderPath);
+        await uploadToDropbox(filePath, blob, 'overwrite');
+
+        const idx = appData.projects.findIndex(pp => pp.id === id);
+        if (idx >= 0) {
+            appData.projects[idx].exportedAt = new Date().toISOString();
+            appData.projects[idx].dropboxPath = filePath;
+        }
+        addHistory('export', project.pi, `Качено в Dropbox: ${filePath}`);
+        saveData();
+        filterPassports();
+        showAlert('success', `✅ passport.xlsx качен в Dropbox!<br>📂 ${filePath}`);
+    } catch(e) {
+        showAlert('error', `❌ Грешка при качване: ${e.message}`);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GENERATE DOCUMENTS — via Python REST API (.docx)
+// ═══════════════════════════════════════════════════════════
+const DOC_CONFIG = [
+    // ── По време на строителството ──────────────────────────
+    { id: 'zapovedna',    label: 'Заповедна книга',            apiType: 'zapovedna',    group: 'construction' },
+    { id: 'protokol2',    label: 'Протокол 2',                 apiType: 'protokol2',    group: 'construction' },
+    { id: 'protokol2p2',  label: 'Протокол 2 — втора част',   apiType: 'protokol2p2',  group: 'construction' },
+    { id: 'protokol2a',   label: 'Протокол 2а (линейни)',      apiType: 'protokol2a',   group: 'construction' },
+    { id: 'obrazec3',     label: 'Образец 3',                  apiType: 'obrazec3',     group: 'construction' },
+    { id: 'akt5',         label: 'Акт 5 (репери и нива)',      apiType: 'akt5',         group: 'construction' },
+    { id: 'akt6',         label: 'Акт 6 (земна основа)',       apiType: 'akt6',         group: 'construction' },
+    { id: 'akt7',         label: 'Акт 7',                      apiType: 'akt7',         group: 'construction' },
+    { id: 'akt8',         label: 'Акт 8 (армировка)',          apiType: 'akt8',         group: 'construction' },
+    { id: 'akt9',         label: 'Акт 9 (бетонов дневник)',   apiType: 'akt9',         group: 'construction' },
+    { id: 'akt10',        label: 'Акт 10 (спиране)',           apiType: 'akt10',        group: 'construction' },
+    { id: 'akt11',        label: 'Акт 11 (продължаване)',      apiType: 'akt11',        group: 'construction' },
+    { id: 'akt13',        label: 'Акт 13 (дефекти)',           apiType: 'akt13',        group: 'construction' },
+    { id: 'akt14',        label: 'Акт 14',                     apiType: 'akt14',        group: 'construction' },
+    // ── Въвеждане в експлоатация ────────────────────────────
+    { id: 'akt15',        label: 'Акт 15',                     apiType: 'akt15',        group: 'completion'   },
+    { id: 'doklad',       label: 'Окончателен доклад',         apiType: 'doklad',       group: 'completion'   },
+    { id: 'akt16',        label: 'Акт 16 (ДПК)',               apiType: 'akt16',        group: 'completion'   },
+];
+
+function renderGenerateSection() {
+    const content = document.getElementById('generate-content');
+
+    if (!appData.currentProject) {
+        content.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📄</div>
+                <div class="empty-title">Изберете проект</div>
+                <div class="empty-text">Изберете активен проект от списъка с паспорти</div>
+                <button class="btn btn-primary" onclick="navigateTo('passports')">📋 Паспорти</button>
+            </div>`;
+        return;
+    }
+
+    const project = appData.currentProject;
+    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    if (!consultant) { content.innerHTML = `<div class="alert alert-error">⚠️ Консултантът не е намерен!</div>`; return; }
+
+    const docs = project.generatedDocs || [];
+    const hasApi = !!appData.apiUrl;
+
+    content.innerHTML = `
+        <!-- Проект -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">📋 Активен проект</div>
+                    <div class="card-subtitle">ПИ: ${project.pi} — ${project.stroej}</div>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-secondary btn-sm" onclick="navigateTo('passports')">← Смени</button>
+                    <button class="btn btn-primary btn-sm" onclick="exportAndUploadPassport(${project.id})">☁️ Sync Dropbox</button>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:12px">
+                <div><strong>Консултант:</strong> ${consultant.name}</div>
+                <div><strong>Строеж:</strong> ${project.stroej}</div>
+                <div><strong>Адрес:</strong> ${project.address}</div>
+                <div><strong>Строител:</strong> ${project.builder?.company || '—'}</div>
+            </div>
+            ${!hasApi ? `
+                <div class="alert alert-error" style="margin-bottom:0">
+                    ❌ Python API не е конфигуриран! 
+                    <button class="btn btn-secondary btn-sm" onclick="navigateTo('settings')" style="margin-left:8px">⚙️ Настройки</button>
+                </div>` : `
+                <div class="alert alert-success" style="margin-bottom:0">
+                    ✅ Python API: <strong>${appData.apiUrl}</strong>
+                </div>`}
+        </div>
+
+        <!-- Параметри само за Заповедна книга -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px">⚙️ Параметри на Заповедна книга</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Номер</label>
+                    <input type="text" id="gen-zk-num" class="form-input" placeholder="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="date" id="gen-zk-date" class="form-input" value="${new Date().toISOString().split('T')[0]}">
+                </div>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-top:8px">
+                💡 Геодезист, конструктор и СН се взимат автоматично от служителите на консултанта
+            </p>
+        </div>
+
+        <!-- Избор на документи -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">📄 Документи за генериране (.docx)</div>
+                <div style="font-size:12px;color:var(--muted)">Ще се запазят в Dropbox и ще получиш линк за сваляне</div>
+            </div>
+            <div id="doc-results-list">
+                <!-- Група 1: По време на строителството -->
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">
+                    По време на строителството
+                </div>
+                ${DOC_CONFIG.filter(d => d.group === 'construction').map(doc => {
+                    const existing = docs.filter(d => d.type === doc.label);
+                    const last = existing[existing.length - 1];
+                    return `
+                    <div class="doc-gen-row" id="row-${doc.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-light)">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <input type="checkbox" id="doc-${doc.id}" style="width:16px;height:16px;accent-color:var(--gold)">
+                            <div>
+                                <div style="font-weight:700;font-size:14px">${doc.label}</div>
+                                ${last ? `<div style="font-size:11px;color:var(--green)">✅ Последно: ${formatDateTime(last.date)}${last.url ? ` · <a href="${last.url}" target="_blank" style="color:var(--blue)">⬇ Свали</a>` : ''}</div>`
+                                       : `<div style="font-size:11px;color:var(--muted)">Не е генериран</div>`}
+                            </div>
+                        </div>
+                        <div id="status-${doc.id}" style="min-width:120px;text-align:right"></div>
+                    </div>`;
+                }).join('')}
+
+                <!-- Група 2: Въвеждане в експлоатация -->
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:16px 0 4px">
+                    Въвеждане в експлоатация
+                </div>
+                ${DOC_CONFIG.filter(d => d.group === 'completion').map(doc => {
+                    const existing = docs.filter(d => d.type === doc.label);
+                    const last = existing[existing.length - 1];
+                    return `
+                    <div class="doc-gen-row" id="row-${doc.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-light)">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <input type="checkbox" id="doc-${doc.id}" style="width:16px;height:16px;accent-color:var(--gold)">
+                            <div>
+                                <div style="font-weight:700;font-size:14px">${doc.label}</div>
+                                ${last ? `<div style="font-size:11px;color:var(--green)">✅ Последно: ${formatDateTime(last.date)}${last.url ? ` · <a href="${last.url}" target="_blank" style="color:var(--blue)">⬇ Свали</a>` : ''}</div>`
+                                       : `<div style="font-size:11px;color:var(--muted)">Не е генериран</div>`}
+                            </div>
+                        </div>
+                        <div id="status-${doc.id}" style="min-width:120px;text-align:right"></div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- Генерирай бутон -->
+        <button class="btn btn-success btn-lg" id="generate-btn" 
+                onclick="generateDocumentsViaApi()" 
+                style="width:100%;margin-bottom:40px"
+                ${!hasApi ? 'disabled title="Конфигурирайте API URL в Настройки"' : ''}>
+            🚀 Генерирай .docx чрез Python API
+        </button>
+    `;
+}
+
+async function generateDocumentsViaApi() {
+    if (!appData.apiUrl) {
+        showAlert('error', 'Моля конфигурирайте API URL в Настройки!');
+        return;
+    }
+
+    const project = appData.currentProject;
+    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    if (!project || !consultant) return;
+
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Генериране...';
+
+    // Събери паспортните данни
+    const passportRows = buildExcelPayload(project, consultant);
+
+    // Допълнителни параметри
+    const zkNum = document.getElementById('gen-zk-num')?.value.trim() || '1';
+    const zkDate = document.getElementById('gen-zk-date')?.value || '';
+
+    const selected = DOC_CONFIG.filter(doc => document.getElementById(`doc-${doc.id}`)?.checked);
+    if (selected.length === 0) {
+        showAlert('error', 'Изберете поне един документ!');
+        btn.disabled = false;
+        btn.innerHTML = '🚀 Генерирай .docx чрез Python API';
+        return;
+    }
+
+    const results = [];
+    const today = new Date().toISOString();
+
+    for (const doc of selected) {
+        const statusEl = document.getElementById(`status-${doc.id}`);
+        if (statusEl) statusEl.innerHTML = '<span class="badge badge-gray">⏳ Изпращане...</span>';
+
+        try {
+            const body = {
+                passport: passportRows,
+                pi: project.pi,
+            };
+            if (doc.apiType === 'zapovedna') {
+                body.zapovedna_number = zkNum;
+                body.zapovedna_date = zkDate;
+            }
+
+            const result = await apiCall(`/api/generate/${doc.apiType}`, 'POST', body);
+
+            if (statusEl) statusEl.innerHTML = result.file_url
+                ? `<a href="${result.file_url}" target="_blank" class="btn btn-success btn-sm">⬇ Свали .docx</a>`
+                : '<span class="badge badge-green">✅ Готов</span>';
+
+            results.push({
+                type: doc.label,
+                date: today,
+                url: result.file_url || '',
+                path: result.path || ''
+            });
+
+        } catch(e) {
+            if (statusEl) statusEl.innerHTML = `<span class="badge" style="background:var(--red-light);color:var(--red)">❌ ${e.message.slice(0,30)}</span>`;
+            showAlert('error', `❌ ${doc.label}: ${e.message}`);
+        }
+    }
+
+    // Запази резултатите в паспорта
+    if (results.length > 0) {
+        const idx = appData.projects.findIndex(p => p.id === project.id);
+        if (idx >= 0) {
+            if (!appData.projects[idx].generatedDocs) appData.projects[idx].generatedDocs = [];
+            results.forEach(nd => {
+                const existing = appData.projects[idx].generatedDocs.findIndex(d => d.type === nd.type);
+                if (existing >= 0) appData.projects[idx].generatedDocs[existing] = nd;
+                else appData.projects[idx].generatedDocs.push(nd);
+            });
+            appData.currentProject = appData.projects[idx];
+        }
+        addHistory('generate', project.pi, `Генерирани .docx: ${results.map(d=>d.type).join(', ')}`);
+        saveData();
+        showAlert('success', `✅ ${results.length} документа генерирани и качени в Dropbox!`);
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Генерирай .docx чрез Python API';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════════════════
+function renderHistory() {
+    const typeFilter = document.getElementById('history-filter-type')?.value || '';
+    const piFilter = (document.getElementById('history-filter-pi')?.value || '').toLowerCase();
+
+    let items = appData.history;
+    if (typeFilter) items = items.filter(h => h.type === typeFilter);
+    if (piFilter) items = items.filter(h => h.pi?.toLowerCase().includes(piFilter) || h.detail?.toLowerCase().includes(piFilter));
+
+    const container = document.getElementById('history-timeline');
+    if (!container) return;
+
+    if (items.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">🕐</div><div class="empty-title">Няма история</div></div>`;
+        return;
+    }
+
+    container.innerHTML = items.map(h => `
+        <div class="timeline-item">
+            <div class="timeline-dot ${h.type}"></div>
+            <div class="timeline-content">
+                <div class="timeline-action">${historyActionLabel(h)}</div>
+                <div class="timeline-date">${formatDateTime(h.date)}</div>
+                ${h.detail ? `<div class="timeline-detail">${h.detail}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONSULTANTS
+// ═══════════════════════════════════════════════════════════
+let editingConsultantId = null;
+let tempEmployees = [];
+
+function addEmployeeRow() {
+    const emp = { id: Date.now(), name: '', specialization: 'Архитектура', title: 'инж.' };
+    tempEmployees.push(emp);
+    const container = document.getElementById('employees-container');
+    const div = document.createElement('div');
+    div.innerHTML = employeeRowHTML(emp, tempEmployees.length - 1);
+    container.appendChild(div.firstElementChild);
+}
+
+function employeeRowHTML(emp, i) {
+    return `
+    <div class="dynamic-row" id="emp-row-${i}">
+        <select class="form-select" onchange="updateEmployee(${i},'title',this.value)" style="flex:0 0 80px">
+            ${['инж.','арх.','д-р инж.','д-р арх.'].map(t=>`<option value="${t}" ${(emp.title||'инж.')===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <input type="text" class="form-input" placeholder="Им Презиме Фамилия" 
+               value="${emp.name||''}" onchange="updateEmployee(${i},'name',this.value)" style="flex:3">
+        <select class="form-select" onchange="updateEmployee(${i},'specialization',this.value)" style="flex:2">
+            ${specializations.map(s=>`<option value="${s}" ${emp.specialization===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <button class="btn btn-danger btn-sm" onclick="removeEmployeeRow(${i})">✕</button>
+    </div>`;
+}
+
+function removeEmployeeRow(i) {
+    tempEmployees.splice(i, 1);
+    document.getElementById('employees-container').innerHTML = tempEmployees.map((e, idx) => employeeRowHTML(e, idx)).join('');
+}
+
+function updateEmployee(i, field, value) {
+    if (tempEmployees[i]) tempEmployees[i][field] = value;
+}
+
+function saveConsultant() {
+    // Read employees from DOM
+    document.querySelectorAll('[id^="emp-row-"]').forEach((row, i) => {
+        const selects = row.querySelectorAll('select');
+        const inp = row.querySelector('input');
+        if (tempEmployees[i]) {
+            if (inp) tempEmployees[i].name = inp.value.trim();
+            if (selects[0]) tempEmployees[i].title = selects[0].value;
+            if (selects[1]) tempEmployees[i].specialization = selects[1].value;
+        }
+    });
+
+    const name = document.getElementById('consultant-name').value.trim();
+    if (!name) { showAlert('error', 'Въведете фирма!'); return; }
+
+    const validEmployees = tempEmployees.filter(e => e.name);
+    if (validEmployees.length === 0) { showAlert('error', 'Добавете поне един служител!'); return; }
+
+    const data = {
+        name,
+        eik: document.getElementById('consultant-eik').value.trim(),
+        manager: document.getElementById('consultant-manager').value.trim(),
+        address: document.getElementById('consultant-address').value.trim(),
+        cert: document.getElementById('consultant-cert').value.trim(),
+        employees: validEmployees
+    };
+
+    if (editingConsultantId !== null) {
+        const idx = appData.consultants.findIndex(c => c.id === editingConsultantId);
+        if (idx >= 0) appData.consultants[idx] = { ...appData.consultants[idx], ...data };
+        showAlert('success', 'Консултантът е актуализиран!');
+    } else {
+        if (appData.consultants.length >= 4) { showAlert('error', 'Максимум 4 консултанта!'); return; }
+        appData.consultants.push({ id: Date.now(), ...data });
+        showAlert('success', 'Консултантът е добавен!');
+    }
+
+    saveData();
+    renderConsultants();
+    resetConsultantForm();
+}
+
+function editConsultant(id) {
+    const c = appData.consultants.find(c => c.id === id);
+    if (!c) return;
+
+    editingConsultantId = id;
+    tempEmployees = JSON.parse(JSON.stringify(c.employees || []));
+
+    document.getElementById('consultant-form-title').textContent = 'Редактирай консултант';
+    document.getElementById('consultant-name').value = c.name || '';
+    document.getElementById('consultant-eik').value = c.eik || '';
+    document.getElementById('consultant-manager').value = c.manager || '';
+    document.getElementById('consultant-address').value = c.address || '';
+    document.getElementById('consultant-cert').value = c.cert || '';
+    document.getElementById('consultant-save-btn').textContent = '💾 Запази промените';
+    document.getElementById('consultant-cancel-btn').style.display = 'inline-flex';
+
+    document.getElementById('employees-container').innerHTML = tempEmployees.map((e, i) => employeeRowHTML(e, i)).join('');
+}
+
+function cancelConsultantEdit() {
+    editingConsultantId = null;
+    resetConsultantForm();
+}
+
+function resetConsultantForm() {
+    editingConsultantId = null;
+    tempEmployees = [];
+    document.getElementById('consultant-form-title').textContent = 'Добави консултант';
+    document.getElementById('consultant-name').value = '';
+    document.getElementById('consultant-eik').value = '';
+    document.getElementById('consultant-manager').value = '';
+    document.getElementById('consultant-address').value = '';
+    document.getElementById('consultant-cert').value = '';
+    document.getElementById('employees-container').innerHTML = '';
+    document.getElementById('consultant-save-btn').textContent = '💾 Запази';
+    document.getElementById('consultant-cancel-btn').style.display = 'none';
+}
+
+function deleteConsultant(id) {
+    if (!confirm('Изтрий консултанта?')) return;
+    appData.consultants = appData.consultants.filter(c => c.id !== id);
+    saveData();
+    renderConsultants();
+    showAlert('success', 'Консултантът е изтрит.');
+}
+
+function renderConsultants() {
+    const container = document.getElementById('consultants-list');
+    if (!container) return;
+
+    if (appData.consultants.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">🏢</div><div class="empty-text">Няма добавени консултанти</div></div>`;
+        return;
+    }
+
+    container.innerHTML = appData.consultants.map(c => `
+        <div class="consultant-card">
+            <div class="consultant-card-header">
+                <div>
+                    <div class="consultant-card-name">${c.name}</div>
+                    ${c.eik ? `<div class="consultant-card-eik">ЕИК: ${c.eik}</div>` : ''}
+                </div>
+                <div style="display:flex;gap:6px">
+                    <button class="btn btn-secondary btn-sm" onclick="editConsultant(${c.id})">✏️</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteConsultant(${c.id})">🗑️</button>
+                </div>
+            </div>
+            <div class="consultant-card-body">
+                ${c.manager ? `<div style="font-size:12px;color:var(--slate);margin-bottom:8px">Управител: <strong>${c.manager}</strong></div>` : ''}
+                <div>${(c.employees||[]).map(e => `<span class="emp-chip">${e.name} <span class="spec">· ${e.specialization}</span></span>`).join('')}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DROPBOX
+// ═══════════════════════════════════════════════════════════
+function saveDropboxToken() {
+    const token = document.getElementById('dropbox-token').value.trim();
+    const folder = document.getElementById('dropbox-folder').value.trim() || '/CBT_Test';
+    appData.dropboxToken = token;
+    appData.dropboxFolder = folder;
+    saveData();
+    updateDropboxIndicator();
+    showAlert('success', 'Dropbox настройките са запазени!');
+}
+
+async function testDropboxConnection() {
+    const token = appData.dropboxToken;
+    if (!token) { showAlert('error', 'Въведете токен!'); return; }
+
+    try {
+        const r = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '', recursive: false })
+        });
+        if (r.ok) {
+            updateDropboxIndicator(true);
+            showAlert('success', '✅ Dropbox е свързан успешно!');
+        } else throw new Error('Invalid token');
+    } catch(e) {
+        updateDropboxIndicator(false);
+        showAlert('error', '❌ Грешка при свързване с Dropbox!');
+    }
+}
+
+function updateDropboxIndicator(connected = null) {
+    const el = document.getElementById('dropbox-indicator');
+    const txt = document.getElementById('dropbox-indicator-text');
+    const settingsStatus = document.getElementById('settings-dropbox-status');
+    const hasToken = !!(appData.dropboxToken);
+    const isConnected = connected === true || (connected === null && hasToken);
+
+    el.className = isConnected ? 'connected' : 'disconnected';
+    txt.textContent = isConnected ? 'Dropbox: свързан' : 'Dropbox: не е свързан';
+
+    if (settingsStatus) {
+        settingsStatus.innerHTML = isConnected
+            ? '<span class="badge badge-green">● Свързан</span>'
+            : '<span class="badge" style="background:var(--red-light);color:var(--red)">● Не е свързан</span>';
+    }
+}
+
+async function uploadToDropbox(path, content, mode = 'add') {
+    const r = await fetch('https://content.dropboxapi.com/2/files/upload', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${appData.dropboxToken}`,
+            'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename: false, mute: false }),
+            'Content-Type': 'application/octet-stream'
+        },
+        body: content
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error_summary || 'Upload failed'); }
+    return r.json();
+}
+
+async function createDropboxFolder(path) {
+    const r = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${appData.dropboxToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, autorename: false })
+    });
+    if (!r.ok && r.status !== 409) throw new Error('Failed to create folder');
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATA IMPORT / EXPORT
+// ═══════════════════════════════════════════════════════════
+function exportAllData() {
+    const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `cbt-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importData() {
+    document.getElementById('import-file').click();
+}
+
+function doImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        try {
+            const data = JSON.parse(evt.target.result);
+            if (confirm('Това ще замени всички текущи данни. Продължи?')) {
+                appData = { ...appData, ...data };
+                saveData();
+                loadData();
+                showAlert('success', 'Данните са импортирани успешно!');
+            }
+        } catch(err) {
+            showAlert('error', 'Невалиден JSON файл!');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function clearAllData() {
+    localStorage.removeItem('cbt_v5');
+    location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HTML GENERATORS (preserved from v4)
+// ═══════════════════════════════════════════════════════════
+function formatConsultantSpecs(employees) {
+    return employees.map(e => {
+        if (e.name.includes('Надя') && e.name.includes('Спасова') && e.specialization === 'Конструктивна') return e.name;
+        return `${e.name} (${e.specialization})`;
+    }).join('; ');
+}
+
+function createProtokol2HTML(project, consultant, employees, geodesist) {
+    const consultantSpecs = formatConsultantSpecs(employees);
+    const firstConsultantName = consultantSpecs.split(';')[0].trim().split('(')[0].trim();
+
+    return `<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8"><title>Протокол 2</title>
+    <style>@page{size:A4;margin:2.5cm}body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.3;color:#000;background:white}.center{text-align:center;margin:6pt 0}.right{text-align:right;margin:6pt 0}.bold{font-weight:bold}p{margin:6pt 0;text-align:justify}.section-title{font-weight:bold;margin-top:12pt;margin-bottom:6pt}</style></head><body>
+    <p class="right">Образец 2 (ДВ, бр. 72 / 2003 г., изм. ДВ, бр. 29/2006 г.; бр. 98/2012 г.; изм. И доп., ДВ, бр. 65/2016 г.)</p>
+    <p class="right bold">Приложение № 2 към чл. 7, ал. 3, т. 2 на Наредба № 3</p><p>&nbsp;</p>
+    <p class="bold">Строеж: ${project.stroej}</p>
+    <p class="bold">Местонахождение: ${project.address}</p>
+    <p class="bold">Възложител: ${project.client?.name}</p>
+    <p class="bold">Консултант: ${consultant.name}, ${consultantSpecs}</p>
+    <p class="bold">Техн. ръководител: ${project.builder?.tech}</p>
+    <p class="bold">Строител: ${project.builder?.company}</p><p>&nbsp;</p><p>&nbsp;</p>
+    <p class="center bold">ПРОТОКОЛ</p>
+    <p class="center">ЗА ОТКРИВАНЕ НА СТРОИТЕЛНА ПЛОЩАДКА</p>
+    <p class="center">И ОПРЕДЕЛЯНЕ НА СТРОИТЕЛНА ЛИНИЯ И НИВО НА СТРОЕЖА</p><p>&nbsp;</p>
+    <p class="section-title">I. Откриване на строителна площадка:</p><p>&nbsp;</p>
+    <p>Днес, _______________${new Date().getFullYear()} г, долуподписаният:</p><p>&nbsp;</p>
+    <p>А. Консултанта (Строителен надзор): ${consultantSpecs}</p>
+    <p>Технически ръководител: ${project.builder?.tech}</p>
+    <p>в присъствието на:</p>
+    <p>Б. Възложителя: ${project.client?.name}</p>
+    <p>В. Строителя: ${project.builder?.company}, представлявано от ${project.builder?.manager}</p><p>&nbsp;</p>
+    <p>Г. Служител по чл. 223, ал. 2 от ЗУТ: ___________________________________________________</p>
+    <p class="center">(трите имена по документ за самоличност и длъжност)</p>
+    <p>съставих този протокол, с който удостоверявам:</p><p>&nbsp;</p>
+    <p>1. Налице са следните разрешения и документи:</p>
+    <p>1.1. Разрешение за строеж № ${project.permit?.number} от ${formatDate(project.permit?.date)} г., издадено от ${project.permit?.issuer}, заверено, че е влязло в сила на ${formatDate(project.permit?.effective)}.</p>
+    <p>1.2. За заемане на тротоар (част от него и/или част от уличното платно): ______________________________________________</p>
+    <p>1.3. За преминаване на строителна и транспортна техника: ______________________________________________</p>
+    <p>1.4. За ограждане на строителна площадка: ______________________________________________</p>
+    <p>1.5. За извозване на хумус: ______________________________________________</p>
+    <p>1.6. За извозване на земни маси: ______________________________________________</p>
+    <p>1.7. За извозване на строителни отпадъци: ______________________________________________</p>
+    <p>1.8. За изкореняване (отсичане) на съществуващи дървета и др.: ______________________________________________</p>
+    <p>2. Изходните точки на външните връзки:</p>
+    <p>2.1. За временен водопровод: ______________________________________________</p>
+    <p>2.2. За временна канализация: ______________________________________________</p>
+    <p>2.3. За временно електрозахранване: ______________________________________________</p><p>&nbsp;</p>
+    <p>3. Описание на строителната площадка:</p>
+    <p>3.1. __________________________________________________________________________________</p>
+    <p>3.2. __________________________________________________________________________________</p>
+    <p>3.3. Достъпа до строителната площадка: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>4. Състоянието на околното пространство е: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>5. Предвидени мерки по Плана за безопасност и здраве: __________________________________________________________________________________</p>
+    <p>Забележка при съставяне на раздел I: няма</p><p>&nbsp;</p><p>&nbsp;</p>
+    <p class="bold">СЪСТАВИЛ:</p><p>&nbsp;</p>
+    <p>А. ...............................(инж. ${getTwoNames(firstConsultantName)}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Т. Р. ...............................( ${getTwoNames(project.builder?.tech)} )</p><p>&nbsp;</p>
+    <p class="bold">ПРИСЪСТВАЛИ:</p><p>&nbsp;</p>
+    <p>Б. ...........................(${getTwoNames(project.client?.name)}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;В. .....................(${getTwoNames(project.builder?.manager)}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Г.________________</p>
+    <div style="page-break-before:always"></div>
+    <p class="section-title">II. Определяне на строителна линия и ниво на строежа:</p><p>&nbsp;</p>
+    <p>Днес, _______________${new Date().getFullYear()} г, долуподписаният:</p><p>&nbsp;</p>
+    <p>А. Консултанта (Строителен надзор): ${consultantSpecs}</p>
+    <p>Технически ръководител: ${project.builder?.tech}</p>
+    <p>в присъствието на:</p>
+    <p>Б. Възложителя: ${project.client?.name}</p>
+    <p>В. Строителя: ${project.builder?.company}, представлявано от ${project.builder?.manager}</p>
+    <p>Г. Техническо правоспособно физическо лице по част "Геодезия": ${geodesist?.name} - По част "Геодезия"</p><p>&nbsp;</p>
+    <p>Д. Служител по чл. 223, ал. 2 от ЗУТ: ___________________________________________________</p>
+    <p class="bold">съставих този протокол, с който удостоверявам, че определих строителна линия и ниво на строежа ${project.stroej} с местонахождение: ${project.address}</p><p>&nbsp;</p>
+    <p>1. Окомерна скица:</p><p>&nbsp;</p>
+    <p>2. Основни репери:</p><p>&nbsp;</p>
+    <p>3. Нива на строежа по одобрения проект:</p>
+    <p>3.1. Кота изкоп ________________ м</p>
+    <p>3.2. Кота цокъл +/-0,00=________________ м</p>
+    <p>3.3. Кота корниз (стреха) + ________________ м</p>
+    <p>3.4. Кота било + ________________ м</p><p>&nbsp;</p>
+    <p class="bold">СЪСТАВИЛ:</p><p>&nbsp;</p>
+    <p>А. ...............................(инж. ${getTwoNames(firstConsultantName)}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Т. Р. ...............................( ${getTwoNames(project.builder?.tech)} )</p><p>&nbsp;</p>
+    <p class="bold">ПРИСЪСТВАЛИ:</p><p>&nbsp;</p>
+    <p>Б. ...........................(${getTwoNames(project.client?.name)}) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;В. .....................(${getTwoNames(project.builder?.manager)})</p><p>&nbsp;</p>
+    <p>Г. .................. инж. ${getTwoNames(geodesist?.name)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Д._________________________</p>
+    
+</body></html>`;
+}
+
+function createAkt7HTML(project, consultant, employees, constructor) {
+    const consultantSpecs = formatConsultantSpecs(employees);
+    return `<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8"><title>Акт 7</title>
+    <style>@page{size:A4;margin:2.5cm}body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.15;color:#000;background:white}.center{text-align:center;margin:6pt 0}.right{text-align:right;margin:6pt 0}.bold{font-weight:bold}p{margin:6pt 0;text-align:justify}</style></head><body>
+    <p class="center">Приложение № 7</p><p class="right">(Образец 7)</p><p>&nbsp;</p>
+    <p class="bold">Строеж: ${project.stroej}</p>
+    <p class="bold">Местонахождение: ${project.address}</p>
+    <p class="bold">Възложител: ${project.client?.name}</p>
+    <p class="bold">Консултант: ${consultant.name}</p>
+    <p class="bold">Тех. ръководител: ${project.builder?.tech}</p>
+    <p class="bold">Строител: ${project.builder?.company}</p><p>&nbsp;</p>
+    <p class="center bold">АКТ</p>
+    <p class="center bold">за приемане на СМР по нива и етапи</p><p>&nbsp;</p>
+    <p>Днес, ....................год, долуподписаните:</p><p>&nbsp;</p>
+    <p>А. Строителя: инж. ${project.builder?.tech} – технически ръководител;</p>
+    <p>Б. Проектанта на конструктивната част: инж. ${constructor?.name};</p>
+    <p>В. Консултанта: ${consultantSpecs}</p><p>&nbsp;</p>
+    <p>съставихме настоящия акт, с който удостоверяваме, че са извършени следните строителни работи по нива и етапи:</p><p>&nbsp;</p>
+    <p>1. Вид на строителните работи и строителни продукти: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>2. Подробно описание с данни за изпълнение: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>3. Видове и количества на вложените строителни продукти и съоръжения: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>4. Документи, удостоверяващи качеството на вложените строителни продукти: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>5. Отклонения от одобрените инвестиционни проекти: __________________________________________________________________________________</p><p>&nbsp;</p>
+    <p>А. ..............................</p>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(${getTwoNames(project.builder?.tech)})</p><p>&nbsp;</p>
+    <p>Б. ....................................&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;..............................................&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;В. .....................................</p>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(${getTwoNames(consultantSpecs.split(';')[0].split('(')[0].trim())})&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(${getTwoNames(project.builder?.tech)})&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(${getTwoNames(project.builder?.manager)})</p>
+    
+</body></html>`;
+}
+
+function createAkt14HTML(project, consultant, employees, snKonstruktivna, projektantKonstruktivna) {
+    const consultantSpecs = formatConsultantSpecs(employees);
+    return `<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8"><title>Акт 14</title>
+    <style>@page{size:A4;margin:2.5cm}body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.15;color:#000;background:white}.center{text-align:center;margin:6pt 0}.right{text-align:right;margin:6pt 0}.bold{font-weight:bold}p{margin:6pt 0;text-align:justify}</style></head><body>
+    <p class="center">Приложение № 14</p><p class="right">(Образец 14)</p><p>&nbsp;</p>
+    <p class="bold">Строеж: ${project.stroej}</p>
+    <p class="bold">Местонахождение: ${project.address}</p>
+    <p class="bold">Възложител: ${project.client?.name}</p>
+    <p class="bold">Консултант: ${consultant.name}</p>
+    <p class="bold">Строител: ${project.builder?.company}</p><p>&nbsp;</p>
+    <p class="center bold">АКТ ЗА ПРИЕМАНЕ НА КОНСТРУКЦИЯТА</p><p>&nbsp;</p>
+    <p>Днес, ....................год, долуподписаните:</p><p>&nbsp;</p>
+    <p>А. Проектанта на конструктивната част: инж. ${projektantKonstruktivna?.name}, рег. № ${projektantKonstruktivna?.ppp};</p>
+    <p>Б. СН по конструктивна: ${snKonstruktivna?.name};</p>
+    <p>В. Консултанта (строителен надзор): ${consultantSpecs}</p>
+    <p>Г. Строителя: ${project.builder?.company}, представлявано от ${project.builder?.manager}</p><p>&nbsp;</p>
+    <p>съставихме настоящия акт за приемане на конструкцията.</p><p>&nbsp;</p>
+    <p>Строителните работи са извършени в съответствие с одобрените проекти ............................................</p>
+    <p>Отклонения от одобрените инвестиционни проекти: ________________________________________</p><p>&nbsp;</p>
+    <p>А. ..............................&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Б. ..............................&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;В. ..............................&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Г. ..............................</p>
+    
+</body></html>`;
+}
+
+function createObrazec3HTML(project, consultant, employees) {
+    const consultantSpecs = formatConsultantSpecs(employees);
+    return `<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8"><title>Образец 3</title>
+    <style>@page{size:A4;margin:2.5cm}body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.3;color:#000;background:white}.center{text-align:center;margin:6pt 0}.bold{font-weight:bold}p{margin:6pt 0;text-align:justify}</style></head><body>
+    <p class="center bold">КОНСТАТИВЕН АКТ</p>
+    <p class="center">(Образец 3)</p><p>&nbsp;</p>
+    <p class="bold">Строеж: ${project.stroej}</p>
+    <p class="bold">Местонахождение: ${project.address}</p>
+    <p class="bold">Консултант: ${consultant.name}</p><p>&nbsp;</p>
+    <p>Долуподписаните, лица упражняващи строителен надзор:</p>
+    <p>${consultantSpecs}</p><p>&nbsp;</p>
+    <p>извършихме проверка на строежа и удостоверяваме следното:</p><p>&nbsp;</p>
+    <p>1. Разрешение за строеж: № ${project.permit?.number} / ${formatDate(project.permit?.date)} г., издадено от ${project.permit?.issuer}</p>
+    <p>2. Строежът отговаря/не отговаря на издадените строителни книжа</p>
+    <p>3. Допуснати отклонения: ______________________________________________________</p><p>&nbsp;</p>
+    <p>${consultantSpecs.split(';').map(s => `${s.trim()}: ............................`).join('<br>')}</p>
+    
+</body></html>`;
+}
+
+function createZapovednaKnigaHTML(project, consultant, employees, zapovednaNumber, zapovednaDate) {
+    const consultantSpecs = formatConsultantSpecs(employees);
+    const bySpec = {};
+    employees.forEach(e => {
+        if (!bySpec[e.specialization]) bySpec[e.specialization] = [];
+        bySpec[e.specialization].push(e.name);
+    });
+    const specialistsList = specializations.map(spec => {
+        const names = bySpec[spec];
+        return names ? `<p>Част ${spec}: ${names.join(', ')}</p>` : '';
+    }).filter(Boolean).join('\n');
+
+    const projectantsList = (project.projectants||[]).map(pp => {
+        const kamara = (pp.specialization === 'Архитектура' || pp.specialization === 'Паркоустройство и Благоустройство') ? 'КАБ' : 'КИИП';
+        return `<p>инж. ${getTwoNames(pp.name)}, рег. №${pp.ppp} на ${kamara} – част „${pp.specialization}"</p>`;
+    }).join('\n');
+
+    return `<!DOCTYPE html><html lang="bg"><head><meta charset="UTF-8">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E8647A">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="CBT Консулт">
+    <link rel="apple-touch-icon" href="icon-192.png"><title>Заповедна книга</title>
+    <style>@page{size:A4;margin:2.5cm}body{font-family:'Times New Roman',Times,serif;font-size:12pt;line-height:1.15;color:#000;background:white}.center{text-align:center;margin:6pt 0}.bold{font-weight:bold}p{margin:6pt 0;text-align:justify}.pb{page-break-before:always}</style></head><body>
+    <p class="center bold">заповедна книга</p><p>&nbsp;</p>
+    <p class="center bold">№ ${zapovednaNumber}/${zapovednaDate}</p><p>&nbsp;</p>
+    <p class="bold">Строеж: ${project.stroej}</p><p>&nbsp;</p>
+    <p class="bold">Местонахождение: ${project.address}</p><p>&nbsp;</p>
+    <p class="bold">Възложител: ${project.client?.name}</p>
+    ${Array(12).fill('<p>&nbsp;</p>').join('')}
+    <p>заверявам:................................................................</p>
+    <p class="center">/${getTwoNames(consultantSpecs.split(';')[0].split('(')[0].trim())} - Управител/</p>
+    <div class="pb"></div>
+    <p class="center bold">заповедна книга</p><p>&nbsp;</p>
+    <p class="bold">Строеж: ${project.stroej}</p><p>&nbsp;</p>
+    <p class="bold">Местонахождение: ${project.address}</p><p>&nbsp;</p>
+    <p class="bold">Разрешение за строеж: ${project.permit?.number} / ${formatDate(project.permit?.date)}, от ${project.permit?.issuer}, заверено, че е влязло в сила на ${formatDate(project.permit?.effective)}</p><p>&nbsp;</p>
+    <p class="bold">Възложители:</p>
+    <p>${project.client?.name}</p><p>&nbsp;</p>
+    <p class="bold">Строителен надзор: ${consultant.name}, ЕИК ${consultant.eik||'[ЕИК]'}, с адрес на управление ${consultant.address||'[АДРЕС]'}, притежаващо удостоверение ${consultant.cert||'[НОМЕР]'}</p><p>&nbsp;</p>
+    <p>Списък на специалистите упражняващи строителен надзор:</p>
+    ${specialistsList}<p>&nbsp;</p>
+    <p class="bold">Строител: ${project.builder?.company}, ЕИК ${project.builder?.eik||'[ЕИК]'}, адрес ${project.builder?.address||'[АДРЕС]'}, представлявано от ${project.builder?.manager}</p><p>&nbsp;</p>
+    <p>Технически ръководител: ${getTwoNames(project.builder?.tech)}</p><p>&nbsp;</p>
+    <p class="bold">Проектанти на строежа:</p>
+    ${projectantsList}
+    
+</body></html>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════════════════════════════════
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+function formatDateForExcel(dateStr) {
+    if (!dateStr) return '';
+    return formatDate(dateStr);
+}
+
+function formatDate2(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function formatDateTime(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    return `${formatDate(d.toISOString().split('T')[0])} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function getTwoNames(fullName) {
+    if (!fullName) return '';
+    return fullName.trim().split(/\s+/).slice(0,2).join(' ');
+}
+
+function downloadHTML(filename, content) {
+    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+// Set current date
+document.getElementById('current-date').textContent = new Date().toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+// Close modal on overlay click
+document.getElementById('passport-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal('passport-modal');
+});
+
+// Load everything
+loadData();
+</script>
+
+
+
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && location.hostname !== 'localhost') {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('SW registered'))
+            .catch(e => console.log('SW error:', e));
+    });
+}
+</script>
+</body>
+</html>
