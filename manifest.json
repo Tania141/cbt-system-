@@ -1,0 +1,26 @@
+{
+  "name": "СиБиТи Консулт — Документна система",
+  "short_name": "CBT Консулт",
+  "description": "Система за управление на строителна документация",
+  "start_url": "/cbt-system-/",
+  "scope": "/cbt-system-/",
+  "display": "standalone",
+  "background_color": "#1E3A5F",
+  "theme_color": "#E8647A",
+  "orientation": "portrait-primary",
+  "lang": "bg",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
