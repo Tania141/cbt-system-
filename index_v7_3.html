@@ -1147,6 +1147,63 @@
             transition: width 0.4s ease;
         }
 
+        /* ── Login screen ───────────────────────────────────── */
+        #login-screen {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--surface);
+            align-items: center;
+            justify-content: center;
+        }
+        #login-screen.active { display: flex; }
+        .login-card {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: var(--r);
+            box-shadow: var(--shadow-lg);
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+        .login-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        .login-brand .brand-mark {
+            width: 44px; height: 44px; font-size: 14px;
+        }
+        .login-brand .brand-name {
+            font-size: 20px; font-weight: 700; color: var(--ink);
+            letter-spacing: -0.3px;
+        }
+        .login-brand .brand-name span { color: var(--gold); }
+        .login-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 26px;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+        .login-subtitle {
+            font-size: 13px;
+            color: var(--slate);
+            margin-bottom: 28px;
+        }
+        .login-error {
+            background: var(--red-light);
+            color: var(--red);
+            border: 1px solid rgba(179,48,48,0.2);
+            border-radius: var(--r-sm);
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .login-error.visible { display: block; }
+
         /* Section separator */
         .section-sep {
             font-size: 11px;
@@ -1178,6 +1235,33 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="brand-mark">АКТ</div>
+            <div class="brand-name">АКТ <span>СИСТЕМ</span></div>
+        </div>
+        <div class="login-title">Вход в системата</div>
+        <div class="login-subtitle">Въведете вашите данни за достъп</div>
+        <div class="login-error" id="login-error"></div>
+        <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label required">Email</label>
+            <input type="email" id="login-email" class="form-input" placeholder="email@example.com" autocomplete="email">
+        </div>
+        <div class="form-group" style="margin-bottom:24px">
+            <label class="form-label required">Парола</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="doLogin()" id="login-btn">
+            Влез в системата
+        </button>
+        <div style="margin-top:16px;font-size:12px;color:var(--muted);text-align:center">
+            API URL се конфигурира в Настройки след вход
+        </div>
+    </div>
+</div>
+
 <div class="app-shell">
     <!-- TOP BAR -->
     <header class="topbar">
@@ -1199,6 +1283,12 @@
             <div id="dropbox-indicator" class="disconnected" onclick="navigateTo('settings')">
                 <span class="dot"></span>
                 <span id="dropbox-indicator-text">Dropbox: не е свързан</span>
+            </div>
+            <div id="user-menu" style="display:none;align-items:center;gap:8px;padding-left:8px;border-left:1px solid var(--border-light)">
+                <span id="user-email-display" style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                <button onclick="doLogout()" style="background:none;border:1px solid var(--border-light);color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:16px;cursor:pointer;transition:var(--transition)" title="Изход">
+                    Изход
+                </button>
             </div>
         </div>
     </header>
@@ -1603,12 +1693,101 @@ let appData = {
 // ═══════════════════════════════════════════════════════════
 //  API INTEGRATION (Flask/FastAPI on Railway)
 // ═══════════════════════════════════════════════════════════
+// ── Auth ─────────────────────────────────────────────────────────────────────
+function getToken() { return localStorage.getItem('akt_token'); }
+
+function showLoginScreen() {
+    document.getElementById('login-screen').classList.add('active');
+    document.getElementById('user-menu').style.display = 'none';
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    setLoginError('');
+}
+
+function hideLoginScreen() {
+    document.getElementById('login-screen').classList.remove('active');
+}
+
+function setLoginError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.classList.toggle('visible', !!msg);
+}
+
+function applyUserSession() {
+    const token = getToken();
+    const userJson = localStorage.getItem('akt_user');
+    if (!token || !userJson) { showLoginScreen(); return false; }
+    try {
+        const user = JSON.parse(userJson);
+        const emailEl = document.getElementById('user-email-display');
+        if (emailEl) emailEl.textContent = user.email || '';
+        document.getElementById('user-menu').style.display = 'flex';
+        hideLoginScreen();
+        return true;
+    } catch(e) { showLoginScreen(); return false; }
+}
+
+async function doLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const url = (appData.apiUrl || '').replace(/\/$/, '');
+
+    if (!url) { setLoginError('Няма конфигуриран API URL. Добавете го в localStorage под ключ "akt_api_url" или в Настройки след вход.'); return; }
+    if (!email || !password) { setLoginError('Въведете email и парола.'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.textContent = 'Влизане...';
+    btn.disabled = true;
+    setLoginError('');
+
+    try {
+        const r = await fetch(`${url}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+
+        localStorage.setItem('akt_token', data.token);
+        localStorage.setItem('akt_user', JSON.stringify({ email: data.email, role: data.role }));
+        applyUserSession();
+    } catch(e) {
+        setLoginError(e.message || 'Грешка при вход.');
+    } finally {
+        btn.textContent = 'Влез в системата';
+        btn.disabled = false;
+    }
+}
+
+function doLogout() {
+    localStorage.removeItem('akt_token');
+    localStorage.removeItem('akt_user');
+    showLoginScreen();
+}
+
+// Support Enter key on login form
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('login-screen').classList.contains('active')) {
+        doLogin();
+    }
+});
+
 async function apiCall(endpoint, method = 'GET', body = null) {
     const url = (appData.apiUrl || '').replace(/\/$/, '');
     if (!url) throw new Error('API URL не е конфигуриран');
+    const token = getToken();
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
     if (body) opts.body = JSON.stringify(body);
     const r = await fetch(`${url}${endpoint}`, opts);
+    if (r.status === 401) {
+        localStorage.removeItem('akt_token');
+        localStorage.removeItem('akt_user');
+        showLoginScreen();
+        throw new Error('Сесията е изтекла. Моля, влезте отново.');
+    }
     if (!r.ok) {
         const err = await r.json().catch(() => ({ detail: r.statusText }));
         throw new Error(err.detail || `HTTP ${r.status}`);
@@ -1751,6 +1930,7 @@ function loadData() {
     if (apiInput) apiInput.value = appData.apiUrl || '';
     updateDropboxIndicator();
     updateApiIndicator();
+    applyUserSession();
     renderDashboard();
     renderConsultants();
     filterPassports();
