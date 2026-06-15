@@ -1937,6 +1937,21 @@ function loadData() {
     filterPassports();
     updateNavBadge();
 
+    // Load projects from API (authoritative source); localStorage is the cache/fallback
+    if (appData.apiUrl && getToken()) {
+        apiCall('/api/passports')
+            .then(data => {
+                if (Array.isArray(data) && data.length > 0) {
+                    appData.projects = data;
+                    saveData();
+                    renderDashboard();
+                    filterPassports();
+                    updateNavBadge();
+                }
+            })
+            .catch(() => {}); // silently fall back to localStorage cache
+    }
+
     // Автоматично зареждане от Dropbox при стартиране
     if (appData.dropboxToken) {
         cloudLoadProjects().then(loaded => {
@@ -3759,6 +3774,15 @@ function savePassport() {
     saveData();
     updateNavBadge();
     navigateTo('passports');
+
+    // Async sync to API — does not block navigation
+    const piForSync = projectData.pi;
+    const payloadForSync = { passport: projectData, pi: piForSync };
+    if (appData.apiUrl) {
+        apiCall(`/api/passports/${piForSync}`, 'POST', payloadForSync)
+            .then(() => showAlert('success', `☁️ Паспорт ПИ-${piForSync} запазен в базата данни.`))
+            .catch(e => showAlert('error', `⚠️ Локално запазен, но API грешка: ${e.message}`));
+    }
 }
 
 function editPassport(id) {
