@@ -1733,7 +1733,7 @@ async function doLogin() {
     const password = document.getElementById('login-password').value;
     const url = (appData.apiUrl || '').replace(/\/$/, '');
 
-    if (!url) { setLoginError('Няма конфигуриран API URL. Добавете го в localStorage под ключ "akt_api_url" или в Настройки след вход.'); return; }
+    if (!url) { setLoginError('Няма конфигуриран API URL. Добавете го в Настройки след вход.'); return; }
     if (!email || !password) { setLoginError('Въведете email и парола.'); return; }
 
     const btn = document.getElementById('login-btn');
@@ -1875,10 +1875,10 @@ const specializations = [
 // ═══════════════════════════════════════════════════════════
 function loadData() {
     // Migrate from old cbt_v5 key if present
-    const legacyV5 = localStorage.getItem('akt_v5');
-    if (legacyV5 && !localStorage.getItem('akt_v5')) {
-        localStorage.setItem('akt_v5', legacyV5);
-        localStorage.removeItem('akt_v5');
+    const legacyCbt = localStorage.getItem('cbt_v5');
+    if (legacyCbt && !localStorage.getItem('akt_v5')) {
+        localStorage.setItem('akt_v5', legacyCbt);
+        localStorage.removeItem('cbt_v5');
     }
     const saved = localStorage.getItem('akt_v5');
     if (saved) {
@@ -1887,7 +1887,8 @@ function loadData() {
             appData = { ...appData, ...parsed };
             if (!appData.history) appData.history = [];
             if (!appData.dropboxFolder) appData.dropboxFolder = '/AKT_Projects';
-            if (!appData.apiUrl) appData.apiUrl = '';
+            // Keep hardcoded default if nothing was ever saved
+            if (!appData.apiUrl) appData.apiUrl = 'https://web-production-220c7.up.railway.app';
         } catch(e) {
             console.warn('Failed to parse saved data');
         }
