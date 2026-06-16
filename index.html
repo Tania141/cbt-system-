@@ -3120,6 +3120,10 @@ function buildPassportRows(project, consultant, extra) {
         add('Служител_' + (i+1) + '_Титла', e.title || 'инж.');
     });
 
+    // Геодезист — от extra полето или от служителите на консултанта
+    const geoFromEmployees = employees.find(e => e.specialization === 'Геодезия')?.name || '';
+    add('Геодезист', extra?.geodezist || geoFromEmployees);
+
     // Проектанти
     const projectants = project.projectants || [];
     add('Проектанти_Брой', projectants.length);
