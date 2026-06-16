@@ -2130,6 +2130,23 @@ function showAlert(type, message, duration = 6000) {
 // ═══════════════════════════════════════════════════════════
 
 const AI_PROTOCOL_PROMPTS = {
+    'protokol2combined': {
+        label: 'Протокол 2 (пълен — сграда)',
+        icon: '🤖',
+        description: 'AI извлича котите и описанието от PDF → редактираш → генерираш пълен .docx',
+        requiredDocs: ['Разрешение за строеж', 'Архитектурна част на проекта (с коти)'],
+        optionalDocs: ['ПБЗ', 'Геоложки доклад', 'Стройгенплан'],
+        extraFields: [
+            { id: 'teh_rukovoditel', label: 'Технически ръководител (три имена)', placeholder: 'инж. Николай Антонов Риманчан' },
+            { id: 'geodezist', label: 'Геодезист към СН (три имена)', placeholder: 'инж. Златан Георгиев Златанов' },
+            { id: 'slujitel_223', label: 'Служител по чл.223 ал.2 ЗУТ (район/община)', placeholder: 'Столична община – район „Банкя"' },
+            { id: 'voda', label: 'Временно водоснабдяване', placeholder: 'водоноска / бутилирана вода' },
+            { id: 'kanalizacia', label: 'Временна канализация', placeholder: 'химическа тоалетна' },
+            { id: 'el', label: 'Временно ел. захранване', placeholder: 'преносим дизелов агрегат' },
+            { id: 'dostap', label: 'Достъп до площадката', placeholder: 'от прилежащата улична мрежа' },
+        ],
+        buildPrompt: (project, consultant, extra) => buildProtokol2Prompt(project, consultant, extra, 'sgrаda')
+    },
     'protokol2': {
         label: 'Протокол 2 — Сграда',
         icon: '🏗️',
@@ -2375,7 +2392,7 @@ function renderAiProtocols() {
         </div>
 
         <!-- Избор на протокол -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px">
             ${Object.entries(AI_PROTOCOL_PROMPTS).map(([key, proto]) => `
             <div class="card" style="cursor:pointer;transition:var(--transition)" 
                  id="proto-card-${key}"
@@ -2582,6 +2599,11 @@ function renderAttachedFiles() {
 async function runAiProtocol() {
     if (!window.selectedProtocol) { showAlert('error', 'Избери тип протокол!'); return; }
 
+    // ── Protokol2combined has its own dedicated flow ──
+    if (window.selectedProtocol === 'protokol2combined') {
+        return runAiProtocolCombined();
+    }
+
     const proto = AI_PROTOCOL_PROMPTS[window.selectedProtocol];
     const project = appData.currentProject;
     const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
@@ -2746,6 +2768,249 @@ async function generateDocFromVerification() {
                 '<span style="font-size:12px;color:var(--red)">❌ ' + err.message + '</span>';
         }
         showAlert('error', '❌ Грешка при генериране: ' + err.message);
+    }
+}
+
+// ── Protokol2Combined: AI-extract → editable fields → generate .docx ──────────
+
+async function runAiProtocolCombined() {
+    const project = appData.currentProject;
+    const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
+    if (!project) { showAlert('error', 'Избери активен проект!'); return; }
+    if (!railwayUrl) { showAlert('error', 'Railway URL не е въведен в Настройки!'); return; }
+
+    const proto = AI_PROTOCOL_PROMPTS['protokol2combined'];
+    const btn = document.getElementById('run-ai-btn');
+    const status = document.getElementById('ai-run-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ AI извлича данни...';
+    status.textContent = 'AI извлича данни от документите...';
+
+    try {
+        // Collect extra fields
+        const extra = {};
+        proto.extraFields.forEach(f => {
+            extra[f.id] = document.getElementById('extra-' + f.id)?.value?.trim() || '';
+        });
+
+        // Encode PDFs
+        const pdfFiles = [];
+        for (const file of window.attachedDocs) {
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                const b64 = await fileToBase64(file);
+                pdfFiles.push({ name: file.name, data: b64, media_type: 'application/pdf' });
+            }
+        }
+
+        const token = getToken();
+        const consultant = appData.consultants.find(c => c.id === project?.consultant?.id);
+
+        // Step 1 — call extract endpoint (or skip if no PDFs)
+        let extracted = {};
+        if (pdfFiles.length > 0) {
+            status.textContent = 'Claude чете PDF документите...';
+            const extractResp = await fetch(railwayUrl + '/api/ai/extract-protokol2', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) },
+                body: JSON.stringify({ pi: project.pi, passport: [], files: pdfFiles })
+            });
+            if (!extractResp.ok) {
+                const err = await extractResp.json().catch(() => ({ error: 'HTTP ' + extractResp.status }));
+                throw new Error(err.error || 'HTTP ' + extractResp.status);
+            }
+            const extractData = await extractResp.json();
+            extracted = extractData.extracted || {};
+        }
+
+        // Save state
+        window.aiSession._pendingExtra = extra;
+        window.aiSession._pendingConsultant = consultant;
+        window.aiSession._extractedCombined = extracted;
+
+        // Step 2 — show editable review form
+        showCombinedReviewForm(extracted, extra, project);
+
+    } catch (err) {
+        showAlert('error', 'Грешка при AI извличане: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🤖 Генерирай с AI верификация';
+        status.textContent = '';
+    }
+}
+
+const SASTOYANIE_DEFAULT = 'пътните и тротоарни настилки по прилежащата улица са в добро състояние, съседните имоти няма да бъдат засягани от бъдещото строителство';
+
+function showCombinedReviewForm(extracted, extra, project) {
+    const section = document.getElementById('ai-result-section');
+    section.style.display = 'block';
+
+    const darv = extracted.Darvesenost;
+    const hasDarv = darv && darv !== 'null' && darv !== '' && darv !== null;
+
+    document.getElementById('ai-result-body').innerHTML = `
+        <div style="font-weight:700;font-size:15px;margin-bottom:16px;color:var(--ink)">
+            📋 Стъпка 2 — Прегледай и коригирай извлечените данни
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Описание на площадката</label>
+                <textarea id="ai-field-opisanie" class="form-input" rows="4" style="resize:vertical">${extracted.Opisanie_Ploshtadka || ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Кота изкоп</label>
+                <input type="text" id="ai-field-izkop" class="form-input" value="${extracted.Kota_Izkop || ''}" placeholder="напр. -2.50">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Кота цокъл ±0.00</label>
+                <input type="text" id="ai-field-cokul" class="form-input" value="${extracted.Kota_Cokul || ''}" placeholder="абс. кота напр. 142.50">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Кота корниз</label>
+                <input type="text" id="ai-field-korniz" class="form-input" value="${extracted.Kota_Korniz || ''}" placeholder="напр. +9.80">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Кота було</label>
+                <input type="text" id="ai-field-bilo" class="form-input" value="${extracted.Kota_Bilo || ''}" placeholder="напр. +12.40">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Репер номер</label>
+                <input type="text" id="ai-field-reper-nomer" class="form-input" value="${extracted.Reper_Nomer || ''}" placeholder="напр. РП-23">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Репер кота (м)</label>
+                <input type="text" id="ai-field-reper-kota" class="form-input" value="${extracted.Reper_Kota || ''}" placeholder="напр. 143.750">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label">Дървесност на площадката</label>
+            <div style="display:flex;gap:20px;align-items:center;margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                    <input type="radio" name="darvesenost-radio" value="няма" id="darv-nyama" ${!hasDarv ? 'checked' : ''} onchange="document.getElementById('darv-textarea-wrap').style.display='none'">
+                    НЯМА
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                    <input type="radio" name="darvesenost-radio" value="има" id="darv-ima" ${hasDarv ? 'checked' : ''} onchange="document.getElementById('darv-textarea-wrap').style.display='block'">
+                    ИМА (опиши):
+                </label>
+            </div>
+            <div id="darv-textarea-wrap" style="display:${hasDarv ? 'block' : 'none'}">
+                <textarea id="ai-field-darvesenost" class="form-input" rows="2" placeholder="напр. 3 бр. дървета — ела за изкореняване">${hasDarv ? darv : ''}</textarea>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label">Околно пространство</label>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px;padding:8px;background:var(--surface);border-radius:var(--r-sm);border:1px solid var(--border)">
+                Стандартен текст: <em>${SASTOYANIE_DEFAULT}</em>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:8px">
+                <input type="checkbox" id="sastoyanie-custom-check" onchange="document.getElementById('sastoyanie-custom-wrap').style.display=this.checked?'block':'none'">
+                Има нещо различно — добави/замени текста
+            </label>
+            <div id="sastoyanie-custom-wrap" style="display:none">
+                <textarea id="ai-field-sastoyanie" class="form-input" rows="2" placeholder="Опиши конкретното състояние на околното пространство"></textarea>
+            </div>
+        </div>`;
+
+    // Inject generate button below the form
+    let genBtn = document.getElementById('ai-generate-doc-btn');
+    if (!genBtn) {
+        genBtn = document.createElement('div');
+        genBtn.id = 'ai-generate-doc-btn';
+        genBtn.style.cssText = 'margin-top:16px;padding-top:16px;border-top:2px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap';
+        document.getElementById('ai-result-body').after(genBtn);
+    }
+    genBtn.innerHTML =
+        '<button class="btn btn-primary" onclick="generateDocCombined()" style="font-size:15px;padding:12px 28px">' +
+        '📥 Генерирай официален Протокол 2 (.docx)' +
+        '</button>' +
+        '<span style="font-size:12px;color:var(--muted)">Прегледай и коригирай данните по-горе преди генериране.</span>';
+
+    section.scrollIntoView({ behavior: 'smooth' });
+    if (pdfFiles && pdfFiles.length === 0) {
+        showAlert('info', 'Няма прикачени PDF — попълни полетата ръчно и генерирай.');
+    } else {
+        showAlert('info', '✅ AI извлече данните. Провери, коригирай ако е нужно, и генерирай.');
+    }
+}
+
+async function generateDocCombined() {
+    const project = appData.currentProject;
+    const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
+    const extra = window.aiSession._pendingExtra || {};
+    const consultant = window.aiSession._pendingConsultant ||
+        appData.consultants.find(c => c.id === project?.consultant?.id);
+
+    const genBtn = document.getElementById('ai-generate-doc-btn');
+    if (genBtn) genBtn.innerHTML = '<span style="font-size:13px;color:var(--muted)">⏳ Генериране на .docx...</span>';
+
+    try {
+        // Collect edited field values from the review form
+        const opisanie  = document.getElementById('ai-field-opisanie')?.value?.trim() || '';
+        const izkop     = document.getElementById('ai-field-izkop')?.value?.trim() || '';
+        const cokul     = document.getElementById('ai-field-cokul')?.value?.trim() || '';
+        const korniz    = document.getElementById('ai-field-korniz')?.value?.trim() || '';
+        const bilo      = document.getElementById('ai-field-bilo')?.value?.trim() || '';
+        const reperNom  = document.getElementById('ai-field-reper-nomer')?.value?.trim() || '';
+        const reperKota = document.getElementById('ai-field-reper-kota')?.value?.trim() || '';
+
+        const darvRadio = document.querySelector('input[name="darvesenost-radio"]:checked');
+        const darvValue = (darvRadio?.value === 'има')
+            ? (document.getElementById('ai-field-darvesenost')?.value?.trim() || '')
+            : '';
+
+        const sastoyanieCustom = document.getElementById('sastoyanie-custom-check')?.checked;
+        const sastoyanieValue = sastoyanieCustom
+            ? (document.getElementById('ai-field-sastoyanie')?.value?.trim() || SASTOYANIE_DEFAULT)
+            : SASTOYANIE_DEFAULT;
+
+        // Build passport rows and add AI-extracted extras
+        const passportRows = buildPassportRows(project, consultant, extra);
+        passportRows.push(
+            ['Opisanie_Ploshtadka', opisanie],
+            ['Kota_Izkop',   izkop],
+            ['Kota_Cokul',   cokul],
+            ['Kota_Korniz',  korniz],
+            ['Kota_Bilo',    bilo],
+            ['Reper_Nomer',  reperNom],
+            ['Reper_Kota',   reperKota],
+            ['Darvesenost',  darvValue],
+            ['Sastoyanie_Okolo', sastoyanieValue],
+        );
+
+        const token = getToken();
+        const response = await fetch(railwayUrl + '/api/generate/protokol2combined', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({ passport: passportRows, pi: project.pi })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'HTTP ' + response.status }));
+            throw new Error(err.error || 'HTTP ' + response.status);
+        }
+
+        const blob = await response.blob();
+        const filename = 'protokol2combined_' + project.pi + '.docx';
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl; a.download = filename; a.click();
+        URL.revokeObjectURL(dlUrl);
+
+        if (genBtn) genBtn.innerHTML = '<span style="font-size:13px;color:var(--green)">✅ Протокол 2 изтеглен успешно!</span>';
+        addToHistory('generate', project.pi, 'Протокол 2 Combined (AI + .docx)');
+        showAlert('success', 'Протокол 2 (пълен) генериран и изтеглен успешно!');
+
+    } catch (err) {
+        if (genBtn) genBtn.innerHTML =
+            '<button class="btn btn-primary" onclick="generateDocCombined()" style="font-size:15px;padding:12px 28px">📥 Генерирай официален Протокол 2 (.docx)</button>' +
+            '<span style="font-size:12px;color:var(--red)">❌ ' + err.message + '</span>';
+        showAlert('error', '❌ Грешка: ' + err.message);
     }
 }
 
