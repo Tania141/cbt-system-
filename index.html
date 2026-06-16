@@ -1942,7 +1942,17 @@ function loadData() {
         apiCall('/api/passports')
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
-                    appData.projects = data;
+                    // Normalise consultant: match by id first, then by name, so the
+                    // local consultant object (with employees etc.) is used if available
+                    appData.projects = data.map(p => {
+                        if (p.consultant && appData.consultants.length > 0) {
+                            const byId   = appData.consultants.find(c => c.id == p.consultant.id);
+                            const byName = appData.consultants.find(c => c.name === p.consultant.name);
+                            const local  = byId || byName;
+                            if (local) p.consultant = { id: local.id, name: local.name };
+                        }
+                        return p;
+                    });
                     saveData();
                     renderDashboard();
                     filterPassports();
@@ -3437,7 +3447,7 @@ function renderPassportForm(projectId) {
                     <label class="form-label required">Консултант</label>
                     <select id="fp-consultant" class="form-select">
                         <option value="">— Изберете —</option>
-                        ${appData.consultants.map(c => `<option value="${c.id}" ${p.consultant?.id==c.id?'selected':''}>${c.name}</option>`).join('')}
+                        ${appData.consultants.map((c, i) => `<option value="${c.id}" ${(p.consultant?.id==c.id || (!p.consultant?.id && i===0))?'selected':''}>${c.name}</option>`).join('')}
                     </select>
                 </div>
             </div>
