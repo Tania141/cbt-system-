@@ -2608,95 +2608,46 @@ async function runAiProtocol() {
             }
         }
 
-        // Избираме endpoint според типа протокол
-        let endpoint, payload;
+        // Подготвяме паспортни данни
+        const consultant = appData.consultants.find(c => c.id === project?.consultant?.id);
+        const passportRows = buildPassportRows(project, consultant, extra);
 
-        if (window.selectedProtocol === 'protokol2') {
-            // ── Протокол 2 Сграда → нов endpoint → директен .docx ──
-            status.textContent = 'AI извлича котите и генерира .docx...';
-            endpoint = railwayUrl + '/api/ai/generate-protokol2';
+        const docType = window.selectedProtocol; // 'protokol2' or 'protokol2a'
+        const endpoint = railwayUrl + '/api/generate/' + docType;
+        status.textContent = 'Генериране на .docx...';
 
-            // Подготвяме паспортни данни като масив
-            const consultant = appData.consultants.find(c => c.id === project?.consultant?.id);
-            const passportRows = buildPassportRows(project, consultant, extra);
+        const token = getToken();
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({ passport: passportRows, pi: project.pi, files: pdfFiles })
+        });
 
-            payload = {
-                pi: project.pi,
-                passport: passportRows,
-                files: pdfFiles
-            };
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'HTTP ' + response.status);
-            }
-
-            const data = await response.json();
-
-            // Показваме резултат с линк за сваляне
-            document.getElementById('ai-result-section').style.display = 'block';
-            document.getElementById('ai-result-body').innerHTML =
-                '<div style="padding:16px;text-align:center">' +
-                '<div style="font-size:48px;margin-bottom:12px">✅</div>' +
-                '<div style="font-weight:700;font-size:18px;margin-bottom:8px">Протокол 2 е генериран!</div>' +
-                '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Файлът е записан в Dropbox</div>' +
-                (data.file_url ? '<a href="' + data.file_url + '" target="_blank" class="btn btn-primary" style="font-size:15px;padding:12px 28px;text-decoration:none">📥 Отвори .docx файла</a>' : '') +
-                '<div style="margin-top:16px;font-size:12px;color:var(--muted)">' +
-                '<div>Кота изкоп: ' + (data.kota_izkop || '—') + '</div>' +
-                '<div>Кота цокъл: ' + (data.kota_cokul || '—') + '</div>' +
-                '<div>Кота корниз: ' + (data.kota_korniz || '—') + '</div>' +
-                '<div>Кота BILO: ' + (data.kota_bilo || '—') + '</div>' +
-                '</div></div>';
-
-            addToHistory('generate', project.pi, 'Протокол 2 (AI + .docx)');
-            showAlert('success', 'Протокол 2 генериран и записан в Dropbox!');
-
-        } else {
-            // ── Протокол 2а и др. → текстов резултат с чат ──
-            const consultant = appData.consultants.find(c => c.id === project?.consultant?.id);
-            const extra2 = {};
-            proto.extraFields.forEach(f => {
-                extra2[f.id] = document.getElementById('extra-' + f.id)?.value?.trim() || '';
-            });
-
-            status.textContent = 'Claude верифицира и генерира протокола...';
-            endpoint = railwayUrl + '/api/ai/generate';
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: proto.buildPrompt(project, consultant, extra2),
-                    files: pdfFiles
-                })
-            });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'HTTP ' + response.status);
-            }
-
-            const data = await response.json();
-            const resultText = data.result || '';
-
-            window.aiSession.lastResult = resultText;
-            window.aiSession.conversationHistory.push(
-                { role: 'user', content: proto.buildPrompt(project, consultant, extra2) },
-                { role: 'assistant', content: resultText }
-            );
-
-            document.getElementById('ai-result-section').style.display = 'block';
-            document.getElementById('ai-result-body').textContent = resultText;
-            renderChatHistory();
-            addToHistory('generate', project.pi, 'AI Протокол: ' + proto.label);
-            showAlert('success', proto.label + ' генериран успешно!');
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'HTTP ' + response.status }));
+            throw new Error(err.error || 'HTTP ' + response.status);
         }
+
+        const blob = await response.blob();
+        const filename = docType + '_' + project.pi + '.docx';
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl; a.download = filename; a.click();
+        URL.revokeObjectURL(dlUrl);
+
+        document.getElementById('ai-result-section').style.display = 'block';
+        document.getElementById('ai-result-body').innerHTML =
+            '<div style="padding:16px;text-align:center">' +
+            '<div style="font-size:48px;margin-bottom:12px">✅</div>' +
+            '<div style="font-weight:700;font-size:18px;margin-bottom:8px">' + proto.label + ' е генериран!</div>' +
+            '<div style="font-size:13px;color:var(--muted)">Файлът се изтегля автоматично.</div>' +
+            '</div>';
+
+        addToHistory('generate', project.pi, proto.label + ' (AI .docx)');
+        showAlert('success', proto.label + ' генериран и изтеглен успешно!');
 
         document.getElementById('ai-result-section').scrollIntoView({ behavior: 'smooth' });
 
