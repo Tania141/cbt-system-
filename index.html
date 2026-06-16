@@ -3141,7 +3141,7 @@ function renderDashboard() {
         recContainer.innerHTML = `<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Няма паспорти</div></div>`;
     } else {
         recContainer.innerHTML = recent.map(p => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light);cursor:pointer" onclick="openPassportModal(${p.id})">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light);cursor:pointer" onclick="openPassportModal('${p.id}')">
                 <div>
                     <div style="font-weight:700;font-size:14px;color:var(--ink)">ПИ: ${p.pi}</div>
                     <div style="font-size:12px;color:var(--slate)">${p.stroej || '—'}</div>
@@ -3248,7 +3248,7 @@ function renderPassportsList(projects) {
         const isActive = appData.currentProject?.id === p.id;
         const docs = p.generatedDocs || [];
         return `
-        <div class="passport-card ${isActive ? 'selected' : ''}" onclick="openPassportModal(${p.id})">
+        <div class="passport-card ${isActive ? 'selected' : ''}" onclick="openPassportModal('${p.id}')">
             <div>
                 <div class="passport-pi-label">ПИ</div>
                 <div class="passport-pi">${p.pi || '—'}</div>
@@ -3263,8 +3263,8 @@ function renderPassportsList(projects) {
             </div>
             <div class="passport-actions">
                 <span style="font-size:12px;color:var(--muted)">${formatDate(p.date)}</span>
-                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editPassport(${p.id})">✏️</button>
-                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePassport(${p.id})">🗑️</button>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editPassport('${p.id}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePassport('${p.id}')">🗑️</button>
             </div>
         </div>
         `;
