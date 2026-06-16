@@ -4817,14 +4817,7 @@ loadData();
 
 
 
-<script>
-if ('serviceWorker' in navigator && location.protocol !== 'file:' && location.hostname !== 'localhost') {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('SW registered'))
-            .catch(e => console.log('SW error:', e));
-    });
-}
-</script>
+<!-- Service worker registration disabled -->
+
 </body>
 </html>
