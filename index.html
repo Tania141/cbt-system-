@@ -3112,7 +3112,8 @@ function buildPassportRows(project, consultant, extra) {
     add('Ел_Захранване', extra.el || 'преносим дизелов агрегат');
 
     // Служители надзор
-    const employees = project.employees || [];
+    const consultantLocal = appData.consultants?.find(c => c.id === project?.consultant?.id);
+    const employees = project.employees || consultantLocal?.employees || [];
     add('Служители_Брой', employees.length);
     employees.forEach((e, i) => {
         add('Служител_' + (i+1) + '_Име', e.name);
@@ -3125,7 +3126,7 @@ function buildPassportRows(project, consultant, extra) {
     add('Геодезист', extra?.geodezist || geoFromEmployees);
 
     // Проектанти
-    const projectants = project.projectants || [];
+    const projectants = project.projectants || consultantLocal?.projectants || [];
     add('Проектанти_Брой', projectants.length);
     projectants.forEach((p, i) => {
         add('Проектант_' + (i+1) + '_Име', p.name);
