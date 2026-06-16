@@ -1945,6 +1945,9 @@ function loadData() {
                     // Normalise consultant: match by id first, then by name, so the
                     // local consultant object (with employees etc.) is used if available
                     appData.projects = data.map(p => {
+                        // Ensure every project has an id usable by openPassportModal
+                        if (!p.id) p.id = p.pi;
+                        // Normalise consultant to local object (id + employees)
                         if (p.consultant && appData.consultants.length > 0) {
                             const byId   = appData.consultants.find(c => c.id == p.consultant.id);
                             const byName = appData.consultants.find(c => c.name === p.consultant.name);
@@ -3277,7 +3280,7 @@ function updateNavBadge() {
 //  PASSPORT MODAL
 // ═══════════════════════════════════════════════════════════
 function openPassportModal(id) {
-    const project = appData.projects.find(p => p.id === id);
+    const project = appData.projects.find(p => p.id == id || p.pi == id);
     if (!project) return;
 
     document.getElementById('modal-passport-title').textContent = `ПИ: ${project.pi}`;
