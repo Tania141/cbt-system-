@@ -3713,16 +3713,16 @@ function savePassport() {
 
     // Sync clients from DOM — четем всички input полета от client rows
     document.querySelectorAll('[id^="client-row-"]').forEach((row, i) => {
-        if (!window.tempClients[i]) window.tempClients[i] = {};
+        if (!tempClients[i]) tempClients[i] = {};
         const inputs = row.querySelectorAll('input');
         const select = row.querySelector('select');
-        if (select) window.tempClients[i].type = select.value;
-        const isYL = window.tempClients[i].type === 'ЮЛ';
-        if (inputs[0]) window.tempClients[i].name = inputs[0].value.trim();
+        if (select) tempClients[i].type = select.value;
+        const isYL = tempClients[i].type === 'ЮЛ';
+        if (inputs[0]) tempClients[i].name = inputs[0].value.trim();
         if (isYL) {
-            if (inputs[1]) window.tempClients[i].eik = inputs[1].value.trim();
-            if (inputs[2]) window.tempClients[i].rep = inputs[2].value.trim();
-            if (inputs[3]) window.tempClients[i].address = inputs[3].value.trim();
+            if (inputs[1]) tempClients[i].eik = inputs[1].value.trim();
+            if (inputs[2]) tempClients[i].rep = inputs[2].value.trim();
+            if (inputs[3]) tempClients[i].address = inputs[3].value.trim();
         }
     });
 
