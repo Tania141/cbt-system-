@@ -2901,6 +2901,16 @@ function showCombinedReviewForm(extracted, extra, project) {
         </div>
 
         <div class="form-group" style="margin-bottom:16px">
+            <label class="form-label">Кой възложител подписва протокола?</label>
+            <select id="ai-field-vozlagatel-podpis" class="form-select">
+                ${(project.clients || (project.client ? [project.client] : [])).map((c, i) =>
+                    `<option value="${c.name || ''}">${c.name || '—'} (${c.type === 'ЮЛ' ? 'ЮЛ' : 'ФЛ'})</option>`
+                ).join('')}
+                <option value="">— не подписва —</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px">
             <label class="form-label">Околно пространство</label>
             <div style="font-size:12px;color:var(--muted);margin-bottom:6px;padding:8px;background:var(--surface);border-radius:var(--r-sm);border:1px solid var(--border)">
                 Стандартен текст: <em>${SASTOYANIE_DEFAULT}</em>
@@ -2956,6 +2966,8 @@ async function generateDocCombined() {
         const reperNom  = document.getElementById('ai-field-reper-nomer')?.value?.trim() || '';
         const reperKota = document.getElementById('ai-field-reper-kota')?.value?.trim() || '';
 
+        const vozlagatelPodpisva = document.getElementById('ai-field-vozlagatel-podpis')?.value || '';
+
         const darvRadio = document.querySelector('input[name="darvesenost-radio"]:checked');
         const darvValue = (darvRadio?.value === 'има')
             ? (document.getElementById('ai-field-darvesenost')?.value?.trim() || '')
@@ -2969,6 +2981,7 @@ async function generateDocCombined() {
         // Build passport rows and add AI-extracted extras
         const passportRows = buildPassportRows(project, consultant, extra);
         passportRows.push(
+            ['Възложител_Подписва', vozlagatelPodpisva],
             ['Opisanie_Ploshtadka', opisanie],
             ['Kota_Izkop',   izkop],
             ['Kota_Cokul',   cokul],
