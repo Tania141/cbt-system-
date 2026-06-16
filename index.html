@@ -1835,14 +1835,29 @@ async function generateDocumentViaApi(projectId, docType) {
         showAlert('info', `⏳ Генериране на ${docType} чрез Python API...`);
         const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
         const payload = buildExcelPayload(project, consultant);
-        const result = await apiCall(`/api/generate/${docType}`, 'POST', { passport: payload, pi: project.pi });
+        const url = (appData.apiUrl || '').replace(/\/$/, '');
+        const token = getToken();
+        const r = await fetch(`${url}/api/generate/${docType}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ passport: payload, pi: project.pi })
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({ error: r.statusText }));
+            throw new Error(err.error || `HTTP ${r.status}`);
+        }
+        const blob = await r.blob();
+        const filename = `${docType}_${project.pi}.docx`;
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl; a.download = filename; a.click();
+        URL.revokeObjectURL(dlUrl);
         if (!project.generatedDocs) project.generatedDocs = [];
-        project.generatedDocs.push({ type: docType, url: result.file_url, date: new Date().toISOString() });
+        project.generatedDocs.push({ type: docType, date: new Date().toISOString() });
         addHistory('generate', project.pi, `${docType} генериран чрез API`);
         saveData();
         filterPassports();
-        const dlLink = result.file_url ? ` <a href="${result.file_url}" target="_blank" style="color:var(--blue);font-weight:600">⬇ Свали</a>` : '';
-        showAlert('success', `✅ ${docType} генериран успешно!${dlLink}`);
+        showAlert('success', `✅ ${docType} генериран и изтеглен успешно!`);
     } catch(e) {
         showAlert('error', `❌ Грешка при генериране: ${e.message}`);
     }
@@ -4174,17 +4189,31 @@ async function generateDocumentsViaApi() {
                 body.zapovedna_date = zkDate;
             }
 
-            const result = await apiCall(`/api/generate/${doc.apiType}`, 'POST', body);
+            const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
+            const token = getToken();
+            const r = await fetch(`${apiUrl}/api/generate/${doc.apiType}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                body: JSON.stringify(body)
+            });
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({ error: r.statusText }));
+                throw new Error(err.error || `HTTP ${r.status}`);
+            }
+            const blob = await r.blob();
+            const filename = `${doc.apiType}_${project.pi}.docx`;
+            const dlUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = dlUrl; a.download = filename; a.click();
+            URL.revokeObjectURL(dlUrl);
 
-            if (statusEl) statusEl.innerHTML = result.file_url
-                ? `<a href="${result.file_url}" target="_blank" class="btn btn-success btn-sm">⬇ Свали .docx</a>`
-                : '<span class="badge badge-green">✅ Готов</span>';
+            if (statusEl) statusEl.innerHTML = '<span class="badge badge-green">✅ Изтеглен</span>';
 
             results.push({
                 type: doc.label,
                 date: today,
-                url: result.file_url || '',
-                path: result.path || ''
+                url: '',
+                path: ''
             });
 
         } catch(e) {
