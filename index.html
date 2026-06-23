@@ -2392,9 +2392,9 @@ function renderAiProtocols() {
         </div>
 
         <!-- Избор на протокол -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:16px">
             ${Object.entries(AI_PROTOCOL_PROMPTS).map(([key, proto]) => `
-            <div class="card" style="cursor:pointer;transition:var(--transition)" 
+            <div class="card" style="cursor:pointer;transition:var(--transition)"
                  id="proto-card-${key}"
                  onclick="selectProtocol('${key}')"
                  onmouseenter="this.style.borderColor='var(--gold)'"
@@ -2407,6 +2407,22 @@ function renderAiProtocols() {
                     ${proto.requiredDocs.map(d => `• ${d}`).join('<br>')}
                 </div>
             </div>`).join('')}
+            <!-- Акт 15 (сграда) — отделен поток -->
+            <div class="card" style="cursor:pointer;transition:var(--transition)"
+                 id="proto-card-akt15sgrada"
+                 onclick="selectAkt15()"
+                 onmouseenter="this.style.borderColor='var(--gold)'"
+                 onmouseleave="this.style.borderColor=window._akt15Selected?'var(--gold)':'var(--border)'">
+                <div style="font-size:28px;margin-bottom:8px">🏢</div>
+                <div style="font-weight:700;font-size:15px;margin-bottom:4px">Акт 15 (сграда)</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:12px">AI генерира пълен Акт 15 от паспорта, таблицата с възложители и PDF документацията</div>
+                <div style="font-size:11px;color:var(--slate)">
+                    <strong>Препоръчителни документи:</strong><br>
+                    • Разрешение за строеж<br>
+                    • Одобрен архитектурен проект<br>
+                    • Актове и протоколи от строителството
+                </div>
+            </div>
         </div>
 
         <!-- Форма за избрания протокол -->
@@ -2462,6 +2478,68 @@ function renderAiProtocols() {
                     🤖 Генерирай с AI верификация
                 </button>
                 <div id="ai-run-status" style="font-size:13px;color:var(--muted)"></div>
+            </div>
+        </div>
+
+        <!-- Акт 15 форма -->
+        <div id="akt15-form-section" style="display:none">
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-title" style="margin-bottom:16px">🏢 Акт 15 (сграда) — Данни</div>
+                <div class="form-group">
+                    <label class="form-label">Таблица с възложители</label>
+                    <textarea id="akt15-vozlozhiteli" class="form-input" rows="8"
+                        placeholder="Апартамент № | Собственик (три имена, ЕГН/ЕИК) | Нотариален акт (№, том, рег.№, дело №, нотариус, дата) | Пълномощно (ако има — три имена на пълномощника, ЕГН, №/дата на пълномощното)&#10;&#10;Пример:&#10;Ап. №1 | Иван Петров Георгиев, ЕГН 7501011234 | НА №12, том I, рег.№234, дело №56, нот. Мария Иванова, 15.03.2023 | —&#10;Ап. №2 | „Примерна ЕООД", ЕИК 123456789, представлявано от Петър Стоянов | НА №34, том II, рег.№567, дело №89, нот. Георги Петров, 20.04.2023 | Пълн. Стоян Петров Иванов, ЕГН 8002021234, пълн. №78/10.01.2024"
+                        style="font-size:13px;resize:vertical"></textarea>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-header">
+                    <div class="card-title">📎 Прикачи документи (PDF)</div>
+                    <div class="card-subtitle">Разрешение за строеж, одобрен проект, актове и протоколи от строителството</div>
+                </div>
+                <div style="border:2px dashed var(--border);border-radius:var(--r-sm);padding:20px;text-align:center;cursor:pointer;transition:var(--transition)"
+                     onclick="document.getElementById('akt15-file-input').click()"
+                     ondragover="event.preventDefault();this.style.borderColor='var(--gold)'"
+                     ondragleave="this.style.borderColor='var(--border)'"
+                     ondrop="handleAkt15Drop(event)">
+                    <div style="font-size:24px;margin-bottom:8px">📁</div>
+                    <div style="font-weight:600;font-size:14px">Кликни или плъзни PDF файлове тук</div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:4px">PDF — максимум 10MB на файл</div>
+                </div>
+                <input type="file" id="akt15-file-input" multiple accept=".pdf" style="display:none" onchange="handleAkt15Files(this.files)">
+                <div id="akt15-files-list" style="margin-top:12px"></div>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:center">
+                <button class="btn btn-primary" onclick="runAkt15()" id="run-akt15-btn" style="font-size:15px;padding:12px 28px">
+                    🏢 Генерирай Акт 15
+                </button>
+                <div id="akt15-status" style="font-size:13px;color:var(--muted)"></div>
+            </div>
+        </div>
+
+        <!-- Акт 15 резултат -->
+        <div id="akt15-result-section" style="display:none">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📄 Акт 15 — генериран текст</div>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-success btn-sm" onclick="copyAkt15Result()">📥 Копирай текста</button>
+                        <button class="btn btn-ghost btn-sm" onclick="clearAkt15()">🗑 Изчисти</button>
+                    </div>
+                </div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                    💡 Копирайте текста и го поставете в Word шаблона. Попълнете ръчно датата и подписите.
+                </p>
+                <textarea id="akt15-result-body" class="form-input"
+                    style="font-family:monospace;font-size:13px;line-height:1.7;min-height:500px;resize:vertical;white-space:pre"
+                    spellcheck="false"></textarea>
+                <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end">
+                    <button class="btn btn-success" onclick="copyAkt15Result()" style="font-size:14px;padding:10px 24px">
+                        📥 Копирай текста
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -3274,6 +3352,145 @@ function clearAiSession() {
     window.attachedDocs = [];
     document.getElementById('ai-result-section').style.display = 'none';
     navigateTo('ai-protocols');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  АКТ 15 (СГРАДА)
+// ═══════════════════════════════════════════════════════════
+
+window._akt15Selected = false;
+window._akt15Files = [];
+
+function selectAkt15() {
+    // Deselect regular protocol cards
+    Object.keys(AI_PROTOCOL_PROMPTS).forEach(k => {
+        const card = document.getElementById(`proto-card-${k}`);
+        if (card) card.style.borderColor = 'var(--border)';
+    });
+    window.selectedProtocol = null;
+    document.getElementById('protocol-form-section').style.display = 'none';
+    document.getElementById('ai-result-section').style.display = 'none';
+
+    // Highlight Акт 15 card
+    window._akt15Selected = true;
+    const card = document.getElementById('proto-card-akt15sgrada');
+    if (card) card.style.borderColor = 'var(--gold)';
+
+    document.getElementById('akt15-form-section').style.display = 'block';
+    document.getElementById('akt15-form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function handleAkt15Files(files) {
+    Array.from(files).forEach(file => {
+        if (file.size > 10 * 1024 * 1024) { showAlert('error', `Файлът ${file.name} е над 10MB`); return; }
+        if (!file.type.includes('pdf')) { showAlert('error', `Само PDF файлове: ${file.name}`); return; }
+        window._akt15Files.push(file);
+    });
+    renderAkt15Files();
+}
+
+function handleAkt15Drop(event) {
+    event.preventDefault();
+    event.currentTarget.style.borderColor = 'var(--border)';
+    handleAkt15Files(event.dataTransfer.files);
+}
+
+function renderAkt15Files() {
+    const el = document.getElementById('akt15-files-list');
+    if (!window._akt15Files.length) { el.innerHTML = ''; return; }
+    el.innerHTML = window._akt15Files.map((f, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-sm);margin-bottom:6px">
+            <span style="font-size:13px">📄 ${f.name} <span style="color:var(--muted)">(${(f.size/1024).toFixed(0)} KB)</span></span>
+            <button class="btn btn-ghost btn-sm" onclick="window._akt15Files.splice(${i},1);renderAkt15Files()">✕</button>
+        </div>`).join('');
+}
+
+async function runAkt15() {
+    const project = appData.currentProject;
+    if (!project) { showAlert('error', 'Изберете активен проект!'); return; }
+
+    const vozlozhiteli = (document.getElementById('akt15-vozlozhiteli')?.value || '').trim();
+    if (!vozlozhiteli) { showAlert('error', 'Попълнете таблицата с възложители!'); return; }
+
+    const btn = document.getElementById('run-akt15-btn');
+    const status = document.getElementById('akt15-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Генерира...';
+    status.textContent = 'AI анализира документите и генерира Акт 15...';
+
+    try {
+        const consultant = appData.consultants?.find(c => c.id === project.consultant?.id);
+        const passportRows = buildPassportRows(project, consultant, {});
+
+        // Read PDF files as base64
+        const filesPayload = await Promise.all(window._akt15Files.map(f => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve({
+                name: f.name,
+                media_type: 'application/pdf',
+                data: e.target.result.split(',')[1]
+            });
+            reader.onerror = reject;
+            reader.readAsDataURL(f);
+        })));
+
+        const token = getToken();
+        const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
+        if (!apiUrl) throw new Error('API URL не е конфигуриран');
+
+        const response = await fetch(apiUrl + '/api/ai/generate-akt15-sgrada', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({
+                pi: project.pi,
+                passport: passportRows,
+                vozlozhiteli_table: vozlozhiteli,
+                files: filesPayload
+            })
+        });
+
+        if (response.status === 401) {
+            localStorage.removeItem('akt_token');
+            showLoginScreen();
+            throw new Error('Сесията е изтекла. Влезте отново.');
+        }
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'HTTP ' + response.status }));
+            throw new Error(err.error || 'HTTP ' + response.status);
+        }
+
+        const data = await response.json();
+        document.getElementById('akt15-result-body').value = data.text || '';
+        document.getElementById('akt15-result-section').style.display = 'block';
+        document.getElementById('akt15-result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        status.textContent = `✅ Готово — ${data.input_tokens || 0} вх. / ${data.output_tokens || 0} изх. токена`;
+        showAlert('success', 'Акт 15 генериран успешно!');
+
+    } catch (err) {
+        showAlert('error', 'Грешка: ' + err.message);
+        status.textContent = '❌ ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🏢 Генерирай Акт 15';
+    }
+}
+
+function copyAkt15Result() {
+    const text = document.getElementById('akt15-result-body')?.value || '';
+    if (!text) { showAlert('error', 'Няма текст за копиране'); return; }
+    navigator.clipboard.writeText(text).then(() => showAlert('success', 'Текстът е копиран в клипборда!'));
+}
+
+function clearAkt15() {
+    document.getElementById('akt15-result-body').value = '';
+    document.getElementById('akt15-result-section').style.display = 'none';
+    document.getElementById('akt15-vozlozhiteli').value = '';
+    window._akt15Files = [];
+    renderAkt15Files();
+    status.textContent = '';
 }
 
 function addToHistory(type, pi, description) {
