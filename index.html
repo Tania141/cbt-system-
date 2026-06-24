@@ -3454,31 +3454,42 @@ async function runAkt15() {
 
         const data = await response.json();
 
+        // Автоматично сваляне на .docx
+        if (data.docx_b64) {
+            const blob = new Blob(
+                [Uint8Array.from(atob(data.docx_b64), c => c.charCodeAt(0))],
+                { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+            );
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.filename || 'Akt_15.docx';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         document.getElementById('akt15-result-section').style.display = 'block';
 
         let docxBlock = '';
-        if (data.file_url) {
+        if (data.docx_b64) {
             docxBlock = `<div style="margin-top:16px">
-                <a href="${data.file_url}" target="_blank" class="btn btn-primary"
-                   style="font-size:15px;padding:12px 28px;text-decoration:none">
-                   📥 Отвори .docx файла
-                </a>
+                <button class="btn btn-primary" onclick="downloadAkt15Docx()" style="font-size:15px;padding:12px 28px">
+                    📥 Свали .docx отново
+                </button>
             </div>`;
         } else if (data.docx_error) {
             docxBlock = `<div class="alert alert-error" style="margin-top:12px">
-                ⚠️ AI текстът е генериран, но .docx не е записан в Dropbox: ${data.docx_error}
-            </div>`;
-        } else {
-            docxBlock = `<div class="alert alert-warning" style="margin-top:12px">
-                ⚠️ .docx файлът не е генериран — проверете Dropbox настройките
+                ⚠️ AI текстът е генериран, но .docx не е създаден: ${data.docx_error}
             </div>`;
         }
 
+        window._akt15LastData = data;
+
         document.getElementById('akt15-result-body').innerHTML = `
             <div style="padding:16px">
-                <div style="font-size:40px;margin-bottom:8px">${data.file_url ? '✅' : '⚠️'}</div>
+                <div style="font-size:40px;margin-bottom:8px">${data.docx_b64 ? '✅' : '⚠️'}</div>
                 <div style="font-weight:700;font-size:16px;margin-bottom:4px">
-                    ${data.file_url ? 'Акт 15 е генериран и записан в Dropbox!' : 'AI текстът е готов, но .docx липсва'}
+                    ${data.docx_b64 ? 'Акт 15 е генериран — .docx се сваля!' : 'AI текстът е готов, но .docx липсва'}
                 </div>
                 ${docxBlock}
                 <hr style="margin:16px 0;border-color:var(--border)">
@@ -3496,6 +3507,21 @@ async function runAkt15() {
         btn.disabled = false;
         btn.textContent = '🏢 Генерирай Акт 15';
     }
+}
+
+function downloadAkt15Docx() {
+    const data = window._akt15LastData;
+    if (!data?.docx_b64) { showAlert('error', 'Няма .docx за сваляне'); return; }
+    const blob = new Blob(
+        [Uint8Array.from(atob(data.docx_b64), c => c.charCodeAt(0))],
+        { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.filename || 'Akt_15.docx';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 function copyAkt15Result() {
