@@ -2529,17 +2529,7 @@ function renderAiProtocols() {
                         <button class="btn btn-ghost btn-sm" onclick="clearAkt15()">🗑 Изчисти</button>
                     </div>
                 </div>
-                <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                    💡 Копирайте текста и го поставете в Word шаблона. Попълнете ръчно датата и подписите.
-                </p>
-                <textarea id="akt15-result-body" class="form-input"
-                    style="font-family:monospace;font-size:13px;line-height:1.7;min-height:500px;resize:vertical;white-space:pre"
-                    spellcheck="false"></textarea>
-                <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end">
-                    <button class="btn btn-success" onclick="copyAkt15Result()" style="font-size:14px;padding:10px 24px">
-                        📥 Копирай текста
-                    </button>
-                </div>
+                <div id="akt15-result-body" style="border:1px solid var(--border);border-radius:var(--r-sm);min-height:200px"></div>
             </div>
         </div>
 
@@ -3463,8 +3453,38 @@ async function runAkt15() {
         }
 
         const data = await response.json();
-        document.getElementById('akt15-result-body').value = data.text || '';
+
         document.getElementById('akt15-result-section').style.display = 'block';
+
+        let docxBlock = '';
+        if (data.file_url) {
+            docxBlock = `<div style="margin-top:16px">
+                <a href="${data.file_url}" target="_blank" class="btn btn-primary"
+                   style="font-size:15px;padding:12px 28px;text-decoration:none">
+                   📥 Отвори .docx файла
+                </a>
+            </div>`;
+        } else if (data.docx_error) {
+            docxBlock = `<div class="alert alert-error" style="margin-top:12px">
+                ⚠️ AI текстът е генериран, но .docx не е записан в Dropbox: ${data.docx_error}
+            </div>`;
+        } else {
+            docxBlock = `<div class="alert alert-warning" style="margin-top:12px">
+                ⚠️ .docx файлът не е генериран — проверете Dropbox настройките
+            </div>`;
+        }
+
+        document.getElementById('akt15-result-body').innerHTML = `
+            <div style="padding:16px">
+                <div style="font-size:40px;margin-bottom:8px">${data.file_url ? '✅' : '⚠️'}</div>
+                <div style="font-weight:700;font-size:16px;margin-bottom:4px">
+                    ${data.file_url ? 'Акт 15 е генериран и записан в Dropbox!' : 'AI текстът е готов, но .docx липсва'}
+                </div>
+                ${docxBlock}
+                <hr style="margin:16px 0;border-color:var(--border)">
+                <div style="white-space:pre-wrap;font-size:13px">${data.result || ''}</div>
+            </div>`;
+
         document.getElementById('akt15-result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         status.textContent = `✅ Готово — ${data.input_tokens || 0} вх. / ${data.output_tokens || 0} изх. токена`;
         showAlert('success', 'Акт 15 генериран успешно!');
@@ -3479,18 +3499,19 @@ async function runAkt15() {
 }
 
 function copyAkt15Result() {
-    const text = document.getElementById('akt15-result-body')?.value || '';
-    if (!text) { showAlert('error', 'Няма текст за копиране'); return; }
+    const el = document.getElementById('akt15-result-body');
+    const text = el?.innerText || el?.textContent || '';
+    if (!text.trim()) { showAlert('error', 'Няма текст за копиране'); return; }
     navigator.clipboard.writeText(text).then(() => showAlert('success', 'Текстът е копиран в клипборда!'));
 }
 
 function clearAkt15() {
-    document.getElementById('akt15-result-body').value = '';
+    document.getElementById('akt15-result-body').innerHTML = '';
     document.getElementById('akt15-result-section').style.display = 'none';
     document.getElementById('akt15-vozlozhiteli').value = '';
     window._akt15Files = [];
     renderAkt15Files();
-    status.textContent = '';
+    document.getElementById('akt15-status').textContent = '';
 }
 
 function addToHistory(type, pi, description) {
