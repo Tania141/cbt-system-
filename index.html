@@ -3869,6 +3869,7 @@ async function runAkt15Modal() {
         loading.style.display = 'none';
 
         // Генерирай .docx от текста и свали
+        console.log('docx library:', typeof docx);
         if (data.result) {
             const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
 
