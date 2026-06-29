@@ -3752,10 +3752,10 @@ function buildAkt15Prompt(d, m) {
 
 ПОПЪЛНЕНИ ДАТИ И ДАННИ:
 Протокол 2 — дата: ${m.prot2_date || '—'}
-Ниво изкоп — заверен на: ${m.kota_izkop_date || '—'}
-Ниво цокъл — заверен на: ${m.kota_cokul_date || '—'}
-Ниво корниз — заверен на: ${m.kota_korniz_date || '—'}
-Ниво било — заверен на: ${m.kota_bilo_date || '—'}
+Ниво изкоп — заверен на: ${m.kota_izkop || '—'}
+Ниво цокъл — заверен на: ${m.kota_cokul || '—'}
+Ниво корниз — заверен на: ${m.kota_korniz || '—'}
+Ниво було — заверен на: ${m.kota_bilo || '—'}
 Образец 3 — дата: ${m.obr3_date || '—'}
 Заповедна книга № ${m.zk_number || '—'}, дата: ${m.zk_date || '—'}
 Актове обр. 7: ${m.akt7_br || '—'} бр., от ${m.akt7_ot || '—'} до ${m.akt7_do || '—'}
@@ -3777,12 +3777,12 @@ async function runAkt15Modal() {
     const v = id => document.getElementById(id)?.value?.trim() || '';
 
     const manualData = {
-        prot2_date:       v('a15-prot2-date'),
-        kota_izkop_date:  v('a15-kota-izkop'),
-        kota_cokul_date:  v('a15-kota-cokul'),
-        kota_korniz_date: v('a15-kota-korniz'),
-        kota_bilo_date:   v('a15-kota-bilo'),
-        obr3_date:        v('a15-obr3-date'),
+        prot2_date:    v('a15-prot2-date'),
+        kota_izkop:   v('a15-kota-izkop'),
+        kota_cokul:   v('a15-kota-cokul'),
+        kota_korniz:  v('a15-kota-korniz'),
+        kota_bilo:    v('a15-kota-bilo'),
+        obr3_date:    v('a15-obr3-date'),
         zk_number:        v('a15-zk-number'),
         zk_date:          v('a15-zk-date'),
         akt7_br:          v('a15-akt7-br'),
