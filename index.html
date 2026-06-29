@@ -1231,6 +1231,38 @@
         .doc-list-item:hover { background: var(--surface); }
         .doc-list-item .doc-type { font-weight: 600; color: var(--ink); }
         .doc-list-item .doc-date { font-size: 11px; color: var(--muted); }
+
+        /* ── Акт 15 doc-card ── */
+        .doc-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            transition: var(--transition);
+        }
+        .doc-card:hover { border-color: var(--gold); box-shadow: var(--shadow); }
+        .doc-card-icon { font-size: 32px; }
+        .doc-card-title { font-weight: 700; font-size: 16px; color: var(--ink); }
+        .doc-card-desc { font-size: 13px; color: var(--muted); }
+
+        /* ── Modal form helpers ── */
+        .btn-close {
+            background: none; border: none; font-size: 18px;
+            color: var(--muted); cursor: pointer; padding: 4px 8px;
+            border-radius: 6px; line-height: 1;
+        }
+        .btn-close:hover { background: var(--surface-2); color: var(--ink); }
+        .form-section { margin-bottom: 20px; }
+        .form-section h4 { font-size: 14px; font-weight: 700; color: var(--slate); margin: 0 0 10px; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; }
+        .form-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .form-row label { min-width: 220px; font-size: 13px; color: var(--slate); flex-shrink: 0; }
+        .form-row input[type="text"], .form-row input[type="file"] { flex: 1; font-size: 13px; }
+        .form-row input[type="text"] { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
+        .form-row input[type="text"]:focus { outline: none; border-color: var(--gold); }
     </style>
 </head>
 <body>
@@ -1674,6 +1706,157 @@
             <button class="btn btn-success" id="modal-generate-btn">📄 Генерирай документи</button>
         </div>
     </div>
+</div>
+
+<!-- ═══════════ MODAL АКТ 15 ═══════════ -->
+<div class="modal-overlay" id="modal-akt15" onclick="if(event.target===this)closeModal('modal-akt15')">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <div class="modal-title">🏛️ Акт 15 — Данни за генериране</div>
+      <button onclick="closeModal('modal-akt15')" class="btn-close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">
+        <h4>📋 Протокол 2 — Дати на нива</h4>
+        <div class="form-row">
+          <label>Дата на Протокол 2</label>
+          <input type="text" id="a15-prot2-date" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Ниво изкоп — заверен на</label>
+          <input type="text" id="a15-kota-izkop" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Ниво цокъл — заверен на</label>
+          <input type="text" id="a15-kota-cokul" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Ниво корниз — заверен на</label>
+          <input type="text" id="a15-kota-korniz" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Ниво було — заверен на</label>
+          <input type="text" id="a15-kota-bilo" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>📋 Строителни книжа</h4>
+        <div class="form-row">
+          <label>Образец 3 — дата</label>
+          <input type="text" id="a15-obr3-date" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Заповедна книга №</label>
+          <input type="text" id="a15-zk-number" class="form-input" placeholder="напр. 1190">
+        </div>
+        <div class="form-row">
+          <label>Заповедна книга дата</label>
+          <input type="text" id="a15-zk-date" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Актове обр. 7 — брой</label>
+          <input type="text" id="a15-akt7-br" class="form-input" placeholder="напр. 5">
+        </div>
+        <div class="form-row">
+          <label>Актове обр. 7 — период (от)</label>
+          <input type="text" id="a15-akt7-ot" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Актове обр. 7 — период (до)</label>
+          <input type="text" id="a15-akt7-do" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Акт обр. 14 — дата</label>
+          <input type="text" id="a15-akt14-date" class="form-input" placeholder="дд.мм.гггг" oninput="formatDateInput(this)">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>📋 Актове обр. 12 по части</h4>
+        <div class="form-row">
+          <label>Арх. — брой / от / до</label>
+          <input type="text" id="a15-akt12-arh-br" class="form-input" placeholder="брой" style="max-width:70px">
+          <input type="text" id="a15-akt12-arh-ot" class="form-input" placeholder="от" oninput="formatDateInput(this)">
+          <input type="text" id="a15-akt12-arh-do" class="form-input" placeholder="до" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>ВиК — брой / от / до</label>
+          <input type="text" id="a15-akt12-vik-br" class="form-input" placeholder="брой" style="max-width:70px">
+          <input type="text" id="a15-akt12-vik-ot" class="form-input" placeholder="от" oninput="formatDateInput(this)">
+          <input type="text" id="a15-akt12-vik-do" class="form-input" placeholder="до" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>Електро — брой / от / до</label>
+          <input type="text" id="a15-akt12-el-br" class="form-input" placeholder="брой" style="max-width:70px">
+          <input type="text" id="a15-akt12-el-ot" class="form-input" placeholder="от" oninput="formatDateInput(this)">
+          <input type="text" id="a15-akt12-el-do" class="form-input" placeholder="до" oninput="formatDateInput(this)">
+        </div>
+        <div class="form-row">
+          <label>ОВК — брой / от / до</label>
+          <input type="text" id="a15-akt12-ovk-br" class="form-input" placeholder="брой" style="max-width:70px">
+          <input type="text" id="a15-akt12-ovk-ot" class="form-input" placeholder="от" oninput="formatDateInput(this)">
+          <input type="text" id="a15-akt12-ovk-do" class="form-input" placeholder="до" oninput="formatDateInput(this)">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>📋 Упълномощен представител</h4>
+        <div class="form-row">
+          <label>Три имена</label>
+          <input type="text" id="a15-upulnomoshnik" class="form-input" placeholder="напр. Елизар Спасов Спасов">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>📎 Прикачи документи</h4>
+        <div class="form-row">
+          <label>Одобрен проект (.docx)</label>
+          <input type="file" id="a15-file-project" accept=".docx,.doc">
+        </div>
+        <div class="form-row">
+          <label>Виза за проектиране (PDF)</label>
+          <input type="file" id="a15-file-viza" accept=".pdf">
+        </div>
+        <div class="form-row">
+          <label>Скица на сграда (PDF)</label>
+          <input type="file" id="a15-file-skica" accept=".pdf">
+        </div>
+        <div class="form-row">
+          <label>Договор ВиК (PDF)</label>
+          <input type="file" id="a15-file-vik" accept=".pdf">
+        </div>
+        <div class="form-row">
+          <label>Договор Ел. (PDF)</label>
+          <input type="file" id="a15-file-el" accept=".pdf">
+        </div>
+        <div class="form-row">
+          <label>НА на апартаменти (PDF, може няколко)</label>
+          <input type="file" id="a15-file-na" accept=".pdf" multiple>
+        </div>
+        <div class="form-row">
+          <label>Заповед по чл.154 ЗУТ (PDF, ако има)</label>
+          <input type="file" id="a15-file-zap154" accept=".pdf">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <button class="btn btn-primary" onclick="runAkt15Modal()">🤖 Генерирай с AI</button>
+        <button class="btn btn-secondary" onclick="closeModal('modal-akt15')">Затвори</button>
+      </div>
+
+      <div id="akt15-modal-loading" style="display:none;margin-top:16px;text-align:center">
+        <span class="spinner"></span>
+        <p style="margin-top:8px;font-size:13px;color:var(--muted)">AI генерира Акт 15... Моля изчакайте (около 1–2 мин.)</p>
+      </div>
+
+      <div id="akt15-modal-result" style="display:none;margin-top:20px">
+        <div id="akt15-modal-result-body"></div>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <script>
@@ -3540,6 +3723,143 @@ function clearAkt15() {
     document.getElementById('akt15-status').textContent = '';
 }
 
+function showAkt15Form() {
+    if (!appData.currentProject) {
+        showAlert('error', 'Изберете активен проект преди да генерирате Акт 15!');
+        return;
+    }
+    // Reset result area
+    document.getElementById('akt15-modal-result').style.display = 'none';
+    document.getElementById('akt15-modal-result-body').innerHTML = '';
+    document.getElementById('akt15-modal-loading').style.display = 'none';
+    document.getElementById('modal-akt15').classList.add('open');
+}
+
+async function runAkt15Modal() {
+    const project = appData.currentProject;
+    if (!project) { showAlert('error', 'Няма активен проект!'); return; }
+
+    const v = id => document.getElementById(id)?.value?.trim() || '';
+
+    const manualData = {
+        prot2_date:      v('a15-prot2-date'),
+        kota_izkop_date: v('a15-kota-izkop'),
+        kota_cokul_date: v('a15-kota-cokul'),
+        kota_korniz_date:v('a15-kota-korniz'),
+        kota_bilo_date:  v('a15-kota-bilo'),
+        obr3_date:       v('a15-obr3-date'),
+        zk_number:       v('a15-zk-number'),
+        zk_date:         v('a15-zk-date'),
+        akt7_br:         v('a15-akt7-br'),
+        akt7_ot:         v('a15-akt7-ot'),
+        akt7_do:         v('a15-akt7-do'),
+        akt14_date:      v('a15-akt14-date'),
+        akt12_arh:   { br: v('a15-akt12-arh-br'), ot: v('a15-akt12-arh-ot'), do: v('a15-akt12-arh-do') },
+        akt12_vik:   { br: v('a15-akt12-vik-br'), ot: v('a15-akt12-vik-ot'), do: v('a15-akt12-vik-do') },
+        akt12_el:    { br: v('a15-akt12-el-br'),  ot: v('a15-akt12-el-ot'),  do: v('a15-akt12-el-do') },
+        akt12_ovk:   { br: v('a15-akt12-ovk-br'), ot: v('a15-akt12-ovk-ot'), do: v('a15-akt12-ovk-do') },
+        upulnomoshnik: v('a15-upulnomoshnik'),
+    };
+
+    // Collect files
+    const fileInputIds = ['a15-file-project','a15-file-viza','a15-file-skica','a15-file-vik','a15-file-el','a15-file-na','a15-file-zap154'];
+    const allFiles = [];
+    for (const fid of fileInputIds) {
+        const input = document.getElementById(fid);
+        if (input?.files) Array.from(input.files).forEach(f => allFiles.push(f));
+    }
+
+    const loading = document.getElementById('akt15-modal-loading');
+    const resultSection = document.getElementById('akt15-modal-result');
+    const resultBody = document.getElementById('akt15-modal-result-body');
+    loading.style.display = 'block';
+    resultSection.style.display = 'none';
+
+    try {
+        const consultant = appData.consultants?.find(c => c.id === project.consultant?.id);
+        const passportRows = buildPassportRows(project, consultant, {});
+
+        const filesPayload = await Promise.all(allFiles.map(f => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve({
+                name: f.name,
+                media_type: f.type || 'application/octet-stream',
+                data: e.target.result.split(',')[1]
+            });
+            reader.onerror = reject;
+            reader.readAsDataURL(f);
+        })));
+
+        const token = getToken();
+        const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
+        if (!apiUrl) throw new Error('API URL не е конфигуриран');
+
+        const response = await fetch(apiUrl + '/api/ai/generate-akt15-sgrada', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({
+                pi: project.pi,
+                passport: passportRows,
+                apartments: [],
+                manual: manualData,
+                files: filesPayload
+            })
+        });
+
+        if (response.status === 401) { localStorage.removeItem('akt_token'); showLoginScreen(); throw new Error('Сесията е изтекла.'); }
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'HTTP ' + response.status }));
+            throw new Error(err.error || 'HTTP ' + response.status);
+        }
+
+        const data = await response.json();
+        window._akt15LastData = data;
+
+        // Auto-download docx
+        if (data.docx_b64) {
+            const blob = new Blob(
+                [Uint8Array.from(atob(data.docx_b64), c => c.charCodeAt(0))],
+                { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+            );
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = data.filename || 'Akt_15.docx'; a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        let docxBlock = data.docx_b64
+            ? `<div style="margin-top:12px"><button class="btn btn-primary" onclick="downloadAkt15Docx()">📥 Свали .docx отново</button></div>`
+            : data.docx_error
+                ? `<div class="alert alert-error" style="margin-top:12px">⚠️ .docx не е създаден: ${data.docx_error}</div>`
+                : '';
+
+        resultBody.innerHTML = `
+            <div style="padding:12px 0">
+                <div style="font-size:32px;margin-bottom:6px">${data.docx_b64 ? '✅' : '⚠️'}</div>
+                <div style="font-weight:700;font-size:15px;margin-bottom:4px">
+                    ${data.docx_b64 ? 'Акт 15 генериран — .docx се сваля!' : 'AI текстът е готов, но .docx липсва'}
+                </div>
+                ${docxBlock}
+                <hr style="margin:14px 0;border-color:var(--border)">
+                <div style="white-space:pre-wrap;font-size:13px;line-height:1.7">${data.result || ''}</div>
+                <div style="margin-top:12px">
+                    <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.querySelector('#akt15-modal-result-body .pre-wrap, #akt15-modal-result-body div:last-child').innerText||'').then(()=>showAlert('success','Копирано!'))">📋 Копирай текста</button>
+                </div>
+            </div>`;
+        resultSection.style.display = 'block';
+        showAlert('success', 'Акт 15 генериран успешно!');
+
+    } catch (err) {
+        resultBody.innerHTML = `<div class="alert alert-error">❌ ${err.message}</div>`;
+        resultSection.style.display = 'block';
+        showAlert('error', 'Грешка: ' + err.message);
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
 function addToHistory(type, pi, description) {
     if (!appData.history) appData.history = [];
     appData.history.unshift({ type, pi, description, date: new Date().toISOString() });
@@ -4720,12 +5040,25 @@ function renderGenerateSection() {
         </div>
 
         <!-- Генерирай бутон -->
-        <button class="btn btn-success btn-lg" id="generate-btn" 
-                onclick="generateDocumentsViaApi()" 
-                style="width:100%;margin-bottom:40px"
+        <button class="btn btn-success btn-lg" id="generate-btn"
+                onclick="generateDocumentsViaApi()"
+                style="width:100%;margin-bottom:24px"
                 ${!hasApi ? 'disabled title="Конфигурирайте API URL в Настройки"' : ''}>
             🚀 Генерирай .docx чрез Python API
         </button>
+
+        <!-- AI документи -->
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 12px">
+            AI генерирани документи
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:40px">
+          <div class="doc-card" id="card-akt15-sgrada">
+            <div class="doc-card-icon">🏛️</div>
+            <div class="doc-card-title">Акт 15 (сграда)</div>
+            <div class="doc-card-desc">Констативен акт за установяване годността за приемане на строежа</div>
+            <button class="btn btn-primary" style="margin-top:4px" onclick="showAkt15Form()">Генерирай</button>
+          </div>
+        </div>
     `;
 }
 
