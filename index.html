@@ -3898,16 +3898,23 @@ async function runAkt15Modal() {
         const consultant = appData.consultants?.find(c => c.id === project.consultant?.id) || {};
         const cl = project.client || {};
         const b  = project.builder || {};
+        const projectants = (project.projectants || []).map(p => `Част ${p.specialization}: ${p.title || ''} ${p.name || ''}, рег. № ${p.ppp || '—'}`.trim()).join('\n') || '—';
+        const employees   = (project.employees || consultant.employees || []).map(e => `Част ${e.specialization}: ${e.title || ''} ${e.name || ''}`.trim()).join('\n') || '—';
         const d = {
-            stroej:     project.stroej || '—',
-            address:    project.address || '—',
-            vozlagatel: `${cl.name || '—'}${cl.eik ? ', ЕИК ' + cl.eik : ''}${cl.rep ? ', представлявано от ' + cl.rep : ''}`,
-            rs_number:  project.permit?.number || '—',
-            rs_date:    project.permit?.date   || '—',
-            rs_issuer:  project.permit?.issuer || '—',
-            consultant: `${consultant.name || '—'}${consultant.eik ? ', ЕИК ' + consultant.eik : ''}${consultant.address ? ', ' + consultant.address : ''}, управител: ${consultant.manager || '—'}`,
-            builder:    `${b.company || '—'}${b.eik ? ', ЕИК ' + b.eik : ''}${b.manager ? ', представлявано от ' + b.manager : ''}`,
-            tech:       b.tech || '—',
+            stroej:      project.stroej || '—',
+            address:     project.address || '—',
+            vozlagatel:  `${cl.name || '—'}${cl.eik ? ', ЕИК ' + cl.eik : ''}${cl.rep ? ', представлявано от ' + cl.rep : ''}`,
+            rs_number:   project.permit?.number || '—',
+            rs_date:     project.permit?.date   || '—',
+            rs_issuer:   project.permit?.issuer || '—',
+            rs_in_force: project.permit?.effective || '—',
+            project_date: project.project_date || project.permit?.project_date || '—',
+            dogovor_sn:  project.dogovor_sn || consultant.dogovor_sn || '—',
+            consultant:  `${consultant.name || '—'}${consultant.eik ? ', ЕИК ' + consultant.eik : ''}${consultant.address ? ', ' + consultant.address : ''}, управител: ${consultant.manager || '—'}`,
+            builder:     `${b.company || '—'}${b.eik ? ', ЕИК ' + b.eik : ''}${b.manager ? ', представлявано от ' + b.manager : ''}`,
+            tech:        b.tech || '—',
+            projectants,
+            employees,
         };
         const prompt = buildAkt15Prompt(d, manualData);
 
