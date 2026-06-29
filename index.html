@@ -3889,6 +3889,7 @@ async function runAkt15Modal() {
             </div>`;
         resultSection.style.display = 'block';
         loading.style.display = 'none';
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         showAlert('success', 'Акт 15 генериран успешно!');
 
     } catch (err) {
