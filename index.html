@@ -3819,7 +3819,7 @@ async function runAkt15Modal() {
         const consultant = appData.consultants?.find(c => c.id === project.consultant?.id);
         const prompt = buildAkt15Prompt(project, consultant, manualData);
 
-        const filesPayload = await Promise.all(allFiles.map(f => new Promise((resolve, reject) => {
+        const files = await Promise.all(allFiles.map(f => new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = e => resolve({
                 name: f.name,
@@ -3830,7 +3830,7 @@ async function runAkt15Modal() {
             reader.readAsDataURL(f);
         })));
 
-        console.log('Payload към API:', JSON.stringify({ prompt: prompt?.substring(0, 100), filesCount: filesPayload.length }));
+        console.log('Prompt:', prompt?.substring(0, 100));
 
         const token = getToken();
         const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
@@ -3844,8 +3844,8 @@ async function runAkt15Modal() {
             },
             body: JSON.stringify({
                 pi: project.pi,
-                prompt,
-                files: filesPayload
+                prompt: prompt,
+                files: files
             })
         });
 
