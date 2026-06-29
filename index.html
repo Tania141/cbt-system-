@@ -3877,26 +3877,18 @@ async function runAkt15Modal() {
             URL.revokeObjectURL(url);
         }
 
-        let docxBlock = data.docx_b64
-            ? `<div style="margin-top:12px"><button class="btn btn-primary" onclick="downloadAkt15Docx()">📥 Свали .docx отново</button></div>`
-            : data.docx_error
-                ? `<div class="alert alert-error" style="margin-top:12px">⚠️ .docx не е създаден: ${data.docx_error}</div>`
-                : '';
-
         resultBody.innerHTML = `
             <div style="padding:12px 0">
-                <div style="font-size:32px;margin-bottom:6px">${data.docx_b64 ? '✅' : '⚠️'}</div>
-                <div style="font-weight:700;font-size:15px;margin-bottom:4px">
-                    ${data.docx_b64 ? 'Акт 15 генериран — .docx се сваля!' : 'AI текстът е готов, но .docx липсва'}
-                </div>
-                ${docxBlock}
-                <hr style="margin:14px 0;border-color:var(--border)">
-                <div style="white-space:pre-wrap;font-size:13px;line-height:1.7">${data.result || ''}</div>
-                <div style="margin-top:12px">
-                    <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.querySelector('#akt15-modal-result-body .pre-wrap, #akt15-modal-result-body div:last-child').innerText||'').then(()=>showAlert('success','Копирано!'))">📋 Копирай текста</button>
-                </div>
+                <div style="font-size:32px;margin-bottom:6px">✅</div>
+                <div style="font-weight:700;font-size:15px;margin-bottom:8px">Акт 15 е генериран!</div>
+                <button class="btn btn-secondary" onclick="navigator.clipboard.writeText(window._akt15LastData?.result||'').then(()=>showAlert('success','Копирано!'))">📋 Копирай текст</button>
+                ${data.docx_b64 ? `<button class="btn btn-primary" style="margin-left:8px" onclick="downloadAkt15Docx()">📥 Свали .docx</button>` : ''}
+                <hr style="margin:14px 0">
+                <div style="white-space:pre-wrap;font-size:12px;max-height:400px;overflow-y:auto;background:#f8f9fa;padding:12px;border-radius:6px">${(data.result || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                ${data.input_tokens ? `<div style="font-size:11px;color:#888;margin-top:8px">Токени: ${data.input_tokens.toLocaleString()} вх. / ${data.output_tokens.toLocaleString()} изх.</div>` : ''}
             </div>`;
         resultSection.style.display = 'block';
+        loading.style.display = 'none';
         showAlert('success', 'Акт 15 генериран успешно!');
 
     } catch (err) {
