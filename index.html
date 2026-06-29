@@ -3735,25 +3735,20 @@ function showAkt15Form() {
     document.getElementById('modal-akt15').classList.add('open');
 }
 
-function buildAkt15Prompt(project, consultant, m) {
-    const p = project;
-    const c = consultant || {};
-    const cl = p.client || {};
-    const b  = p.builder || {};
-
-    const akt12row = (label, d) =>
-        d.br ? `  ${label}: ${d.br} бр., от ${d.ot || '—'} до ${d.do || '—'}` : '';
+function buildAkt15Prompt(d, m) {
+    const akt12row = (label, r) =>
+        r.br ? `  ${label}: ${r.br} бр., от ${r.ot || '—'} до ${r.do || '—'}` : '';
 
     return `Ти си опитен строителен надзорник. Съставяш Акт 15 за сграда по Наредба №3/2003 г.
 
 ДАННИ ОТ ПАСПОРТА:
-Строеж: ${p.stroej || '—'}
-Адрес: ${p.address || '—'}
-Възложител: ${cl.name || '—'}${cl.eik ? ', ЕИК ' + cl.eik : ''}${cl.rep ? ', представлявано от ' + cl.rep : ''}
-РС Номер: ${p.permit?.number || '—'}, Дата: ${p.permit?.date || '—'}, Издател: ${p.permit?.issuer || '—'}
-Консултант: ${c.name || '—'}${c.eik ? ', ЕИК ' + c.eik : ''}${c.address ? ', ' + c.address : ''}, управител: ${c.manager || '—'}
-Строител: ${b.company || '—'}${b.eik ? ', ЕИК ' + b.eik : ''}${b.manager ? ', представлявано от ' + b.manager : ''}
-Технически ръководител: ${b.tech || '—'}
+Строеж: ${d.stroej || '—'}
+Адрес: ${d.address || '—'}
+Възложител: ${d.vozlagatel || '—'}
+РС Номер: ${d.rs_number || '—'}, Дата: ${d.rs_date || '—'}, Издател: ${d.rs_issuer || '—'}
+Консултант: ${d.consultant || '—'}
+Строител: ${d.builder || '—'}
+Технически ръководител: ${d.tech || '—'}
 
 ПОПЪЛНЕНИ ДАТИ И ДАННИ:
 Протокол 2 — дата: ${m.prot2_date || '—'}
@@ -3816,8 +3811,21 @@ async function runAkt15Modal() {
     resultSection.style.display = 'none';
 
     try {
-        const consultant = appData.consultants?.find(c => c.id === project.consultant?.id);
-        const prompt = buildAkt15Prompt(project, consultant, manualData);
+        const consultant = appData.consultants?.find(c => c.id === project.consultant?.id) || {};
+        const cl = project.client || {};
+        const b  = project.builder || {};
+        const d = {
+            stroej:     project.stroej || '—',
+            address:    project.address || '—',
+            vozlagatel: `${cl.name || '—'}${cl.eik ? ', ЕИК ' + cl.eik : ''}${cl.rep ? ', представлявано от ' + cl.rep : ''}`,
+            rs_number:  project.permit?.number || '—',
+            rs_date:    project.permit?.date   || '—',
+            rs_issuer:  project.permit?.issuer || '—',
+            consultant: `${consultant.name || '—'}${consultant.eik ? ', ЕИК ' + consultant.eik : ''}${consultant.address ? ', ' + consultant.address : ''}, управител: ${consultant.manager || '—'}`,
+            builder:    `${b.company || '—'}${b.eik ? ', ЕИК ' + b.eik : ''}${b.manager ? ', представлявано от ' + b.manager : ''}`,
+            tech:       b.tech || '—',
+        };
+        const prompt = buildAkt15Prompt(d, manualData);
 
         const files = await Promise.all(allFiles.map(f => new Promise((resolve, reject) => {
             const reader = new FileReader();
