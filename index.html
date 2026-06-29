@@ -3735,6 +3735,46 @@ function showAkt15Form() {
     document.getElementById('modal-akt15').classList.add('open');
 }
 
+function buildAkt15Prompt(project, consultant, m) {
+    const p = project;
+    const c = consultant || {};
+    const cl = p.client || {};
+    const b  = p.builder || {};
+
+    const akt12row = (label, d) =>
+        d.br ? `  ${label}: ${d.br} бр., от ${d.ot || '—'} до ${d.do || '—'}` : '';
+
+    return `Ти си опитен строителен надзорник. Съставяш Акт 15 за сграда по Наредба №3/2003 г.
+
+ДАННИ ОТ ПАСПОРТА:
+Строеж: ${p.stroej || '—'}
+Адрес: ${p.address || '—'}
+Възложител: ${cl.name || '—'}${cl.eik ? ', ЕИК ' + cl.eik : ''}${cl.rep ? ', представлявано от ' + cl.rep : ''}
+РС Номер: ${p.permit?.number || '—'}, Дата: ${p.permit?.date || '—'}, Издател: ${p.permit?.issuer || '—'}
+Консултант: ${c.name || '—'}${c.eik ? ', ЕИК ' + c.eik : ''}${c.address ? ', ' + c.address : ''}, управител: ${c.manager || '—'}
+Строител: ${b.company || '—'}${b.eik ? ', ЕИК ' + b.eik : ''}${b.manager ? ', представлявано от ' + b.manager : ''}
+Технически ръководител: ${b.tech || '—'}
+
+ПОПЪЛНЕНИ ДАТИ И ДАННИ:
+Протокол 2 — дата: ${m.prot2_date || '—'}
+Ниво изкоп — заверен на: ${m.kota_izkop_date || '—'}
+Ниво цокъл — заверен на: ${m.kota_cokul_date || '—'}
+Ниво корниз — заверен на: ${m.kota_korniz_date || '—'}
+Ниво било — заверен на: ${m.kota_bilo_date || '—'}
+Образец 3 — дата: ${m.obr3_date || '—'}
+Заповедна книга № ${m.zk_number || '—'}, дата: ${m.zk_date || '—'}
+Актове обр. 7: ${m.akt7_br || '—'} бр., от ${m.akt7_ot || '—'} до ${m.akt7_do || '—'}
+Акт обр. 14 — дата: ${m.akt14_date || '—'}
+
+АКТОВЕ ОБР. 12 ПО ЧАСТИ:
+${[akt12row('Арх.', m.akt12_arh||{}), akt12row('ВиК', m.akt12_vik||{}), akt12row('Електро', m.akt12_el||{}), akt12row('ОВК', m.akt12_ovk||{})].filter(Boolean).join('\n') || '  —'}
+
+УПЪЛНОМОЩЕН ПРЕДСТАВИТЕЛ: ${m.upulnomoshnik || '—'}
+
+Прегледай прикачените документи (ако има) и генерирай пълен текст на Акт 15 готов за Word.
+Включи всички попълнени дати и данни точно така, както са предоставени.`;
+}
+
 async function runAkt15Modal() {
     const project = appData.currentProject;
     if (!project) { showAlert('error', 'Няма активен проект!'); return; }
@@ -3742,22 +3782,22 @@ async function runAkt15Modal() {
     const v = id => document.getElementById(id)?.value?.trim() || '';
 
     const manualData = {
-        prot2_date:      v('a15-prot2-date'),
-        kota_izkop_date: v('a15-kota-izkop'),
-        kota_cokul_date: v('a15-kota-cokul'),
-        kota_korniz_date:v('a15-kota-korniz'),
-        kota_bilo_date:  v('a15-kota-bilo'),
-        obr3_date:       v('a15-obr3-date'),
-        zk_number:       v('a15-zk-number'),
-        zk_date:         v('a15-zk-date'),
-        akt7_br:         v('a15-akt7-br'),
-        akt7_ot:         v('a15-akt7-ot'),
-        akt7_do:         v('a15-akt7-do'),
-        akt14_date:      v('a15-akt14-date'),
-        akt12_arh:   { br: v('a15-akt12-arh-br'), ot: v('a15-akt12-arh-ot'), do: v('a15-akt12-arh-do') },
-        akt12_vik:   { br: v('a15-akt12-vik-br'), ot: v('a15-akt12-vik-ot'), do: v('a15-akt12-vik-do') },
-        akt12_el:    { br: v('a15-akt12-el-br'),  ot: v('a15-akt12-el-ot'),  do: v('a15-akt12-el-do') },
-        akt12_ovk:   { br: v('a15-akt12-ovk-br'), ot: v('a15-akt12-ovk-ot'), do: v('a15-akt12-ovk-do') },
+        prot2_date:       v('a15-prot2-date'),
+        kota_izkop_date:  v('a15-kota-izkop'),
+        kota_cokul_date:  v('a15-kota-cokul'),
+        kota_korniz_date: v('a15-kota-korniz'),
+        kota_bilo_date:   v('a15-kota-bilo'),
+        obr3_date:        v('a15-obr3-date'),
+        zk_number:        v('a15-zk-number'),
+        zk_date:          v('a15-zk-date'),
+        akt7_br:          v('a15-akt7-br'),
+        akt7_ot:          v('a15-akt7-ot'),
+        akt7_do:          v('a15-akt7-do'),
+        akt14_date:       v('a15-akt14-date'),
+        akt12_arh:  { br: v('a15-akt12-arh-br'), ot: v('a15-akt12-arh-ot'), do: v('a15-akt12-arh-do') },
+        akt12_vik:  { br: v('a15-akt12-vik-br'), ot: v('a15-akt12-vik-ot'), do: v('a15-akt12-vik-do') },
+        akt12_el:   { br: v('a15-akt12-el-br'),  ot: v('a15-akt12-el-ot'),  do: v('a15-akt12-el-do') },
+        akt12_ovk:  { br: v('a15-akt12-ovk-br'), ot: v('a15-akt12-ovk-ot'), do: v('a15-akt12-ovk-do') },
         upulnomoshnik: v('a15-upulnomoshnik'),
     };
 
@@ -3777,7 +3817,7 @@ async function runAkt15Modal() {
 
     try {
         const consultant = appData.consultants?.find(c => c.id === project.consultant?.id);
-        const passportRows = buildPassportRows(project, consultant, {});
+        const prompt = buildAkt15Prompt(project, consultant, manualData);
 
         const filesPayload = await Promise.all(allFiles.map(f => new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -3789,6 +3829,8 @@ async function runAkt15Modal() {
             reader.onerror = reject;
             reader.readAsDataURL(f);
         })));
+
+        console.log('Payload към API:', JSON.stringify({ prompt: prompt?.substring(0, 100), filesCount: filesPayload.length }));
 
         const token = getToken();
         const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
@@ -3802,9 +3844,7 @@ async function runAkt15Modal() {
             },
             body: JSON.stringify({
                 pi: project.pi,
-                passport: passportRows,
-                apartments: [],
-                manual: manualData,
+                prompt,
                 files: filesPayload
             })
         });
