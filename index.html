@@ -3549,13 +3549,8 @@ function selectAkt15() {
     document.getElementById('protocol-form-section').style.display = 'none';
     document.getElementById('ai-result-section').style.display = 'none';
 
-    // Highlight Акт 15 card
-    window._akt15Selected = true;
-    const card = document.getElementById('proto-card-akt15sgrada');
-    if (card) card.style.borderColor = 'var(--gold)';
-
-    document.getElementById('akt15-form-section').style.display = 'block';
-    document.getElementById('akt15-form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Акт 15 (сграда) използва общия модал (с верификация на дати и тестов режим)
+    showAkt15Form();
 }
 
 function handleAkt15Files(files) {
