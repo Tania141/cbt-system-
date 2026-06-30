@@ -1843,9 +1843,12 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:12px;margin-top:20px">
+      <div style="display:flex;gap:12px;margin-top:20px;align-items:center">
         <button class="btn btn-primary" onclick="runAkt15Modal()">🤖 Генерирай с AI</button>
         <button class="btn btn-secondary" onclick="closeModal('modal-akt15')">Затвори</button>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-top:8px">
+            <input type="checkbox" id="a15-test-mode"> Тестов режим (без AI, без токени)
+        </label>
       </div>
 
       <div id="akt15-modal-loading" style="display:none;margin-top:16px;text-align:center">
@@ -3943,6 +3946,8 @@ async function runAkt15Modal() {
         const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
         if (!apiUrl) throw new Error('API URL не е конфигуриран');
 
+        const testMode = document.getElementById('a15-test-mode')?.checked || false;
+
         const response = await fetch(apiUrl + '/api/ai/generate-akt15-sgrada', {
             method: 'POST',
             headers: {
@@ -3953,7 +3958,9 @@ async function runAkt15Modal() {
                 pi: project.pi,
                 prompt: prompt,
                 files: files,
-                manual: manualForValidation
+                manual: manualForValidation,
+                apartments: project.apartments || [],
+                test_mode: testMode
             })
         });
 
