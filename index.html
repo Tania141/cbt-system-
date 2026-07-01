@@ -3447,9 +3447,13 @@ async function sendChatMessage() {
 
     try {
         // Изпращаме цялата история към Railway
+        const token = getToken();
         const response = await fetch(railwayUrl + '/api/ai/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
             body: JSON.stringify({
                 messages: window.aiSession.conversationHistory
             })
