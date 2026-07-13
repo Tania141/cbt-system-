@@ -1864,6 +1864,103 @@
   </div>
 </div>
 
+<!-- ═══════════ MODAL ПРОТОКОЛ 2 (ръчно попълване) ═══════════ -->
+<div class="modal-overlay" id="modal-protokol2" onclick="if(event.target===this)closeModal('modal-protokol2')">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div class="modal-title">📐 Протокол 2 — Данни за генериране</div>
+      <button onclick="closeModal('modal-protokol2')" class="btn-close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-section">
+        <h4>📏 Коти (в метри)</h4>
+        <div class="form-row">
+          <label>Кота изкоп</label>
+          <input type="text" id="p2-kota-izkop" class="form-input" placeholder="напр. -2.50">
+        </div>
+        <div class="form-row">
+          <label>Кота цокъл</label>
+          <input type="text" id="p2-kota-cokul" class="form-input" placeholder="напр. 142.50">
+        </div>
+        <div class="form-row">
+          <label>Кота корниз</label>
+          <input type="text" id="p2-kota-korniz" class="form-input" placeholder="напр. +9.80">
+        </div>
+        <div class="form-row">
+          <label>Кота bilo</label>
+          <input type="text" id="p2-kota-bilo" class="form-input" placeholder="напр. +12.40">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>📍 Репер</h4>
+        <div class="form-row">
+          <label>Репер №</label>
+          <input type="text" id="p2-reper-nomer" class="form-input" placeholder="напр. РП-23">
+        </div>
+        <div class="form-row">
+          <label>Репер кота</label>
+          <input type="text" id="p2-reper-kota" class="form-input" placeholder="напр. 143.750">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>📝 Описания</h4>
+        <div class="form-row" style="align-items:flex-start">
+          <label style="padding-top:6px">Описание на площадката</label>
+          <textarea id="p2-opisanie-ploshtadka" class="form-input" rows="3"
+            placeholder="Описание на строителната площадка и прилежащата среда"></textarea>
+        </div>
+        <div class="form-row" style="align-items:flex-start">
+          <label style="padding-top:6px">Дървесност</label>
+          <div>
+            <label style="display:inline-flex;align-items:center;gap:6px;margin-right:12px">
+              <input type="radio" name="p2-darv-radio" value="няма" checked> Няма
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px">
+              <input type="radio" name="p2-darv-radio" value="има"> Има
+            </label>
+            <textarea id="p2-darvesenost" class="form-input" rows="2"
+              placeholder="Описание на дървесността"
+              style="margin-top:8px;display:none"></textarea>
+          </div>
+        </div>
+        <div class="form-row" style="align-items:flex-start">
+          <label style="padding-top:6px">Състояние около</label>
+          <div style="flex:1">
+            <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:13px">
+              <input type="checkbox" id="p2-sastoyanie-custom">
+              Редактирай (по подразбиране: стандартен текст)
+            </label>
+            <textarea id="p2-sastoyanie" class="form-input" rows="3"
+              style="display:none"
+              placeholder="Въведете описание на състоянието около строежа"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>✍️ Представител на Възложителя</h4>
+        <div class="form-row">
+          <label>Подписва (три имена)</label>
+          <input type="text" id="p2-vozlagatel-podpis" class="form-input"
+            placeholder="напр. Мария Тодорова Димова">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:20px;align-items:center">
+        <button class="btn btn-primary" onclick="runProtokol2Modal()" id="p2-generate-btn"
+          style="font-size:15px;padding:12px 28px">📥 Генерирай Протокол 2 (.docx)</button>
+        <button class="btn btn-secondary" onclick="closeModal('modal-protokol2')">Затвори</button>
+      </div>
+
+      <div id="p2-modal-status" style="margin-top:12px;font-size:13px"></div>
+
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════
 //  DATA MODEL
@@ -3745,6 +3842,113 @@ function showAkt15Form() {
     document.getElementById('modal-akt15').classList.add('open');
 }
 
+function showProtokol2Form() {
+    if (!appData.currentProject) {
+        showAlert('error', 'Изберете активен проект преди да генерирате Протокол 2!');
+        return;
+    }
+    document.getElementById('p2-modal-status').innerHTML = '';
+    const btn = document.getElementById('p2-generate-btn');
+    btn.disabled = false;
+    btn.textContent = '📥 Генерирай Протокол 2 (.docx)';
+
+    // Wire up radio buttons for дървесност
+    document.querySelectorAll('input[name="p2-darv-radio"]').forEach(r => {
+        r.onchange = () => {
+            const ta = document.getElementById('p2-darvesenost');
+            ta.style.display = (r.value === 'има' && r.checked) ? 'block' : 'none';
+        };
+    });
+    // Wire up custom состояние checkbox
+    document.getElementById('p2-sastoyanie-custom').onchange = function() {
+        document.getElementById('p2-sastoyanie').style.display = this.checked ? 'block' : 'none';
+    };
+
+    document.getElementById('modal-protokol2').classList.add('open');
+}
+
+async function runProtokol2Modal() {
+    const project = appData.currentProject;
+    const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
+    const extra = window.aiSession?._pendingExtra || {};
+    const consultant = window.aiSession?._pendingConsultant ||
+        appData.consultants.find(c => c.id === project?.consultant?.id);
+
+    const btn = document.getElementById('p2-generate-btn');
+    const status = document.getElementById('p2-modal-status');
+    btn.disabled = true;
+    btn.textContent = '⏳ Генериране...';
+    status.innerHTML = '';
+
+    try {
+        const izkop    = document.getElementById('p2-kota-izkop')?.value?.trim() || '';
+        const cokul    = document.getElementById('p2-kota-cokul')?.value?.trim() || '';
+        const korniz   = document.getElementById('p2-kota-korniz')?.value?.trim() || '';
+        const bilo     = document.getElementById('p2-kota-bilo')?.value?.trim() || '';
+        const reperNom = document.getElementById('p2-reper-nomer')?.value?.trim() || '';
+        const reperKota = document.getElementById('p2-reper-kota')?.value?.trim() || '';
+        const opisanie = document.getElementById('p2-opisanie-ploshtadka')?.value?.trim() || '';
+        const vozlagatel = document.getElementById('p2-vozlagatel-podpis')?.value?.trim() || '';
+
+        const darvRadio = document.querySelector('input[name="p2-darv-radio"]:checked');
+        const darvValue = (darvRadio?.value === 'има')
+            ? (document.getElementById('p2-darvesenost')?.value?.trim() || '')
+            : '';
+
+        const sastoyanieCustom = document.getElementById('p2-sastoyanie-custom')?.checked;
+        const sastoyanieValue = sastoyanieCustom
+            ? (document.getElementById('p2-sastoyanie')?.value?.trim() || SASTOYANIE_DEFAULT)
+            : SASTOYANIE_DEFAULT;
+
+        const passportRows = buildPassportRows(project, consultant, extra);
+        passportRows.push(
+            ['Възложител_Подписва',  vozlagatel],
+            ['Opisanie_Ploshtadka',  opisanie],
+            ['Kota_Izkop',   izkop],
+            ['Kota_Cokul',   cokul],
+            ['Kota_Korniz',  korniz],
+            ['Kota_Bilo',    bilo],
+            ['Reper_Nomer',  reperNom],
+            ['Reper_Kota',   reperKota],
+            ['Darvesenost',  darvValue],
+            ['Sastoyanie_Okolo', sastoyanieValue],
+        );
+
+        const token = getToken();
+        const response = await fetch(railwayUrl + '/api/generate/protokol2combined', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({ passport: passportRows, pi: project.pi })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ error: 'HTTP ' + response.status }));
+            throw new Error(err.error || 'HTTP ' + response.status);
+        }
+
+        const blob = await response.blob();
+        const filename = 'protokol2_' + project.pi + '.docx';
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl; a.download = filename; a.click();
+        URL.revokeObjectURL(dlUrl);
+
+        btn.disabled = false;
+        btn.textContent = '📥 Генерирай Протокол 2 (.docx)';
+        status.innerHTML = '<span style="color:var(--green)">✅ Протокол 2 изтеглен успешно!</span>';
+        addToHistory('generate', project.pi, 'Протокол 2 Combined (.docx)');
+
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '📥 Генерирай Протокол 2 (.docx)';
+        status.innerHTML = '<span style="color:var(--red)">❌ ' + err.message + '</span>';
+        showAlert('error', '❌ Грешка: ' + err.message);
+    }
+}
+
 function buildAkt15Prompt(d, m) {
     const akt12row = (label, r) =>
         r && r.br ? `  ${label}: ${r.br} бр., от ${r.ot || '—'} до ${r.do || '—'}` : `  ${label}: —`;
@@ -5263,6 +5467,12 @@ function renderGenerateSection() {
             <div class="doc-card-title">Акт 15 (сграда)</div>
             <div class="doc-card-desc">Констативен акт за установяване годността за приемане на строежа</div>
             <button class="btn btn-primary" style="margin-top:4px" onclick="showAkt15Form()">Генерирай</button>
+          </div>
+          <div class="doc-card" id="card-protokol2-sgrada">
+            <div class="doc-card-icon">📐</div>
+            <div class="doc-card-title">Протокол 2 (сграда)</div>
+            <div class="doc-card-desc">Протокол за определяне на строителна линия и ниво и за заверяване на нивата на строежа</div>
+            <button class="btn btn-primary" style="margin-top:4px" onclick="showProtokol2Form()">Генерирай</button>
           </div>
         </div>
     `;
