@@ -3113,6 +3113,10 @@ function showCombinedReviewForm(extracted, extra, project) {
                 <label class="form-label">Описание на площадката</label>
                 <textarea id="ai-field-opisanie" class="form-input" rows="4" style="resize:vertical">${extracted.Opisanie_Ploshtadka || ''}</textarea>
             </div>
+            <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Описание на сградата</label>
+                <textarea id="ai-field-opisanie-sgrada" class="form-input" rows="3" style="resize:vertical" placeholder="кратко описание на сградата (незадължително)">${extracted.Opisanie_Sgrada || ''}</textarea>
+            </div>
             <div class="form-group">
                 <label class="form-label">Кота изкоп</label>
                 <input type="text" id="ai-field-izkop" class="form-input" value="${extracted.Kota_Izkop || ''}" placeholder="напр. -2.50">
@@ -3214,7 +3218,8 @@ async function generateDocCombined() {
 
     try {
         // Collect edited field values from the review form
-        const opisanie  = document.getElementById('ai-field-opisanie')?.value?.trim() || '';
+        const opisanie       = document.getElementById('ai-field-opisanie')?.value?.trim() || '';
+        const opisanieSgrada = document.getElementById('ai-field-opisanie-sgrada')?.value?.trim() || '';
         const izkop     = document.getElementById('ai-field-izkop')?.value?.trim() || '';
         const cokul     = document.getElementById('ai-field-cokul')?.value?.trim() || '';
         const korniz    = document.getElementById('ai-field-korniz')?.value?.trim() || '';
@@ -3239,6 +3244,7 @@ async function generateDocCombined() {
         passportRows.push(
             ['Възложител_Подписва', vozlagatelPodpisva],
             ['Opisanie_Ploshtadka', opisanie],
+            ['Opisanie_Sgrada',    opisanieSgrada],
             ['Kota_Izkop',   izkop],
             ['Kota_Cokul',   cokul],
             ['Kota_Korniz',  korniz],
