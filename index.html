@@ -4822,6 +4822,13 @@ function renderPassportForm(projectId) {
             <p style="font-size:11px;color:var(--muted);margin-top:8px">
                 За ФЛ: само две имена. За ЮЛ: фирма, ЕИК, адрес, управител.
             </p>
+            <div style="margin-top:14px">
+                <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">УПЪЛНОМОЩЕН ПРЕДСТАВИТЕЛ (по избор)</div>
+                <input type="text" id="fp-upalnomoshten" class="form-input"
+                       placeholder="остави празно = всички възложители подписват"
+                       value="${p.upalnomoshten_predstavitel||''}">
+                <p style="font-size:11px;color:var(--muted);margin-top:4px">Ако е попълнено — само това лице ще фигурира в реда за подписи на Б. Възложителя.</p>
+            </div>
         </div>
 
         <!-- СТРОИТЕЛ -->
@@ -4897,15 +4904,20 @@ function clientRowHTML(cl, i) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
             <div>
                 <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">УПРАВИТЕЛ</div>
-                <input type="text" class="form-input" placeholder="инж. Иван Петров" 
+                <input type="text" class="form-input" placeholder="инж. Иван Петров"
                        value="${(cl&&cl.rep)||''}" onchange="updateClient(${i},'rep',this.value)">
             </div>
             <div>
                 <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">АДРЕС</div>
-                <input type="text" class="form-input" placeholder="гр. София, ул. ..." 
+                <input type="text" class="form-input" placeholder="гр. София, ул. ..."
                        value="${(cl&&cl.address)||''}" onchange="updateClient(${i},'address',this.value)">
             </div>
         </div>` : ''}
+        <div style="margin-top:8px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">ПОДПИСВА (три имена)</div>
+            <input type="text" class="form-input" placeholder="………" data-field="podpisva"
+                   value="${(cl&&cl.podpisva)||''}" onchange="updateClient(${i},'podpisva',this.value)">
+        </div>
     </div>`;
 }
 
@@ -5058,6 +5070,8 @@ function savePassport() {
             if (inputs[2]) tempClients[i].rep = inputs[2].value.trim();
             if (inputs[3]) tempClients[i].address = inputs[3].value.trim();
         }
+        const podpisvaEl = row.querySelector('input[data-field="podpisva"]');
+        tempClients[i].podpisva = podpisvaEl ? podpisvaEl.value.trim() : '';
     });
 
     const consultant = appData.consultants.find(c => c.id == consultantId);
@@ -5076,6 +5090,7 @@ function savePassport() {
         },
         client: tempClients[0] || { type: 'ФЛ', name: '' },
         clients: tempClients.filter(c => c.name),
+        upalnomoshten_predstavitel: document.getElementById('fp-upalnomoshten')?.value.trim() || '',
         builder: {
             company: document.getElementById('fp-builder-company').value,
             eik: document.getElementById('fp-builder-eik').value,
