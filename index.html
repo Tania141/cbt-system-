@@ -3444,21 +3444,21 @@ function buildPassportRows(project, consultant, extra) {
     add('Строител_Управител', project.builder?.manager);
     add('Строител_ТехРък', project.builder?.tech || extra.teh_rukovoditel);
 
-    // Възложител
+    // Възложител — списъчен контракт (backend Стъпка 1)
     const clients = project.clients || (project.client ? [project.client] : []);
-    if (clients.length === 1 && clients[0].type !== 'ЮЛ') {
-        add('Възложител_Тип', 'ФЛ');
-        add('Възложител_Фирма', clients[0].name);
-    } else if (clients.length > 1) {
-        add('Възложител_Тип', 'ФЛ');
-        add('Възложител_Фирма', clients.map(c => c.name).join(' и '));
-    } else if (clients.length === 1) {
-        add('Възложител_Тип', 'ЮЛ');
-        add('Възложител_Фирма', clients[0].name);
-        add('Възложител_ЕИК', clients[0].eik);
-        add('Възложител_Представител', clients[0].rep);
-        add('Възложител_Адрес', clients[0].address);
-    }
+    add('Възложители_Брой', clients.length);
+    clients.forEach((c, idx) => {
+        const i = idx + 1;
+        add(`Възложител_${i}_Тип`,  c.type || 'ФЛ');
+        add(`Възложител_${i}_Фирма`, c.name || '');
+        if (c.type === 'ЮЛ') {
+            add(`Възложител_${i}_ЕИК`,          c.eik     || '');
+            add(`Възложител_${i}_Адрес`,         c.address || '');
+            add(`Възложител_${i}_Представител`,  c.rep     || '');
+        }
+        add(`Възложител_${i}_Подписва`, c.podpisva || '');
+    });
+    add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
 
     // Представител на Възложителя за подписи
     const vozPodpis = document.getElementById('vozlagatel-podpis')?.value?.trim() || '';
