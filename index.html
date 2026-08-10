@@ -2119,7 +2119,7 @@ async function generateDocumentViaApi(projectId, docType) {
     try {
         showAlert('info', `⏳ Генериране на ${docType} чрез Python API...`);
         const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
-        const payload = buildExcelPayload(project, consultant);
+        const payload = buildPassportRows(project, consultant, {});
         const url = (appData.apiUrl || '').replace(/\/$/, '');
         const token = getToken();
         const r = await fetch(`${url}/api/generate/${docType}`, {
