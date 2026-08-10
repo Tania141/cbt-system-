@@ -1,5 +1,7 @@
 :80 {
     root * /app
-    file_server
+    file_server {
+        hide .git
+    }
     try_files {path} /index.html
 }
