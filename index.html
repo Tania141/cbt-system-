@@ -5508,7 +5508,7 @@ async function generateDocumentsViaApi() {
     btn.innerHTML = '<span class="spinner"></span> Генериране...';
 
     // Събери паспортните данни
-    const passportRows = buildExcelPayload(project, consultant);
+    const passportRows = buildPassportRows(project, consultant, {});
 
     // Допълнителни параметри
     const zkNum = document.getElementById('gen-zk-num')?.value.trim() || '1';
