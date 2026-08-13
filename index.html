@@ -1949,12 +1949,8 @@
       </div>
 
       <div class="form-section">
-        <h4>✍️ Представител на Възложителя</h4>
-        <div class="form-row">
-          <label>Подписва (три имена)</label>
-          <input type="text" id="p2-vozlagatel-podpis" class="form-input"
-            placeholder="напр. Мария Тодорова Димова">
-        </div>
+        <h4>✍️ Кой подписва долу?</h4>
+        <div id="p2-signers"></div>
       </div>
 
       <div style="display:flex;gap:12px;margin-top:20px;align-items:center">
@@ -3249,13 +3245,8 @@ function showCombinedReviewForm(extracted, extra, project) {
         </div>
 
         <div class="form-group" style="margin-bottom:16px">
-            <label class="form-label">Кой възложител подписва протокола?</label>
-            <select id="ai-field-vozlagatel-podpis" class="form-select">
-                ${(project.clients || (project.client ? [project.client] : [])).map((c, i) =>
-                    `<option value="${c.name || ''}">${c.name || '—'} (${c.type === 'ЮЛ' ? 'ЮЛ' : 'ФЛ'})</option>`
-                ).join('')}
-                <option value="">— не подписва —</option>
-            </select>
+            <label class="form-label">Кой подписва долу?</label>
+            <div id="ai-signers"></div>
         </div>
 
         <div class="form-group" style="margin-bottom:16px">
@@ -3286,6 +3277,8 @@ function showCombinedReviewForm(extracted, extra, project) {
         '</button>' +
         '<span style="font-size:12px;color:var(--muted)">Прегледай и коригирай данните по-горе преди генериране.</span>';
 
+    renderSignersChecklist('ai-signers', appData.currentProject);
+
     section.scrollIntoView({ behavior: 'smooth' });
     if (pdfFiles && pdfFiles.length === 0) {
         showAlert('info', 'Няма прикачени PDF — попълни полетата ръчно и генерирай.');
@@ -3315,8 +3308,6 @@ async function generateDocCombined() {
         const reperNom  = document.getElementById('ai-field-reper-nomer')?.value?.trim() || '';
         const reperKota = document.getElementById('ai-field-reper-kota')?.value?.trim() || '';
 
-        const vozlagatelPodpisva = document.getElementById('ai-field-vozlagatel-podpis')?.value || '';
-
         const darvRadio = document.querySelector('input[name="darvesenost-radio"]:checked');
         const darvValue = (darvRadio?.value === 'има')
             ? (document.getElementById('ai-field-darvesenost')?.value?.trim() || '')
@@ -3328,9 +3319,9 @@ async function generateDocCombined() {
             : SASTOYANIE_DEFAULT;
 
         // Build passport rows and add AI-extracted extras
-        const passportRows = buildPassportRows(project, consultant, extra);
+        const passportRows = buildPassportRows(project, consultant,
+            { ...extra, signers: readSigners('ai-signers') });
         passportRows.push(
-            ['Възложител_Подписва', vozlagatelPodpisva],
             ['Opisanie_Ploshtadka', opisanie],
             ['Opisanie_Sgrada',    opisanieSgrada],
             ['Kota_Izkop',   izkop],
@@ -3407,6 +3398,39 @@ function getSelectedVozlagatel(extra) {
     return client.name || '';
 }
 
+// ── Кой подписва долу: общ чеклист за трите входа към генериране ──────────────
+function clientsOf(project) {
+    return project?.clients || (project?.client ? [project.client] : []);
+}
+
+function renderSignersChecklist(containerId, project) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const clients = clientsOf(project);
+    if (!clients.length) {
+        el.innerHTML = '<p style="font-size:12px;color:var(--muted)">Няма въведени възложители в паспорта.</p>';
+        return;
+    }
+    const upalnom = (project.upalnomoshten_predstavitel || '').trim();
+    el.innerHTML = clients.map((c, idx) => {
+        const podp = [c.podpisvaTitle, c.podpisva].filter(Boolean).join(' ').trim();
+        return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer">
+            <input type="checkbox" data-signer="${idx + 1}" checked style="width:16px;height:16px;flex-shrink:0">
+            <span><strong>${c.name || '—'}</strong>${podp ? ` — подписва: ${podp}` : ' <span style="color:var(--muted)">(няма посочено лице)</span>'}</span>
+        </label>`;
+    }).join('') + (upalnom
+        ? `<p style="font-size:11px;color:var(--gold);margin-top:8px">⚠ В паспорта е зададен упълномощен представител (<strong>${upalnom}</strong>) — той подписва вместо всички и изборът по-горе се пренебрегва.</p>`
+        : '<p style="font-size:11px;color:var(--muted);margin-top:8px">Горе в документа винаги се изписват всички възложители. Тук избираш само кой подписва.</p>');
+}
+
+function readSigners(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return undefined;                      // няма чеклист → всички подписват
+    const boxes = el.querySelectorAll('input[data-signer]');
+    if (!boxes.length) return undefined;
+    return [...boxes].filter(b => b.checked).map(b => Number(b.dataset.signer));
+}
+
 function buildPassportRows(project, consultant, extra) {
     // Конвертира project обекта в масив от редове за API-я
     const rows = [];
@@ -3455,6 +3479,11 @@ function buildPassportRows(project, consultant, extra) {
         }
         add(`Възложител_${i}_Подписва`,       c.podpisva      || '');
         add(`Възложител_${i}_Подписва_Титла`, c.podpisvaTitle || '');
+        // Кой подписва долу — избор в момента на генериране.
+        // extra.signers липсва → всички подписват (обратна съвместимост).
+        if (Array.isArray(extra.signers)) {
+            add(`Възложител_${i}_Подписва_Да`, extra.signers.includes(i) ? '1' : '0');
+        }
     });
     add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
 
@@ -3862,6 +3891,7 @@ function showProtokol2Form() {
         document.getElementById('p2-sastoyanie').style.display = this.checked ? 'block' : 'none';
     };
 
+    renderSignersChecklist('p2-signers', appData.currentProject);
     document.getElementById('modal-protokol2').classList.add('open');
 }
 
@@ -3886,7 +3916,6 @@ async function runProtokol2Modal() {
         const reperNom = document.getElementById('p2-reper-nomer')?.value?.trim() || '';
         const reperKota = document.getElementById('p2-reper-kota')?.value?.trim() || '';
         const opisanie = document.getElementById('p2-opisanie-ploshtadka')?.value?.trim() || '';
-        const vozlagatel = document.getElementById('p2-vozlagatel-podpis')?.value?.trim() || '';
 
         const darvRadio = document.querySelector('input[name="p2-darv-radio"]:checked');
         const darvValue = (darvRadio?.value === 'има')
@@ -3898,9 +3927,9 @@ async function runProtokol2Modal() {
             ? (document.getElementById('p2-sastoyanie')?.value?.trim() || SASTOYANIE_DEFAULT)
             : SASTOYANIE_DEFAULT;
 
-        const passportRows = buildPassportRows(project, consultant, extra);
+        const passportRows = buildPassportRows(project, consultant,
+            { ...extra, signers: readSigners('p2-signers') });
         passportRows.push(
-            ['Възложител_Подписва',  vozlagatel],
             ['Opisanie_Ploshtadka',  opisanie],
             ['Kota_Izkop',   izkop],
             ['Kota_Cokul',   cokul],
@@ -5434,6 +5463,12 @@ function renderGenerateSection() {
             </p>
         </div>
 
+        <!-- Кой подписва долу -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:12px">✍️ Кой подписва долу?</div>
+            <div id="gen-signers"></div>
+        </div>
+
         <!-- Избор на документи -->
         <div class="card">
             <div class="card-header">
@@ -5512,6 +5547,8 @@ function renderGenerateSection() {
           </div>
         </div>
     `;
+
+    renderSignersChecklist('gen-signers', appData.currentProject);
 }
 
 async function generateDocumentsViaApi() {
@@ -5529,7 +5566,7 @@ async function generateDocumentsViaApi() {
     btn.innerHTML = '<span class="spinner"></span> Генериране...';
 
     // Събери паспортните данни
-    const passportRows = buildPassportRows(project, consultant, {});
+    const passportRows = buildPassportRows(project, consultant, { signers: readSigners('gen-signers') });
 
     // Допълнителни параметри
     const zkNum = document.getElementById('gen-zk-num')?.value.trim() || '1';
