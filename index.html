@@ -1656,7 +1656,7 @@
                         <code style="display:block;margin:2px 0">GET  /health → статус на сървъра</code>
                         <code style="display:block;margin:2px 0">POST /api/passports/{pi} → запис на паспорт</code>
                         <code style="display:block;margin:2px 0">GET  /api/passports → списък паспорти</code>
-                        <code style="display:block;margin:2px 0">POST /api/generate/protokol2 → Протокол 2</code>
+                        <code style="display:block;margin:2px 0">POST /api/generate/protokol2combined → Протокол 2</code>
                         <code style="display:block;margin:2px 0">POST /api/generate/akt7 → Акт 7</code>
                         <code style="display:block;margin:2px 0">POST /api/generate/akt14 → Акт 14</code>
                         <code style="display:block;margin:2px 0">POST /api/generate/obrazec3 → Образец 3</code>
@@ -2429,23 +2429,6 @@ const AI_PROTOCOL_PROMPTS = {
         description: 'AI извлича котите и описанието от PDF → редактираш → генерираш пълен .docx',
         requiredDocs: ['Разрешение за строеж', 'Архитектурна част на проекта (с коти)'],
         optionalDocs: ['ПБЗ', 'Геоложки доклад', 'Стройгенплан'],
-        extraFields: [
-            { id: 'teh_rukovoditel', label: 'Технически ръководител (три имена)', placeholder: 'инж. Николай Антонов Риманчан' },
-            { id: 'geodezist', label: 'Геодезист към СН (три имена)', placeholder: 'инж. Златан Георгиев Златанов' },
-            { id: 'slujitel_223', label: 'Служител по чл.223 ал.2 ЗУТ (район/община)', placeholder: 'Столична община – район „Банкя"' },
-            { id: 'voda', label: 'Временно водоснабдяване', placeholder: 'водоноска / бутилирана вода' },
-            { id: 'kanalizacia', label: 'Временна канализация', placeholder: 'химическа тоалетна' },
-            { id: 'el', label: 'Временно ел. захранване', placeholder: 'преносим дизелов агрегат' },
-            { id: 'dostap', label: 'Достъп до площадката', placeholder: 'от прилежащата улична мрежа' },
-        ],
-        buildPrompt: (project, consultant, extra) => buildProtokol2Prompt(project, consultant, extra, 'sgrаda')
-    },
-    'protokol2': {
-        label: 'Протокол 2 — Сграда',
-        icon: '🏗️',
-        description: 'Откриване на площадка + строителна линия и ниво (жилищни и нежилищни сгради)',
-        requiredDocs: ['Разрешение за строеж', 'Архитектурна част на проекта'],
-        optionalDocs: ['Виза за проектиране', 'ПБЗ', 'Геоложки доклад', 'Стройгенплан'],
         extraFields: [
             { id: 'teh_rukovoditel', label: 'Технически ръководител (три имена)', placeholder: 'инж. Николай Антонов Риманчан' },
             { id: 'geodezist', label: 'Геодезист към СН (три имена)', placeholder: 'инж. Златан Георгиев Златанов' },
@@ -5365,8 +5348,7 @@ async function exportAndUploadPassport(id) {
 const DOC_CONFIG = [
     // ── По време на строителството ──────────────────────────
     { id: 'zapovedna',    label: 'Заповедна книга',            apiType: 'zapovedna',    group: 'construction' },
-    { id: 'protokol2',    label: 'Протокол 2',                 apiType: 'protokol2',    group: 'construction' },
-    { id: 'protokol2p2',  label: 'Протокол 2 — втора част',   apiType: 'protokol2p2',  group: 'construction' },
+    { id: 'protokol2',    label: 'Протокол 2',                 apiType: 'protokol2combined', group: 'construction' },
     { id: 'protokol2a',   label: 'Протокол 2а (линейни)',      apiType: 'protokol2a',   group: 'construction' },
     { id: 'obrazec3',     label: 'Образец 3',                  apiType: 'obrazec3',     group: 'construction' },
     { id: 'akt5',         label: 'Акт 5 (репери и нива)',      apiType: 'akt5',         group: 'construction' },
