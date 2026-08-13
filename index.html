@@ -1558,9 +1558,17 @@
                             <label class="form-label">ЕИК</label>
                             <input type="text" id="consultant-eik" class="form-input" placeholder="123456789">
                         </div>
+                        <datalist id="titles-list">
+                            <option value="инж."></option>
+                            <option value="арх."></option>
+                        </datalist>
                         <div class="form-group" style="margin-bottom:16px">
-                            <label class="form-label">Управител (пълно)</label>
-                            <input type="text" id="consultant-manager" class="form-input" placeholder="инж. Таня Иванова Петрова">
+                            <label class="form-label">Управител</label>
+                            <div style="display:flex;gap:8px">
+                                <input type="text" id="consultant-manager-title" class="form-input" list="titles-list"
+                                       placeholder="титла" style="flex:0 0 90px">
+                                <input type="text" id="consultant-manager" class="form-input" placeholder="Таня Иванова Петрова" style="flex:1">
+                            </div>
                         </div>
                         <div class="form-group" style="margin-bottom:16px">
                             <label class="form-label">Адрес</label>
@@ -3434,6 +3442,7 @@ function buildPassportRows(project, consultant, extra) {
         add('Консултант_ЕИК', consultant.eik);
         add('Консултант_Адрес', consultant.address);
         add('Консултант_Управител', consultant.manager);
+        add('Консултант_Управител_Титла', consultant.managerTitle);
         add('Консултант_Удостоверение', consultant.cert);
     }
 
@@ -3442,7 +3451,9 @@ function buildPassportRows(project, consultant, extra) {
     add('Строител_ЕИК', project.builder?.eik);
     add('Строител_Адрес', project.builder?.address);
     add('Строител_Управител', project.builder?.manager);
+    add('Строител_Управител_Титла', project.builder?.managerTitle);
     add('Строител_ТехРък', project.builder?.tech || extra.teh_rukovoditel);
+    add('Строител_ТехРък_Титла', project.builder?.techTitle);
 
     // Възложител — списъчен контракт (backend Стъпка 1)
     const clients = project.clients || (project.client ? [project.client] : []);
@@ -3452,11 +3463,15 @@ function buildPassportRows(project, consultant, extra) {
         add(`Възложител_${i}_Тип`,  c.type || 'ФЛ');
         add(`Възложител_${i}_Фирма`, c.name || '');
         if (c.type === 'ЮЛ') {
-            add(`Възложител_${i}_ЕИК`,          c.eik     || '');
-            add(`Възложител_${i}_Адрес`,         c.address || '');
-            add(`Възложител_${i}_Представител`,  c.rep     || '');
+            add(`Възложител_${i}_ЕИК`,               c.eik      || '');
+            add(`Възложител_${i}_Адрес`,              c.address  || '');
+            add(`Възложител_${i}_Представител`,       c.rep      || '');
+            add(`Възложител_${i}_Представител_Титла`, c.repTitle || '');
+        } else {
+            add(`Възложител_${i}_Титла`, c.nameTitle || '');
         }
-        add(`Възложител_${i}_Подписва`, c.podpisva || '');
+        add(`Възложител_${i}_Подписва`,       c.podpisva      || '');
+        add(`Възложител_${i}_Подписва_Титла`, c.podpisvaTitle || '');
     });
     add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
 
@@ -3477,7 +3492,7 @@ function buildPassportRows(project, consultant, extra) {
     employees.forEach((e, i) => {
         add('Служител_' + (i+1) + '_Име', e.name);
         add('Служител_' + (i+1) + '_Специализация', e.specialization);
-        add('Служител_' + (i+1) + '_Титла', e.title || 'инж.');
+        add('Служител_' + (i+1) + '_Титла', e.title ?? 'инж.');
     });
 
     // Геодезист — от extra полето или от служителите на консултанта
@@ -3490,7 +3505,7 @@ function buildPassportRows(project, consultant, extra) {
     projectants.forEach((p, i) => {
         add('Проектант_' + (i+1) + '_Име', p.name);
         add('Проектант_' + (i+1) + '_Специализация', p.specialization);
-        add('Проектант_' + (i+1) + '_Титла', p.title || 'инж.');
+        add('Проектант_' + (i+1) + '_Титла', p.title ?? 'инж.');
         add('Проектант_' + (i+1) + '_ППП', p.ppp);
     });
 
@@ -4849,11 +4864,19 @@ function renderPassportForm(projectId) {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Управител</label>
-                    <input type="text" id="fp-builder-manager" class="form-input" placeholder="инж. Иван Петров Иванов" value="${builder.manager||''}">
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="fp-builder-manager-title" class="form-input" list="titles-list"
+                               placeholder="титла" style="flex:0 0 90px" value="${builder.managerTitle||''}">
+                        <input type="text" id="fp-builder-manager" class="form-input" placeholder="Иван Петров Иванов" style="flex:1" value="${builder.manager||''}">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Технически ръководител</label>
-                    <input type="text" id="fp-builder-tech" class="form-input" placeholder="инж. Петър Петров Петров" value="${builder.tech||''}">
+                    <div style="display:flex;gap:8px">
+                        <input type="text" id="fp-builder-tech-title" class="form-input" list="titles-list"
+                               placeholder="титла" style="flex:0 0 90px" value="${builder.techTitle||''}">
+                        <input type="text" id="fp-builder-tech" class="form-input" placeholder="Петър Петров Петров" style="flex:1" value="${builder.tech||''}">
+                    </div>
                 </div>
             </div>
         </div>
@@ -4890,12 +4913,14 @@ function clientRowHTML(cl, i) {
                 <option value="ЮЛ" ${isYL?'selected':''}>Юридическо лице</option>
             </select>
             ${!isYL ? `
-            <input type="text" class="form-input" placeholder="Две имена (напр. Иван Иванов)" 
+            <input type="text" class="form-input" list="titles-list" placeholder="титла" data-field="nameTitle"
+                   value="${(cl&&cl.nameTitle)||''}" onchange="updateClient(${i},'nameTitle',this.value)" style="flex:0 0 90px">
+            <input type="text" class="form-input" placeholder="Две имена (напр. Иван Иванов)" data-field="name"
                    value="${(cl&&cl.name)||''}" onchange="updateClient(${i},'name',this.value)" style="flex:1">
             ` : `
-            <input type="text" class="form-input" placeholder="Фирма ООД" 
+            <input type="text" class="form-input" placeholder="Фирма ООД" data-field="name"
                    value="${(cl&&cl.name)||''}" onchange="updateClient(${i},'name',this.value)" style="flex:2">
-            <input type="text" class="form-input" placeholder="ЕИК" 
+            <input type="text" class="form-input" placeholder="ЕИК" data-field="eik"
                    value="${(cl&&cl.eik)||''}" onchange="updateClient(${i},'eik',this.value)" style="flex:0 0 110px">
             `}
             <button class="btn btn-danger btn-sm" onclick="removeClientRow(${i})" ${i===0?'style="display:none"':''}>✕</button>
@@ -4904,19 +4929,27 @@ function clientRowHTML(cl, i) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
             <div>
                 <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">УПРАВИТЕЛ</div>
-                <input type="text" class="form-input" placeholder="инж. Иван Петров"
-                       value="${(cl&&cl.rep)||''}" onchange="updateClient(${i},'rep',this.value)">
+                <div style="display:flex;gap:8px">
+                    <input type="text" class="form-input" list="titles-list" placeholder="титла" data-field="repTitle"
+                           value="${(cl&&cl.repTitle)||''}" onchange="updateClient(${i},'repTitle',this.value)" style="flex:0 0 80px">
+                    <input type="text" class="form-input" placeholder="Иван Петров" data-field="rep"
+                           value="${(cl&&cl.rep)||''}" onchange="updateClient(${i},'rep',this.value)" style="flex:1">
+                </div>
             </div>
             <div>
                 <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">АДРЕС</div>
-                <input type="text" class="form-input" placeholder="гр. София, ул. ..."
+                <input type="text" class="form-input" placeholder="гр. София, ул. ..." data-field="address"
                        value="${(cl&&cl.address)||''}" onchange="updateClient(${i},'address',this.value)">
             </div>
         </div>` : ''}
         <div style="margin-top:8px">
             <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">ПОДПИСВА (три имена)</div>
-            <input type="text" class="form-input" placeholder="………" data-field="podpisva"
-                   value="${(cl&&cl.podpisva)||''}" onchange="updateClient(${i},'podpisva',this.value)">
+            <div style="display:flex;gap:8px">
+                <input type="text" class="form-input" list="titles-list" placeholder="титла" data-field="podpisvaTitle"
+                       value="${(cl&&cl.podpisvaTitle)||''}" onchange="updateClient(${i},'podpisvaTitle',this.value)" style="flex:0 0 80px">
+                <input type="text" class="form-input" placeholder="………" data-field="podpisva"
+                       value="${(cl&&cl.podpisva)||''}" onchange="updateClient(${i},'podpisva',this.value)" style="flex:1">
+            </div>
         </div>
     </div>`;
 }
@@ -4957,9 +4990,8 @@ function projectantRowHTML(pp, i) {
     <div class="dynamic-row" id="proj-row-${i}" style="flex-direction:column;align-items:stretch;border:1px solid var(--border-light);border-radius:var(--r-sm);padding:14px;margin-bottom:10px;background:var(--surface)">
         <div style="display:flex;gap:10px;margin-bottom:8px;align-items:center">
             <div style="background:var(--gold);color:var(--ink);font-weight:700;font-size:12px;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
-            <select class="form-select" onchange="updateProjectant(${i},'title',this.value)" style="flex:0 0 90px">
-                ${['инж.','арх.','д-р инж.','д-р арх.'].map(t=>`<option value="${t}" ${(pp.title||'инж.')===t?'selected':''}>${t}</option>`).join('')}
-            </select>
+            <input type="text" class="form-input" list="titles-list" placeholder="титла" style="flex:0 0 90px" data-field="title"
+                   value="${pp.title===undefined?'инж.':pp.title}" onchange="updateProjectant(${i},'title',this.value)">
             <div style="flex:3;position:relative">
                 <input type="text" class="form-input kiip-search-input" placeholder="Три имена или ППП № (търси в КИИП)" 
                        value="${pp.name||''}" 
@@ -5047,31 +5079,36 @@ function savePassport() {
 
     // Sync projectants from DOM
     document.querySelectorAll('[id^="proj-row-"]').forEach((row, i) => {
-        const inputs = row.querySelectorAll('input');
+        const titleEl = row.querySelector('input[data-field="title"]');
+        const inputs = [...row.querySelectorAll('input')].filter(el => el !== titleEl);
         const selects = row.querySelectorAll('select');
         if (tempProjectants[i]) {
             if (inputs[0]) tempProjectants[i].name = inputs[0].value.trim();
             if (inputs[1]) tempProjectants[i].ppp = inputs[1].value.trim();
-            if (selects[0]) tempProjectants[i].title = selects[0].value;
-            if (selects[1]) tempProjectants[i].specialization = selects[1].value;
+            if (titleEl) tempProjectants[i].title = titleEl.value.trim();
+            if (selects[0]) tempProjectants[i].specialization = selects[0].value;
         }
     });
 
     // Sync clients from DOM — четем всички input полета от client rows
     document.querySelectorAll('[id^="client-row-"]').forEach((row, i) => {
         if (!tempClients[i]) tempClients[i] = {};
-        const inputs = row.querySelectorAll('input');
         const select = row.querySelector('select');
         if (select) tempClients[i].type = select.value;
         const isYL = tempClients[i].type === 'ЮЛ';
-        if (inputs[0]) tempClients[i].name = inputs[0].value.trim();
-        if (isYL) {
-            if (inputs[1]) tempClients[i].eik = inputs[1].value.trim();
-            if (inputs[2]) tempClients[i].rep = inputs[2].value.trim();
-            if (inputs[3]) tempClients[i].address = inputs[3].value.trim();
-        }
-        const podpisvaEl = row.querySelector('input[data-field="podpisva"]');
-        tempClients[i].podpisva = podpisvaEl ? podpisvaEl.value.trim() : '';
+        // Четем по data-field, не по позиция — иначе добавено поле разминава всичко
+        const val = f => {
+            const el = row.querySelector(`input[data-field="${f}"]`);
+            return el ? el.value.trim() : '';
+        };
+        tempClients[i].name          = val('name');
+        tempClients[i].nameTitle     = isYL ? '' : val('nameTitle');
+        tempClients[i].eik           = isYL ? val('eik')     : '';
+        tempClients[i].rep           = isYL ? val('rep')     : '';
+        tempClients[i].repTitle      = isYL ? val('repTitle'): '';
+        tempClients[i].address       = isYL ? val('address') : '';
+        tempClients[i].podpisva      = val('podpisva');
+        tempClients[i].podpisvaTitle = val('podpisvaTitle');
     });
 
     const consultant = appData.consultants.find(c => c.id == consultantId);
@@ -5096,7 +5133,9 @@ function savePassport() {
             eik: document.getElementById('fp-builder-eik').value,
             address: document.getElementById('fp-builder-address').value,
             manager: document.getElementById('fp-builder-manager').value,
-            tech: document.getElementById('fp-builder-tech').value
+            managerTitle: document.getElementById('fp-builder-manager-title')?.value.trim() || '',
+            tech: document.getElementById('fp-builder-tech').value,
+            techTitle: document.getElementById('fp-builder-tech-title')?.value.trim() || ''
         },
         projectants: tempProjectants.filter(pp => pp.name || pp.ppp)
     };
@@ -5642,9 +5681,8 @@ function addEmployeeRow() {
 function employeeRowHTML(emp, i) {
     return `
     <div class="dynamic-row" id="emp-row-${i}">
-        <select class="form-select" onchange="updateEmployee(${i},'title',this.value)" style="flex:0 0 80px">
-            ${['инж.','арх.','д-р инж.','д-р арх.'].map(t=>`<option value="${t}" ${(emp.title||'инж.')===t?'selected':''}>${t}</option>`).join('')}
-        </select>
+        <input type="text" class="form-input" list="titles-list" placeholder="титла" style="flex:0 0 80px" data-field="title"
+               value="${emp.title===undefined?'инж.':emp.title}" onchange="updateEmployee(${i},'title',this.value)">
         <input type="text" class="form-input" placeholder="Им Презиме Фамилия" 
                value="${emp.name||''}" onchange="updateEmployee(${i},'name',this.value)" style="flex:3">
         <select class="form-select" onchange="updateEmployee(${i},'specialization',this.value)" style="flex:2">
@@ -5667,11 +5705,12 @@ function saveConsultant() {
     // Read employees from DOM
     document.querySelectorAll('[id^="emp-row-"]').forEach((row, i) => {
         const selects = row.querySelectorAll('select');
-        const inp = row.querySelector('input');
+        const titleEl = row.querySelector('input[data-field="title"]');
+        const inp = [...row.querySelectorAll('input')].find(el => el !== titleEl);
         if (tempEmployees[i]) {
             if (inp) tempEmployees[i].name = inp.value.trim();
-            if (selects[0]) tempEmployees[i].title = selects[0].value;
-            if (selects[1]) tempEmployees[i].specialization = selects[1].value;
+            if (titleEl) tempEmployees[i].title = titleEl.value.trim();
+            if (selects[0]) tempEmployees[i].specialization = selects[0].value;
         }
     });
 
@@ -5685,6 +5724,7 @@ function saveConsultant() {
         name,
         eik: document.getElementById('consultant-eik').value.trim(),
         manager: document.getElementById('consultant-manager').value.trim(),
+        managerTitle: document.getElementById('consultant-manager-title')?.value.trim() || '',
         address: document.getElementById('consultant-address').value.trim(),
         cert: document.getElementById('consultant-cert').value.trim(),
         employees: validEmployees
@@ -5716,6 +5756,7 @@ function editConsultant(id) {
     document.getElementById('consultant-name').value = c.name || '';
     document.getElementById('consultant-eik').value = c.eik || '';
     document.getElementById('consultant-manager').value = c.manager || '';
+    document.getElementById('consultant-manager-title').value = c.managerTitle || '';
     document.getElementById('consultant-address').value = c.address || '';
     document.getElementById('consultant-cert').value = c.cert || '';
     document.getElementById('consultant-save-btn').textContent = '💾 Запази промените';
@@ -5736,6 +5777,7 @@ function resetConsultantForm() {
     document.getElementById('consultant-name').value = '';
     document.getElementById('consultant-eik').value = '';
     document.getElementById('consultant-manager').value = '';
+    document.getElementById('consultant-manager-title').value = '';
     document.getElementById('consultant-address').value = '';
     document.getElementById('consultant-cert').value = '';
     document.getElementById('employees-container').innerHTML = '';
