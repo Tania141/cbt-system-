@@ -3404,6 +3404,71 @@ function clientsOf(project) {
     return project?.clients || (project?.client ? [project.client] : []);
 }
 
+// ── Акт 12: части ────────────────────────────────────────────────────────────
+// Актът за скрити работи се съставя по видове работи, по части. Проектантът и
+// СН се менят с частта; строителят и техн. ръководител са постоянни.
+// Всяка част води собствена поредица: Арх-1, Арх-2, ВиК-1.
+const AKT12_PREFIX = {
+    'Архитектура': 'Арх', 'Конструктивна': 'Констр', 'ВиК': 'ВиК', 'Електро': 'Ел',
+    'ОВК и ЕЕ': 'ОВК', 'Геодезия': 'Геод', 'Инженерна геология и хидрогеология': 'Геол',
+    'Паркоустройство и Благоустройство': 'Парк', 'Газоснабдяване': 'Газ',
+    'ПБ': 'ПБ', 'СХИ': 'СХИ', 'Пътна': 'Пътна'
+};
+
+// Същият ред на изтегляне като в buildPassportRows — първо проекта, после консултанта.
+function akt12People(project, consultant) {
+    return {
+        pj: project?.projectants || consultant?.projectants || [],
+        sn: project?.employees   || consultant?.employees   || []
+    };
+}
+
+function akt12AvailableParts(project, consultant) {
+    // Само частите, за които реално има вписано лице — празен избор е капан.
+    const { pj, sn } = akt12People(project, consultant);
+    const have = new Set();
+    [...pj, ...sn].forEach(x => x.specialization && have.add(x.specialization));
+    return specializations.filter(s => have.has(s));
+}
+
+function akt12NextNumber(project, chast) {
+    const used = (project?.akt12 || {})[chast] || 0;
+    return `${AKT12_PREFIX[chast] || chast}-${used + 1}`;
+}
+
+function renderAkt12Parts(containerId, project, consultant) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const parts = akt12AvailableParts(project, consultant);
+    if (!parts.length) {
+        el.innerHTML = '<p style="font-size:12px;color:var(--muted)">Няма вписани проектанти или специалисти по части.</p>';
+        return;
+    }
+    const people = akt12People(project, consultant);
+    el.innerHTML = parts.map(s => {
+        const pj = people.pj.find(p => p.specialization === s);
+        const sn = people.sn.find(e => e.specialization === s);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px">
+            <input type="checkbox" data-akt12-part="${s}" style="width:16px;height:16px;flex-shrink:0">
+            <span style="flex:1"><strong>${s}</strong>
+                <span style="color:var(--muted)"> — проектант: ${pj?.name || '—'} · СН: ${sn?.name || '—'}</span></span>
+            <input type="text" data-akt12-num="${s}" class="form-input" style="width:110px;padding:4px 8px;font-size:12px"
+                   value="${akt12NextNumber(project, s)}">
+        </div>`;
+    }).join('');
+}
+
+function readAkt12Parts(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return [];
+    return [...el.querySelectorAll('input[data-akt12-part]')]
+        .filter(b => b.checked)
+        .map(b => ({
+            chast: b.dataset.akt12Part,
+            number: el.querySelector(`input[data-akt12-num="${b.dataset.akt12Part}"]`)?.value.trim() || ''
+        }));
+}
+
 function renderSignersChecklist(containerId, project) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -5489,6 +5554,17 @@ function renderGenerateSection() {
             </p>
         </div>
 
+        <!-- Части за Акт 12 -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">🧱 Акт 12 — по кои части?</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Актът за скрити работи се съставя по видове работи, по части. Отбележи частите —
+                за всяка излиза отделен документ със своя проектант и свой СН.
+                Показват се само частите, за които има вписано лице.
+            </p>
+            <div id="gen-akt12-parts"></div>
+        </div>
+
         <!-- Кой подписва долу -->
         <div class="card">
             <div class="card-title" style="margin-bottom:12px">✍️ Кой подписва долу?</div>
@@ -5575,6 +5651,8 @@ function renderGenerateSection() {
     `;
 
     renderSignersChecklist('gen-signers', appData.currentProject);
+    renderAkt12Parts('gen-akt12-parts', appData.currentProject,
+                     appData.consultants.find(c => c.id === appData.currentProject?.consultant?.id));
 }
 
 async function generateDocumentsViaApi() {
@@ -5609,9 +5687,30 @@ async function generateDocumentsViaApi() {
     const results = [];
     const today = new Date().toISOString();
 
+    // Акт 12 се съставя по части — една задача за всяка отметната част.
+    const akt12Parts = readAkt12Parts('gen-akt12-parts');
+    const jobs = [];
     for (const doc of selected) {
+        if (doc.apiType === 'akt12') {
+            if (!akt12Parts.length) {
+                showAlert('error', 'Акт 12: отбележи поне една част.');
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Генерирай .docx чрез Python API';
+                return;
+            }
+            akt12Parts.forEach(p => jobs.push({ doc, akt12: p }));
+        } else {
+            jobs.push({ doc });
+        }
+    }
+
+    const akt12Done = [];
+
+    for (const job of jobs) {
+        const doc = job.doc;
         const statusEl = document.getElementById(`status-${doc.id}`);
-        if (statusEl) statusEl.innerHTML = '<span class="badge badge-gray">⏳ Изпращане...</span>';
+        const tag = job.akt12 ? ` ${job.akt12.chast}` : '';
+        if (statusEl) statusEl.innerHTML = `<span class="badge badge-gray">⏳ Изпращане${tag}...</span>`;
 
         try {
             const body = {
@@ -5621,6 +5720,10 @@ async function generateDocumentsViaApi() {
             if (doc.apiType === 'zapovedna') {
                 body.zapovedna_number = zkNum;
                 body.zapovedna_date = zkDate;
+            }
+            if (job.akt12) {
+                body.chast = job.akt12.chast;
+                body.akt12_number = job.akt12.number;
             }
 
             const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
@@ -5635,16 +5738,19 @@ async function generateDocumentsViaApi() {
                 throw new Error(err.error || `HTTP ${r.status}`);
             }
             const blob = await r.blob();
-            const filename = `${doc.apiType}_${project.pi}.docx`;
+            const filename = job.akt12
+                ? `akt12_${job.akt12.number}_${project.pi}.docx`
+                : `${doc.apiType}_${project.pi}.docx`;
             const dlUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = dlUrl; a.download = filename; a.click();
             URL.revokeObjectURL(dlUrl);
 
-            if (statusEl) statusEl.innerHTML = '<span class="badge badge-green">✅ Изтеглен</span>';
+            if (statusEl) statusEl.innerHTML = `<span class="badge badge-green">✅ Изтеглен${tag}</span>`;
+            if (job.akt12) akt12Done.push(job.akt12);
 
             results.push({
-                type: doc.label,
+                type: job.akt12 ? `${doc.label} (${job.akt12.number})` : doc.label,
                 date: today,
                 url: '',
                 path: ''
@@ -5660,6 +5766,15 @@ async function generateDocumentsViaApi() {
     if (results.length > 0) {
         const idx = appData.projects.findIndex(p => p.id === project.id);
         if (idx >= 0) {
+            // Броячите на Акт 12 — за да предложи следващия свободен номер по част.
+            if (akt12Done.length) {
+                if (!appData.projects[idx].akt12) appData.projects[idx].akt12 = {};
+                akt12Done.forEach(({ chast, number }) => {
+                    const n = parseInt(String(number).split('-').pop(), 10);
+                    const cur = appData.projects[idx].akt12[chast] || 0;
+                    if (!isNaN(n) && n > cur) appData.projects[idx].akt12[chast] = n;
+                });
+            }
             if (!appData.projects[idx].generatedDocs) appData.projects[idx].generatedDocs = [];
             results.forEach(nd => {
                 const existing = appData.projects[idx].generatedDocs.findIndex(d => d.type === nd.type);
