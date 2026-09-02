@@ -3510,6 +3510,12 @@ function buildPassportRows(project, consultant, extra) {
     add('РС_ВСила', project.permit?.effective);
     add('ЗК_Номер', project.zk?.number);
     add('ЗК_Дата', project.zk?.date);
+    add('Категория', project.osip?.kategoria);
+    add('Фаза', project.osip?.faza);
+    add('Одобряващ_Орган', project.osip?.organ);
+    add('Договор_Надзор', project.osip?.dogovor);
+    add('ТехКонтрол', project.osip?.tk);
+    add('ТехКонтрол_Рег', project.osip?.tkReg);
 
     // Консултант
     if (consultant) {
@@ -4905,6 +4911,54 @@ function renderPassportForm(projectId) {
             </div>
         </div>
 
+        <!-- ОЦЕНКА НА СЪОТВЕТСТВИЕТО -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Данни за комплексния доклад. Категорията се изписва изцяло, с правното основание —
+                тя влиза дословно в раздел А.
+            </p>
+            <div class="form-grid">
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Категория на строежа</label>
+                    <input type="text" id="fp-osip-kategoria" class="form-input"
+                           placeholder="Пета категория, съгласно чл. 10, ал. 1, буква „а“ от Наредба № 1/30.07.2003 г. и чл. 137, ал. 1, т. 5 от ЗУТ"
+                           value="${(p.osip||{}).kategoria||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Фаза на проекта</label>
+                    <input type="text" id="fp-osip-faza" class="form-input" list="osip-faza-list"
+                           placeholder="Технически проект (ТП)" value="${(p.osip||{}).faza||''}">
+                    <datalist id="osip-faza-list">
+                        <option value="Технически проект (ТП)"></option>
+                        <option value="Работен проект (РП)"></option>
+                        <option value="Идеен проект (ИП)"></option>
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Одобряващ орган</label>
+                    <input type="text" id="fp-osip-organ" class="form-input"
+                           placeholder="Главния архитект на Столична община" value="${(p.osip||{}).organ||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Договор за надзор</label>
+                    <input type="text" id="fp-osip-dogovor" class="form-input"
+                           placeholder="сключен Договор за упражняване на строителен надзор между Възложителя и Консултанта"
+                           value="${(p.osip||{}).dogovor||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Технически контрол „Конструктивна“</label>
+                    <input type="text" id="fp-osip-tk" class="form-input" placeholder="инж. Маргарита Янкова Йорданова"
+                           value="${(p.osip||{}).tk||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ТК — рег. №</label>
+                    <input type="text" id="fp-osip-tk-reg" class="form-input" placeholder="0319"
+                           value="${(p.osip||{}).tkReg||''}">
+                </div>
+            </div>
+        </div>
+
         <!-- ЗАПОВЕДНА КНИГА -->
         <div class="card">
             <div class="card-title" style="margin-bottom:16px">📕 Заповедна книга</div>
@@ -5224,6 +5278,14 @@ function savePassport() {
             number: document.getElementById('fp-zk-num')?.value || '',
             date:   document.getElementById('fp-zk-date')?.value || ''
         },
+        osip: {
+            kategoria: document.getElementById('fp-osip-kategoria')?.value || '',
+            faza:      document.getElementById('fp-osip-faza')?.value || '',
+            organ:     document.getElementById('fp-osip-organ')?.value || '',
+            dogovor:   document.getElementById('fp-osip-dogovor')?.value || '',
+            tk:        document.getElementById('fp-osip-tk')?.value || '',
+            tkReg:     document.getElementById('fp-osip-tk-reg')?.value || ''
+        },
         client: tempClients[0] || { type: 'ФЛ', name: '' },
         clients: tempClients.filter(c => c.name),
         upalnomoshten_predstavitel: document.getElementById('fp-upalnomoshten')?.value.trim() || '',
@@ -5482,6 +5544,7 @@ const DOC_CONFIG = [
     // ── Въвеждане в експлоатация ────────────────────────────
     { id: 'akt15',        label: 'Акт 15',                     apiType: 'akt15',        group: 'completion'   },
     { id: 'doklad',       label: 'Окончателен доклад',         apiType: 'doklad',       group: 'completion'   },
+    { id: 'osip',         label: 'ОСИП (комплексен доклад)',   apiType: 'osip',         group: 'start'        },
     { id: 'protokol17',   label: 'Протокол 17 (72-часова проба)', apiType: 'protokol17', group: 'completion'   },
     { id: 'akt16',        label: 'Акт 16 (ДПК)',               apiType: 'akt16',        group: 'completion'   },
 ];
@@ -5554,6 +5617,26 @@ function renderGenerateSection() {
             </p>
         </div>
 
+        <!-- Изходящ номер за ОСИП -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">📐 ОСИП — изходящ номер</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Номерът е на доклада, не на проекта — един строеж може да получи доклад
+                за техническа и отделно за работна фаза.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Изх. №</label>
+                    <input type="text" id="gen-osip-num" class="form-input" placeholder="1281">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата</label>
+                    <input type="text" id="gen-osip-date" class="form-input" placeholder="дд.мм.гггг"
+                           value="${new Date().toLocaleDateString('bg-BG')}" oninput="formatDateInput(this)">
+                </div>
+            </div>
+        </div>
+
         <!-- Части за Акт 12 -->
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">🧱 Акт 12 — по кои части?</div>
@@ -5578,6 +5661,27 @@ function renderGenerateSection() {
                 <div style="font-size:12px;color:var(--muted)">Ще се запазят в Dropbox и ще получиш линк за сваляне</div>
             </div>
             <div id="doc-results-list">
+                <!-- Група 0: Преди строителството -->
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">
+                    Преди строителството
+                </div>
+                ${DOC_CONFIG.filter(d => d.group === 'start').map(doc => {
+                    const existing = docs.filter(d => d.type === doc.label);
+                    const last = existing[existing.length - 1];
+                    return `
+                    <div class="doc-gen-row" id="row-${doc.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-light)">
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <input type="checkbox" id="doc-${doc.id}" style="width:16px;height:16px;accent-color:var(--gold)">
+                            <div>
+                                <div style="font-weight:700;font-size:14px">${doc.label}</div>
+                                ${last ? `<div style="font-size:11px;color:var(--green)">✅ Последно: ${formatDateTime(last.date)}${last.url ? ` · <a href="${last.url}" target="_blank" style="color:var(--blue)">⬇ Свали</a>` : ''}</div>`
+                                       : `<div style="font-size:11px;color:var(--muted)">Не е генериран</div>`}
+                            </div>
+                        </div>
+                        <div id="status-${doc.id}" style="min-width:120px;text-align:right"></div>
+                    </div>`;
+                }).join('')}
+
                 <!-- Група 1: По време на строителството -->
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">
                     По време на строителството
@@ -5724,6 +5828,10 @@ async function generateDocumentsViaApi() {
             if (job.akt12) {
                 body.chast = job.akt12.chast;
                 body.akt12_number = job.akt12.number;
+            }
+            if (doc.apiType === 'osip') {
+                body.osip_number = document.getElementById('gen-osip-num')?.value.trim() || '';
+                body.osip_date   = document.getElementById('gen-osip-date')?.value.trim() || '';
             }
 
             const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
