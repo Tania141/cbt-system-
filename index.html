@@ -4911,6 +4911,82 @@ function renderPassportForm(projectId) {
             </div>
         </div>
 
+        <!-- ВИД НА СТРОЕЖА -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">🏗️ Вид на строежа</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                От това зависи кои документи изобщо се изискват. Системата няма да иска акт,
+                който на този строеж не се съставя.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Вид</label>
+                    <select id="fp-vid" class="form-input">
+                        <option value="sgrada"      ${(p.vid||'sgrada')==='sgrada'      ? 'selected':''}>Сграда</option>
+                        <option value="lineen"      ${(p.vid||'')==='lineen'            ? 'selected':''}>Линеен обект</option>
+                        <option value="lineen_ktp"  ${(p.vid||'')==='lineen_ktp'        ? 'selected':''}>Линеен обект с КТП (и сграда)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                        <input type="checkbox" id="fp-ima-mashini" style="width:16px;height:16px"
+                               ${(p.imaMashini) ? 'checked':''}>
+                        Има машини и съоръжения
+                    </label>
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                        <input type="checkbox" id="fp-metalna" style="width:16px;height:16px"
+                               ${(p.metalnaKonstrukcia) ? 'checked':''}>
+                        Преход към метална конструкция
+                    </label>
+                    <p style="font-size:11px;color:var(--muted);margin-top:6px">
+                        Двете определят дали Акт 8 и Акт 9 се очакват.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- НОСЕЩИ ДАТИ -->
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">📅 Дати на съставяне</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Датата, <strong>написана в документа</strong> — не датата на генериране. Въвежда се,
+                когато документът се върне подписан или заверен. Само тези шест задвижват проверки;
+                останалите документи нямат правило върху себе си.
+            </p>
+            <div class="form-grid">
+                ${[
+                    ['protokol2',   'Протокол 2 / 2а — заверен от общината', 'котвата: начало на строежа по чл. 157, ал. 1'],
+                    ['zk_zaverka',  'Заповедна книга — заверка',             '≤ 3 дни след Протокол 2 (чл. 158, ал. 2)'],
+                    ['akt5',        'Акт 5',                                  '= заверката на кота изкоп в Протокол 2'],
+                    ['akt6',        'Акт 6',                                  '= заверката на кота изкоп в Протокол 2'],
+                    ['akt14',       'Акт 14 — приемане на конструкцията',     'доказва грубия строеж: ≤ 5 г. (10 г. за инфраструктура)'],
+                    ['akt15',       'Акт 15',                                 ''],
+                ].map(([k, label, hint]) => `
+                <div class="form-group">
+                    <label class="form-label">${label}</label>
+                    <input type="text" id="fp-date-${k}" class="form-input" placeholder="дд.мм.гггг"
+                           value="${((p.docDates||{})[k])||''}" oninput="formatDateInput(this)">
+                    ${hint ? `<p style="font-size:11px;color:var(--muted);margin-top:4px">${hint}</p>` : ''}
+                </div>`).join('')}
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Актове обр. 7 — брой и период</label>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <input type="text" id="fp-akt7-br" class="form-input" style="width:90px" placeholder="брой"
+                               value="${((p.docDates||{}).akt7||{}).br||''}">
+                        <span style="font-size:13px;color:var(--muted)">от</span>
+                        <input type="text" id="fp-akt7-ot" class="form-input" style="width:130px" placeholder="дд.мм.гггг"
+                               value="${((p.docDates||{}).akt7||{}).ot||''}" oninput="formatDateInput(this)">
+                        <span style="font-size:13px;color:var(--muted)">до</span>
+                        <input type="text" id="fp-akt7-do" class="form-input" style="width:130px" placeholder="дд.мм.гггг"
+                               value="${((p.docDates||{}).akt7||{}).do||''}" oninput="formatDateInput(this)">
+                    </div>
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Идват накуп от строителя — въвеждат се накуп. Сверяват се срещу бетоновия дневник.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- ОЦЕНКА НА СЪОТВЕТСТВИЕТО -->
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
@@ -5277,6 +5353,22 @@ function savePassport() {
         zk: {
             number: document.getElementById('fp-zk-num')?.value || '',
             date:   document.getElementById('fp-zk-date')?.value || ''
+        },
+        vid: document.getElementById('fp-vid')?.value || 'sgrada',
+        imaMashini: !!document.getElementById('fp-ima-mashini')?.checked,
+        metalnaKonstrukcia: !!document.getElementById('fp-metalna')?.checked,
+        docDates: {
+            protokol2:  document.getElementById('fp-date-protokol2')?.value || '',
+            zk_zaverka: document.getElementById('fp-date-zk_zaverka')?.value || '',
+            akt5:       document.getElementById('fp-date-akt5')?.value || '',
+            akt6:       document.getElementById('fp-date-akt6')?.value || '',
+            akt14:      document.getElementById('fp-date-akt14')?.value || '',
+            akt15:      document.getElementById('fp-date-akt15')?.value || '',
+            akt7: {
+                br: document.getElementById('fp-akt7-br')?.value || '',
+                ot: document.getElementById('fp-akt7-ot')?.value || '',
+                do: document.getElementById('fp-akt7-do')?.value || ''
+            }
         },
         osip: {
             kategoria: document.getElementById('fp-osip-kategoria')?.value || '',
