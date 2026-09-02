@@ -3404,6 +3404,119 @@ function clientsOf(project) {
     return project?.clients || (project?.client ? [project.client] : []);
 }
 
+// ── Регистър на съставените документи ────────────────────────────────────────
+// Датата на СЪСТАВЯНЕ — написаната в документа, не датата на генериране.
+// Три вида редове:
+//   единичен  — документ + дата
+//   период    — документ + брой + от/до (идват накуп от строителя)
+//   по части  — Акт 12: за всяка част отделен ред с брой и период
+const DOC_DATE_ITEMS = [
+    { id: 'protokol1',  label: 'Протокол 1 — предаване на проект и РС' },
+    { id: 'protokol2',  label: 'Протокол 2 / 2а — заверен от общината', hint: 'котвата: начало на строежа (чл. 157, ал. 1)' },
+    { id: 'zk_zaverka', label: 'Заповедна книга — заверка',            hint: '≤ 3 дни след Протокол 2 (чл. 158, ал. 2)' },
+    { id: 'obrazec3',   label: 'Констативен акт обр. 3' },
+    { id: 'akt5',       label: 'Акт 5 — строителен терен и основен репер' },
+    { id: 'akt6',       label: 'Акт 6 — земна основа и коти на изкопа' },
+    { id: 'akt7',       label: 'Акт 7 — СМР по нива и елементи', period: true, hint: 'сверява се срещу бетоновия дневник' },
+    { id: 'akt8',       label: 'Акт 8 — фундаменти за монтаж' },
+    { id: 'akt9',       label: 'Акт 9 — машини и съоръжения' },
+    { id: 'akt10',      label: 'Акт 10 — спиране на строителството' },
+    { id: 'akt11',      label: 'Акт 11 — продължаване' },
+    { id: 'akt12',      label: 'Акт 12 — скрити работи', period: true, byPart: true, hint: 'по части — за всяка отделен ред' },
+    { id: 'akt13',      label: 'Акт 13 — щети от непреодолима сила' },
+    { id: 'akt14',      label: 'Акт 14 — приемане на конструкцията',   hint: 'доказва грубия строеж: ≤ 5 г., 10 г. при линеен' },
+    { id: 'akt15',      label: 'Акт 15' },
+    { id: 'akt16',      label: 'Акт 16 — ДПК' },
+    { id: 'protokol17', label: 'Протокол 17 — 72-часова проба' },
+    { id: 'doklad',     label: 'Окончателен доклад' },
+    { id: 'osip',       label: 'ОСИП — комплексен доклад' },
+];
+
+function ddItem(id) {
+    return DOC_DATE_ITEMS.find(x => x.id === id) || DOC_DATE_ITEMS[0];
+}
+
+function docDateRowHtml(docId, chast, data) {
+    const it = ddItem(docId);
+    data = data || {};
+    const opts = DOC_DATE_ITEMS.map(x =>
+        `<option value="${x.id}" ${x.id === it.id ? 'selected' : ''}>${x.label}</option>`).join('');
+    const partSel = it.byPart
+        ? `<select class="form-input dd-chast" style="width:190px">
+             ${specializations.map(s => `<option ${s === chast ? 'selected' : ''}>${s}</option>`).join('')}
+           </select>` : '';
+    const fields = it.period
+        ? `<input type="text" class="form-input dd-br" style="width:80px" placeholder="брой" value="${data.br || ''}">
+           <span style="font-size:13px;color:var(--muted)">от</span>
+           <input type="text" class="form-input dd-ot" style="width:125px" placeholder="дд.мм.гггг" value="${data.ot || ''}" oninput="formatDateInput(this)">
+           <span style="font-size:13px;color:var(--muted)">до</span>
+           <input type="text" class="form-input dd-do" style="width:125px" placeholder="дд.мм.гггг" value="${data.do || ''}" oninput="formatDateInput(this)">`
+        : `<input type="text" class="form-input dd-date" style="width:135px" placeholder="дд.мм.гггг" value="${typeof data === 'string' ? data : ''}" oninput="formatDateInput(this)">`;
+
+    return `<div class="dd-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border-light)">
+        <select class="form-input dd-doc" style="flex:1;min-width:250px" onchange="ddDocChanged(this)">${opts}</select>
+        ${partSel}${fields}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="this.closest('.dd-row').remove()" title="Махни реда">✕</button>
+        ${it.hint ? `<div style="flex-basis:100%;font-size:11px;color:var(--muted);padding-left:2px">${it.hint}</div>` : ''}
+    </div>`;
+}
+
+function ddDocChanged(sel) {
+    const row = sel.closest('.dd-row');
+    row.outerHTML = docDateRowHtml(sel.value, null, {});
+}
+
+function addDocDateRow(docId, chast, data) {
+    const box = document.getElementById('fp-dd-rows');
+    if (box) box.insertAdjacentHTML('beforeend', docDateRowHtml(docId || 'protokol2', chast, data));
+}
+
+function renderDocDates(project) {
+    const box = document.getElementById('fp-dd-rows');
+    if (!box) return;
+    const dd = (project && project.docDates) || {};
+    box.innerHTML = '';
+    DOC_DATE_ITEMS.forEach(it => {
+        const v = dd[it.id];
+        if (!v) return;
+        if (it.byPart) {
+            Object.keys(v).forEach(ch => addDocDateRow(it.id, ch, v[ch]));
+        } else {
+            addDocDateRow(it.id, null, v);
+        }
+    });
+    if (!box.children.length) addDocDateRow('protokol2');
+}
+
+function readDocDates() {
+    const out = {};
+    document.querySelectorAll('#fp-dd-rows .dd-row').forEach(row => {
+        const id = row.querySelector('.dd-doc')?.value;
+        if (!id) return;
+        const it = ddItem(id);
+        if (it.period) {
+            const rec = {
+                br: row.querySelector('.dd-br')?.value.trim() || '',
+                ot: row.querySelector('.dd-ot')?.value.trim() || '',
+                do: row.querySelector('.dd-do')?.value.trim() || ''
+            };
+            if (!rec.br && !rec.ot && !rec.do) return;
+            if (it.byPart) {
+                const ch = row.querySelector('.dd-chast')?.value || '';
+                if (!ch) return;
+                out[id] = out[id] || {};
+                out[id][ch] = rec;
+            } else {
+                out[id] = rec;
+            }
+        } else {
+            const d = row.querySelector('.dd-date')?.value.trim();
+            if (d) out[id] = d;
+        }
+    });
+    return out;
+}
+
 // ── Акт 12: части ────────────────────────────────────────────────────────────
 // Актът за скрити работи се съставя по видове работи, по части. Проектантът и
 // СН се менят с частта; строителят и техн. ръководител са постоянни.
@@ -4920,6 +5033,17 @@ function renderPassportForm(projectId) {
             </p>
             <div class="form-grid">
                 <div class="form-group">
+                    <label class="form-label">Категория</label>
+                    <select id="fp-kategoria" class="form-input">
+                        <option value="">— не е посочена —</option>
+                        ${[1,2,3,4,5].map(k => `<option value="${k}" ${String(p.kategoria)===String(k)?'selected':''}>${['','първа','втора','трета','четвърта','пета'][k]} категория</option>`).join('')}
+                    </select>
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Вписана е в разрешението за строеж. Определя кои документи се изискват:
+                        Акт 5, Акт 6 и Акт 16 са само за 1–3 категория.
+                    </p>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Вид</label>
                     <select id="fp-vid" class="form-input">
                         <option value="sgrada"      ${(p.vid||'sgrada')==='sgrada'      ? 'selected':''}>Сграда</option>
@@ -4945,46 +5069,17 @@ function renderPassportForm(projectId) {
             </div>
         </div>
 
-        <!-- НОСЕЩИ ДАТИ -->
+        <!-- РЕГИСТЪР НА СЪСТАВЕНИТЕ ДОКУМЕНТИ -->
         <div class="card">
-            <div class="card-title" style="margin-bottom:8px">📅 Дати на съставяне</div>
+            <div class="card-title" style="margin-bottom:8px">📅 Съставени документи</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Датата, <strong>написана в документа</strong> — не датата на генериране. Въвежда се,
-                когато документът се върне подписан или заверен. Само тези шест задвижват проверки;
-                останалите документи нямат правило върху себе си.
+                Датата, <strong>написана в документа</strong> — не датата на генериране. Вписва се,
+                когато документът се върне подписан или заверен. Добавяй само каквото е съставено;
+                липсващият ред не е грешка.
             </p>
-            <div class="form-grid">
-                ${[
-                    ['protokol2',   'Протокол 2 / 2а — заверен от общината', 'котвата: начало на строежа по чл. 157, ал. 1'],
-                    ['zk_zaverka',  'Заповедна книга — заверка',             '≤ 3 дни след Протокол 2 (чл. 158, ал. 2)'],
-                    ['akt5',        'Акт 5',                                  '= заверката на кота изкоп в Протокол 2'],
-                    ['akt6',        'Акт 6',                                  '= заверката на кота изкоп в Протокол 2'],
-                    ['akt14',       'Акт 14 — приемане на конструкцията',     'доказва грубия строеж: ≤ 5 г. (10 г. за инфраструктура)'],
-                    ['akt15',       'Акт 15',                                 ''],
-                ].map(([k, label, hint]) => `
-                <div class="form-group">
-                    <label class="form-label">${label}</label>
-                    <input type="text" id="fp-date-${k}" class="form-input" placeholder="дд.мм.гггг"
-                           value="${((p.docDates||{})[k])||''}" oninput="formatDateInput(this)">
-                    ${hint ? `<p style="font-size:11px;color:var(--muted);margin-top:4px">${hint}</p>` : ''}
-                </div>`).join('')}
-                <div class="form-group form-grid-full">
-                    <label class="form-label">Актове обр. 7 — брой и период</label>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                        <input type="text" id="fp-akt7-br" class="form-input" style="width:90px" placeholder="брой"
-                               value="${((p.docDates||{}).akt7||{}).br||''}">
-                        <span style="font-size:13px;color:var(--muted)">от</span>
-                        <input type="text" id="fp-akt7-ot" class="form-input" style="width:130px" placeholder="дд.мм.гггг"
-                               value="${((p.docDates||{}).akt7||{}).ot||''}" oninput="formatDateInput(this)">
-                        <span style="font-size:13px;color:var(--muted)">до</span>
-                        <input type="text" id="fp-akt7-do" class="form-input" style="width:130px" placeholder="дд.мм.гггг"
-                               value="${((p.docDates||{}).akt7||{}).do||''}" oninput="formatDateInput(this)">
-                    </div>
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Идват накуп от строителя — въвеждат се накуп. Сверяват се срещу бетоновия дневник.
-                    </p>
-                </div>
-            </div>
+            <div id="fp-dd-rows"></div>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px"
+                    onclick="addDocDateRow()">+ Добави документ</button>
         </div>
 
         <!-- ОЦЕНКА НА СЪОТВЕТСТВИЕТО -->
@@ -4996,10 +5091,14 @@ function renderPassportForm(projectId) {
             </p>
             <div class="form-grid">
                 <div class="form-group form-grid-full">
-                    <label class="form-label">Категория на строежа</label>
+                    <label class="form-label">Категория — правно основание, дословно за раздел А</label>
                     <input type="text" id="fp-osip-kategoria" class="form-input"
-                           placeholder="Пета категория, съгласно чл. 10, ал. 1, буква „а“ от Наредба № 1/30.07.2003 г. и чл. 137, ал. 1, т. 5 от ЗУТ"
+                           placeholder="пета КАТЕГОРИЯ, съгласно чл. 10, ал. 1, буква „а“ от Наредба № 1/30.07.2003 г. за номенклатурата на видовете строежи и чл. 137, ал. 1, т. 5 от ЗУТ"
                            value="${(p.osip||{}).kategoria||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Самата категория се избира горе, при вида на строежа. Тук се пише цитатът,
+                        който влиза дословно в изречението на раздел А.
+                    </p>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Фаза на проекта</label>
@@ -5125,6 +5224,9 @@ function renderPassportForm(projectId) {
             <button class="btn btn-secondary" onclick="navigateTo('passports')">Отказ</button>
         </div>
     `;
+
+    // Регистърът се рисува след вмъкването на формата — редовете се добавят и махат динамично.
+    renderDocDates(p);
 }
 
 function clientRowHTML(cl, i) {
@@ -5354,22 +5456,11 @@ function savePassport() {
             number: document.getElementById('fp-zk-num')?.value || '',
             date:   document.getElementById('fp-zk-date')?.value || ''
         },
+        kategoria: document.getElementById('fp-kategoria')?.value || '',
         vid: document.getElementById('fp-vid')?.value || 'sgrada',
         imaMashini: !!document.getElementById('fp-ima-mashini')?.checked,
         metalnaKonstrukcia: !!document.getElementById('fp-metalna')?.checked,
-        docDates: {
-            protokol2:  document.getElementById('fp-date-protokol2')?.value || '',
-            zk_zaverka: document.getElementById('fp-date-zk_zaverka')?.value || '',
-            akt5:       document.getElementById('fp-date-akt5')?.value || '',
-            akt6:       document.getElementById('fp-date-akt6')?.value || '',
-            akt14:      document.getElementById('fp-date-akt14')?.value || '',
-            akt15:      document.getElementById('fp-date-akt15')?.value || '',
-            akt7: {
-                br: document.getElementById('fp-akt7-br')?.value || '',
-                ot: document.getElementById('fp-akt7-ot')?.value || '',
-                do: document.getElementById('fp-akt7-do')?.value || ''
-            }
-        },
+        docDates: readDocDates(),
         osip: {
             kategoria: document.getElementById('fp-osip-kategoria')?.value || '',
             faza:      document.getElementById('fp-osip-faza')?.value || '',
