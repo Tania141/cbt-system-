@@ -3404,6 +3404,71 @@ function clientsOf(project) {
     return project?.clients || (project?.client ? [project.client] : []);
 }
 
+// ── Смислова проверка на категорията ─────────────────────────────────────────
+// Кодът намира дословния текст на цитираната разпоредба, AI-ят преценява дали
+// описанието на строежа попада в нея. ДВАТА ТЕКСТА се показват заедно с
+// отговора — преценката трябва да може да се провери с поглед, не да ѝ се вярва.
+let _aiKategoria = null;
+
+function renderKatRezultat(r) {
+    const box = document.getElementById('kat-rezultat');
+    if (!box) return;
+    if (!r || !r.otgovor) { box.innerHTML = ''; return; }
+    const vid = {
+        da:      ['var(--green)', '✅', 'Описанието попада в цитираната разпоредба'],
+        ne:      ['var(--red)',   '⚠️', 'Описанието НЕ попада в цитираната разпоредба'],
+        ne_moga: ['var(--muted)', '⏳', 'Не може да се прецени'],
+    }[r.otgovor] || ['var(--muted)', '⏳', ''];
+    box.innerHTML = `
+        <div style="border-left:3px solid ${vid[0]};padding:10px 12px;background:var(--surface);border-radius:var(--r-sm)">
+            <div style="font-weight:700;font-size:13px;margin-bottom:6px">${vid[1]} ${vid[2]}</div>
+            <div style="font-size:12px;margin-bottom:8px">${r.obosnovka || ''}</div>
+            ${r.razporedba ? `
+            <details style="font-size:12px">
+                <summary style="cursor:pointer;color:var(--muted)">Двата текста — провери сама</summary>
+                <div style="margin-top:8px">
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">строежът</div>
+                    <div style="margin-bottom:8px">${r.opisanie || ''}</div>
+                    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${r.kade || 'разпоредбата'}</div>
+                    <div style="white-space:pre-wrap">${r.razporedba}</div>
+                </div>
+            </details>` : ''}
+        </div>`;
+}
+
+async function proveriKategoria() {
+    const opisanie = document.getElementById('fp-stroej')?.value.trim() || '';
+    const citat = document.getElementById('fp-osip-kategoria')?.value.trim() || '';
+    if (!opisanie) { showAlert('error', 'Първо въведи наименованието на строежа.'); return; }
+    if (!citat)    { showAlert('error', 'Първо въведи цитата за категорията.'); return; }
+    if (!appData.apiUrl) { showAlert('error', 'Конфигурирай API URL в Настройки.'); return; }
+
+    const btn = document.getElementById('btn-proveri-kat');
+    const staro = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Проверява…';
+    try {
+        const token = getToken();
+        const r = await fetch(`${(appData.apiUrl || '').replace(/\/$/, '')}/api/ai/kategoria-smisyl`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ opisanie, citat })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+        // „ne_moga“ преди модела идва без otgovor — привежда се към същия вид
+        _aiKategoria = d.otgovor ? d : { otgovor: 'ne_moga', obosnovka: d.obosnovka || '' };
+        renderKatRezultat(_aiKategoria);
+        if (_aiKategoria.otgovor === 'ne')
+            showAlert('error', 'Описанието не съвпада с цитираната разпоредба — провери категорията.');
+    } catch (e) {
+        showAlert('error', `Проверката не мина: ${e.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = staro;
+    }
+}
+
 // ── Фаза на обекта: проектна (ОСИП) или строителство ─────────────────────────
 // ЕДИН запис, ДВА изгледа. Нарочно не са два паспорта: два записа за един обект
 // значат проектантите, възложителите и екипът да живеят на две места — точно
@@ -5263,6 +5328,16 @@ function renderPassportForm(projectId) {
                         Самата категория се избира горе, при вида на строежа. Тук се пише цитатът,
                         който влиза дословно в изречението на раздел А.
                     </p>
+                    <div style="margin-top:10px">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-proveri-kat"
+                                onclick="proveriKategoria()">
+                            🔍 Провери цитата срещу наредбата
+                        </button>
+                        <span style="font-size:11px;color:var(--muted);margin-left:8px">
+                            намира разпоредбата и сверява описанието на строежа с нея
+                        </span>
+                    </div>
+                    <div id="kat-rezultat" style="margin-top:10px"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Изх. № на доклада</label>
@@ -5406,6 +5481,8 @@ function renderPassportForm(projectId) {
     renderDocDates(p);
     renderTeam(p, document.getElementById('fp-consultant')?.value);
     setFaza(faza);
+    _aiKategoria = (p.osip || {}).ai_kategoria || null;
+    renderKatRezultat(_aiKategoria);
 }
 
 function clientRowHTML(cl, i) {
@@ -5654,6 +5731,7 @@ function savePassport() {
             izh_nomer: document.getElementById('fp-osip-izh-nomer')?.value || '',
             izh_data:  document.getElementById('fp-osip-izh-data')?.value || '',
             kategoria: document.getElementById('fp-osip-kategoria')?.value || '',
+            ai_kategoria: _aiKategoria || undefined,
             faza:      document.getElementById('fp-osip-faza')?.value || '',
             organ:     document.getElementById('fp-osip-organ')?.value || '',
             dogovor:   document.getElementById('fp-osip-dogovor')?.value || '',
