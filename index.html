@@ -457,6 +457,14 @@
             border: 1px solid rgba(179,48,48,0.2);
         }
 
+        /* За неща, които не са грешка, но искат човешко око —
+           напр. номер на заповедна книга, който не е вписан в регистъра. */
+        .alert-warning {
+            background: #fdf6e3;
+            color: #8a6100;
+            border: 1px solid rgba(138,97,0,0.2);
+        }
+
         .alert-info {
             background: var(--blue-light);
             color: var(--blue);
@@ -1348,6 +1356,9 @@
         <button class="nav-item" onclick="navigateTo('ai-protocols')" id="nav-ai-protocols">
             <span class="nav-icon">🤖</span> AI Протоколи
         </button>
+        <button class="nav-item" onclick="navigateTo('zk')" id="nav-zk">
+            <span class="nav-icon">📓</span> Заповедни книги
+        </button>
         <button class="nav-item" onclick="navigateTo('history')" id="nav-history">
             <span class="nav-icon">🕐</span> История
         </button>
@@ -1528,6 +1539,90 @@
                     <input type="text" class="form-input" style="width:220px" id="history-filter-pi" placeholder="Филтър по ПИ..." oninput="renderHistory()">
                 </div>
                 <div id="history-timeline" class="timeline"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════ ЗАПОВЕДНИ КНИГИ ═══════════ -->
+        <div class="page" id="page-zk">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Регистър на заповедните книги</h1>
+                    <p class="page-subtitle">
+                        Кой номер на кой обект е даден — за да не се дублира и да не се губи
+                    </p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="renderZK()">↻ Обнови</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:8px">🔢 Номерация</div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                    Регистърът не почва от нулата, а оттам, докъдето сте стигнали на хартия.
+                    Задайте началния номер веднъж — оттам нататък системата предлага следващия.
+                </p>
+                <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Начален номер</label>
+                        <input type="text" id="zk-nachalen" class="form-input" style="width:140px" placeholder="4568">
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="zapishiNachalen()">Запиши</button>
+                    <div id="zk-sledvasht-kutiya" style="margin-left:auto;text-align:right"></div>
+                </div>
+                <div id="zk-prazniny" style="margin-top:12px"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:8px">➕ Вписване</div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                    Обектът не е задължителен: тук се вписват и стари книги отпреди системата,
+                    номер, даден преди да е заведен паспорт, и анулирани книги.
+                    Вписване със същия номер презаписва реда.
+                </p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Номер</label>
+                        <input type="text" id="zk-nomer" class="form-input" placeholder="4568">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Дата</label>
+                        <input type="text" id="zk-data" class="form-input" placeholder="дд.мм.гггг"
+                               oninput="formatDateInput(this)">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label class="form-label">Обект</label>
+                        <input type="text" id="zk-obekt" class="form-input"
+                               placeholder="Строеж и местонахождение, или „стара книга“ / „анулирана“">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ПИ (ако е заведен)</label>
+                        <input type="text" id="zk-pi" class="form-input" placeholder="напр. 2024-017">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Статус</label>
+                        <select id="zk-status" class="form-select">
+                            <option value="издадена">издадена</option>
+                            <option value="заменена">заменена от следваща</option>
+                            <option value="анулирана">анулирана</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Следваща ЗК №</label>
+                        <input type="text" id="zk-sledvashta" class="form-input" placeholder="напр. 4712">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label class="form-label">Бележка</label>
+                        <input type="text" id="zk-belejka" class="form-input"
+                               placeholder="Свети червено при съставяне на документи за този обект">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="zapishiZK()">
+                    💾 Впиши
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:12px">📓 Регистър</div>
+                <div id="zk-spisak"></div>
             </div>
         </div>
 
@@ -2397,7 +2492,147 @@ function navigateTo(page) {
     else if (page === 'generate') renderGenerateSection();
     else if (page === 'ai-protocols') renderAiProtocols();
     else if (page === 'history') renderHistory();
+    else if (page === 'zk') renderZK();
     else if (page === 'consultants') renderConsultants();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  РЕГИСТЪР НА ЗАПОВЕДНИТЕ КНИГИ
+// ═══════════════════════════════════════════════════════════
+// Номерът на заповедната книга е официален и последователен за фирмата.
+// Дотук се въвеждаше само в паспорта и никъде не се виждаше кой номер къде е
+// отишъл. Регистърът пази и връзката „тази книга е заменена от онази“ — при
+// смяна на надзора се издава нова и следващите документи се позовават на нея.
+
+async function renderZK() {
+    const spisak = document.getElementById('zk-spisak');
+    const kutiya = document.getElementById('zk-sledvasht-kutiya');
+    spisak.innerHTML = '<div class="empty-text">Зареждане…</div>';
+    let d;
+    try {
+        d = await apiCall('/api/zk');
+    } catch (e) {
+        spisak.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
+        kutiya.innerHTML = '';
+        return;
+    }
+
+    document.getElementById('zk-nachalen').value = d.nachalen || '';
+    kutiya.innerHTML = d.sledvasht
+        ? `<div style="font-size:12px;color:var(--muted)">Следващ свободен номер</div>
+           <div style="font-size:26px;font-weight:700;color:var(--accent)">${d.sledvasht}</div>`
+        : `<div style="font-size:12px;color:var(--muted)">Задайте начален номер,<br>за да предлага следващия</div>`;
+
+    document.getElementById('zk-prazniny').innerHTML = (d.prazniny || []).length
+        ? `<div class="alert alert-warning" style="margin:0">
+             ⚠️ Невписани номера в редицата: <strong>${d.prazniny.join(', ')}</strong>.
+             Обикновено значи, че книгата не е вписана, а не че номерът е свободен.
+           </div>`
+        : '';
+
+    if (!(d.redove || []).length) {
+        spisak.innerHTML = `<div class="empty-text">Още няма вписани заповедни книги.</div>`;
+        return;
+    }
+
+    const znak = { 'издадена': '', 'заменена': '🔴', 'анулирана': '🔴' };
+    spisak.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+                <tr style="text-align:left;border-bottom:1px solid var(--border)">
+                    <th style="padding:6px 8px">№</th>
+                    <th style="padding:6px 8px">Дата</th>
+                    <th style="padding:6px 8px">Обект</th>
+                    <th style="padding:6px 8px">ПИ</th>
+                    <th style="padding:6px 8px">Статус</th>
+                    <th style="padding:6px 8px">Бележка</th>
+                </tr>
+            </thead>
+            <tbody>
+            ${d.redove.map(r => `
+                <tr style="border-bottom:1px solid var(--border);cursor:pointer"
+                    onclick="popalniZK(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+                    <td style="padding:6px 8px;font-weight:600">${r.nomer}</td>
+                    <td style="padding:6px 8px">${r.data || '—'}</td>
+                    <td style="padding:6px 8px">${r.obekt || '—'}</td>
+                    <td style="padding:6px 8px">${r.pi || '—'}</td>
+                    <td style="padding:6px 8px">${znak[r.status] || ''} ${r.status}${
+                        r.sledvashta ? ` → № ${r.sledvashta}` : ''}</td>
+                    <td style="padding:6px 8px;color:var(--muted)">${r.belejka || ''}</td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">
+            Щракване върху ред го зарежда в полетата горе за поправка.
+        </p>`;
+}
+
+function popalniZK(r) {
+    document.getElementById('zk-nomer').value      = r.nomer || '';
+    document.getElementById('zk-data').value       = r.data || '';
+    document.getElementById('zk-obekt').value      = r.obekt || '';
+    document.getElementById('zk-pi').value         = r.pi || '';
+    document.getElementById('zk-status').value     = r.status || 'издадена';
+    document.getElementById('zk-sledvashta').value = r.sledvashta || '';
+    document.getElementById('zk-belejka').value    = r.belejka || '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function zapishiZK() {
+    const nomer = document.getElementById('zk-nomer').value.trim();
+    if (!nomer) { showAlert('error', 'Номерът е задължителен'); return; }
+    try {
+        await apiCall('/api/zk', 'POST', {
+            nomer,
+            data:       document.getElementById('zk-data').value.trim(),
+            obekt:      document.getElementById('zk-obekt').value.trim(),
+            pi:         document.getElementById('zk-pi').value.trim(),
+            status:     document.getElementById('zk-status').value,
+            sledvashta: document.getElementById('zk-sledvashta').value.trim(),
+            belejka:    document.getElementById('zk-belejka').value.trim(),
+        });
+        showAlert('success', `Заповедна книга № ${nomer} е вписана`);
+        ['zk-nomer','zk-data','zk-obekt','zk-pi','zk-sledvashta','zk-belejka']
+            .forEach(id => document.getElementById(id).value = '');
+        document.getElementById('zk-status').value = 'издадена';
+        renderZK();
+    } catch (e) {
+        showAlert('error', e.message);
+    }
+}
+
+async function zapishiNachalen() {
+    const n = document.getElementById('zk-nachalen').value.trim();
+    if (!n) { showAlert('error', 'Въведете начален номер'); return; }
+    try {
+        await apiCall('/api/zk/nachalen', 'POST', { nachalen: n });
+        showAlert('success', `Регистърът тръгва от № ${n}`);
+        renderZK();
+    } catch (e) {
+        showAlert('error', e.message);
+    }
+}
+
+async function proveriZK(nomer) {
+    // Свети ли червено: книгата заменена ли е, анулирана ли е, има ли бележка.
+    const kutiya = document.getElementById('zk-preduprezhdenie');
+    if (!kutiya || !nomer) return;
+    try {
+        const d = await apiCall(`/api/zk/proverka?nomer=${encodeURIComponent(nomer)}`);
+        if (d.cherveno) {
+            kutiya.innerHTML = `<div class="alert alert-error" style="margin:12px 0 0">
+                🔴 ${d.sabshtenie}</div>`;
+        } else if (!d.vpisana) {
+            kutiya.innerHTML = `<div class="alert alert-warning" style="margin:12px 0 0">
+                ⚠️ ${d.sabshtenie}
+                <button class="btn btn-secondary btn-sm" style="margin-left:8px"
+                        onclick="navigateTo('zk')">📓 Регистър</button></div>`;
+        } else {
+            kutiya.innerHTML = '';
+        }
+    } catch (e) {
+        kutiya.innerHTML = '';
+    }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6060,7 +6295,8 @@ function renderGenerateSection() {
                 <div class="form-group">
                     <label class="form-label">Номер</label>
                     <input type="text" id="gen-zk-num" class="form-input" placeholder="1050"
-                           value="${(project?.zk||{}).number||''}">
+                           value="${(project?.zk||{}).number||''}"
+                           onchange="proveriZK(this.value)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Дата</label>
@@ -6071,6 +6307,8 @@ function renderGenerateSection() {
             <p style="font-size:12px;color:var(--muted);margin-top:8px">
                 💡 Геодезист, конструктор и СН се взимат автоматично от служителите на консултанта
             </p>
+            <!-- Свети червено, ако книгата е заменена, анулирана или има бележка -->
+            <div id="zk-preduprezhdenie"></div>
         </div>
 
         <!-- Изходящ номер за ОСИП -->
@@ -6214,6 +6452,9 @@ function renderGenerateSection() {
     renderSignersChecklist('gen-signers', appData.currentProject);
     renderAkt12Parts('gen-akt12-parts', appData.currentProject,
                      appData.consultants.find(c => c.id === appData.currentProject?.consultant?.id));
+    // Регистърът има думата: заменена или анулирана книга значи, че номерът
+    // в паспорта вече не е верният за документите, които се съставят сега.
+    proveriZK((project?.zk || {}).number);
 }
 
 async function generateDocumentsViaApi() {
