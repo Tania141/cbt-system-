@@ -2969,17 +2969,6 @@ function renderAiProtocols() {
                 <div id="attached-files-list" style="margin-top:12px"></div>
             </div>
 
-            <!-- Избор на представител за подписи -->
-            <div class="card" style="margin-bottom:16px" id="podpis-section" style="display:none">
-                <div class="card-header">
-                    <div class="card-title">✍️ Представител за подписи</div>
-                    <div class="card-subtitle">Кой подписва от страна на Възложителя</div>
-                </div>
-                <div id="podpis-select-container">
-                    <p style="font-size:13px;color:var(--muted)">Зареждане на възложителите...</p>
-                </div>
-            </div>
-
             <!-- Бутон за генериране -->
             <div style="display:flex;gap:12px;align-items:center">
                 <button class="btn btn-primary" onclick="runAiProtocol()" id="run-ai-btn" style="font-size:15px;padding:12px 28px">
@@ -3133,7 +3122,6 @@ function selectProtocol(key) {
         ${proto.requiredDocs.map(d => `<div style="font-size:13px;padding:4px 0;color:var(--slate)">⚠️ ${d}</div>`).join('')}
 
     // Показваме секцията за представител за подписи
-    renderPodpisSection(appData.currentProject);
         ${proto.optionalDocs.length ? `<div style="margin-top:8px;font-size:13px;font-weight:600">Препоръчителни:</div>
         ${proto.optionalDocs.map(d => `<div style="font-size:13px;padding:4px 0;color:var(--muted)">💡 ${d}</div>`).join('')}` : ''}`;
 
@@ -4178,39 +4166,6 @@ async function sendChatMessage() {
     }
 }
 
-function renderPodpisSection(project) {
-    const container = document.getElementById('podpis-select-container');
-    const section = document.getElementById('podpis-section');
-    if (!container || !section) return;
-
-    const clients = project?.clients || (project?.client ? [project.client] : []);
-    if (!clients.length) { section.style.display = 'none'; return; }
-
-    section.style.display = 'block';
-
-    if (clients.length === 1) {
-        // Само един възложител — показваме го, без избор
-        const c = clients[0];
-        const name = c.type === 'ЮЛ' ? (c.rep || c.name) : c.name;
-        container.innerHTML = `<div style="font-size:13px;padding:8px 0">
-            <strong>${name}</strong>
-            <input type="hidden" id="podpis-index" value="0">
-        </div>`;
-    } else {
-        // Множество възложители — dropdown за избор
-        container.innerHTML = `
-            <div class="form-group">
-                <label class="form-label">Избери кой подписва</label>
-                <select id="podpis-index" class="form-select">
-                    ${clients.map((c, i) => {
-                        const name = c.type === 'ЮЛ' ? (c.rep || c.name) : c.name;
-                        return `<option value="${i}">${name}</option>`;
-                    }).join('')}
-                    <option value="all">И двамата / Всички</option>
-                </select>
-            </div>`;
-    }
-}
 
 function clearAiSession() {
     if (!confirm('Изчисти целия разговор и започни отново?')) return;
@@ -6117,11 +6072,6 @@ function buildExcelPayload(project, consultant) {
         rows.push([`Проектант_${i+1}_Управител`, pp.companyManager || '']);
         rows.push([`Проектант_${i+1}_Адрес`, pp.companyAddress || '']);
     });
-
-    // Представител за подписи — взимаме от podpis-index dropdown
-    const podpisEl = document.getElementById('podpis-index');
-    const podpisIdx = podpisEl ? (podpisEl.value === 'all' ? 0 : parseInt(podpisEl.value) || 0) : 0;
-    rows.push(['Възложител_Подпис_Индекс', podpisIdx]);
 
     return rows;
 }
