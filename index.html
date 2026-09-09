@@ -3833,6 +3833,81 @@ function addDocDateRow(docId, chast, data) {
     if (box) box.insertAdjacentHTML('beforeend', docDateRowHtml(docId || 'protokol2', chast, data));
 }
 
+// ═══════════════════════════════════════════════════════════
+//  ВХОДНИ ДОКУМЕНТИ — какво е налице срещу какво се изисква
+// ═══════════════════════════════════════════════════════════
+// Списъкът с изисквани документи и условията за приложимост идват от чеклиста
+// на оператора. Тук се вписва само какво е налице.
+
+function dokRowHtml(ime, nomer) {
+    return `<div class="dok-row" style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;margin-bottom:6px">
+        <input type="text" class="form-input dok-ime" placeholder="Виза за проектиране"
+               value="${(ime || '').replace(/"/g, '&quot;')}">
+        <input type="text" class="form-input dok-nomer" placeholder="№ и дата"
+               value="${(nomer || '').replace(/"/g, '&quot;')}">
+        <button type="button" class="btn btn-ghost btn-sm"
+                onclick="this.parentElement.remove()">✕</button>
+    </div>`;
+}
+
+function addDokRow(ime, nomer) {
+    const box = document.getElementById('fp-dok-rows');
+    if (box) box.insertAdjacentHTML('beforeend', dokRowHtml(ime, nomer));
+}
+
+function renderDokumenti(project) {
+    const box = document.getElementById('fp-dok-rows');
+    if (!box) return;
+    box.innerHTML = '';
+    ((project && project.dokumenti) || []).forEach(d => addDokRow(d.ime, d.nomer));
+}
+
+function readDokumenti() {
+    return [...document.querySelectorAll('#fp-dok-rows .dok-row')]
+        .map(r => ({ ime:   r.querySelector('.dok-ime')?.value.trim() || '',
+                     nomer: r.querySelector('.dok-nomer')?.value.trim() || '' }))
+        .filter(d => d.ime);
+}
+
+async function proveriDokumenti() {
+    const kutiya = document.getElementById('fp-dok-rezultat');
+    kutiya.innerHTML = '<p style="font-size:13px;color:var(--muted)">Проверявам…</p>';
+    const dok = readDokumenti();
+    const rows = [
+        ['Категория', document.getElementById('fp-kategoria')?.value || ''],
+        ['Предназначение', document.getElementById('fp-prednaznachenie')?.value || ''],
+        ['Вид', document.getElementById('fp-vid')?.value || ''],
+        ['Повод', document.getElementById('fp-povod')?.value || ''],
+        ['СПО', document.getElementById('fp-spo')?.value || ''],
+        ['Паметник', document.getElementById('fp-pametnik')?.checked ? 'да' : 'не'],
+        ['Защитена_Зона', document.getElementById('fp-zashtitena')?.checked ? 'да' : 'не'],
+        ['Опасни_Вещества', document.getElementById('fp-opasni')?.checked ? 'да' : 'не'],
+        ['Води', document.getElementById('fp-vodi')?.checked ? 'да' : 'не'],
+        ['Документи_Брой', dok.length],
+        ...dok.flatMap((d, i) => [[`Документ_${i+1}_Име`, d.ime],
+                                  [`Документ_${i+1}_Номер`, d.nomer]]),
+    ];
+    try {
+        const r = await apiCall('/api/cheklist', 'POST', { passport: rows });
+        if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-warning" style="margin:0">⚠️ ${r.greshka}</div>`; return; }
+        const lipsvat = r.redove.filter(x => x.sastoyanie === 'не е доказано');
+        const nalice  = r.redove.filter(x => x.sastoyanie === 'налице');
+        kutiya.innerHTML = `
+            <div class="alert ${lipsvat.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 10px">
+                ${lipsvat.length ? `⏳ Липсват ${lipsvat.length} от ${r.iziskvani} изисквани документа.`
+                                 : `✅ Всички ${r.iziskvani} изисквани документа са налице.`}
+            </div>
+            ${lipsvat.map(x => `<div style="font-size:13px;padding:3px 0">
+                ⏳ <strong>${x.dokument}</strong>
+                <span style="color:var(--muted)">— ${x.uslovie}${x.dokazva_se ? ' · доказва се с ' + x.dokazva_se : ''}</span>
+            </div>`).join('')}
+            ${nalice.map(x => `<div style="font-size:13px;padding:3px 0;color:var(--green)">
+                ✓ ${x.dokument}</div>`).join('')}`;
+    } catch (e) {
+        kutiya.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${e.message}</div>`;
+    }
+}
+
 function renderDocDates(project) {
     const box = document.getElementById('fp-dd-rows');
     if (!box) return;
@@ -4000,6 +4075,7 @@ function buildPassportRows(project, consultant, extra) {
     add('Защитена_Зона', project.zashtitena ? 'да' : 'не');
     add('Паметник', project.pametnik ? 'да' : 'не');
     add('Опасни_Вещества', project.opasni ? 'да' : 'не');
+    add('Води', project.vodi ? 'да' : 'не');
     add('Одобряващ_Орган', project.osip?.organ);
     add('Договор_Надзор', project.osip?.dogovor);
     add('ТехКонтрол', project.osip?.tk);
@@ -5455,6 +5531,26 @@ function renderPassportForm(projectId) {
                     onclick="addDocDateRow()">+ Добави документ</button>
         </div>
 
+        <!-- ВХОДНИ ДОКУМЕНТИ И СЪГЛАСУВАНИЯ -->
+        <div class="card" data-faza="osip">
+            <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Кои документи се изискват за този обект решава чеклистът —
+                файл, който редактираш ти, не кодът. Впиши каквото е налице;
+                останалото излиза като <strong>не е доказано</strong>, не се премълчава.
+            </p>
+            <div id="fp-dok-rows"></div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addDokRow()">
+                    + Добави документ
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="proveriDokumenti()">
+                    🔍 Провери какво липсва
+                </button>
+            </div>
+            <div id="fp-dok-rezultat" style="margin-top:12px"></div>
+        </div>
+
         <!-- ПРИЗНАЦИ ЗА КОМПЛЕКСНИЯ ДОКЛАД -->
         <div class="card" data-faza="osip">
             <div class="card-title" style="margin-bottom:8px">📑 Признаци за оценката</div>
@@ -5526,6 +5622,11 @@ function renderPassportForm(projectId) {
                         <input type="checkbox" id="fp-opasni" style="width:16px;height:16px"
                                ${p.opasni?'checked':''}>
                         Опасни вещества по глава седма, раздел I от ЗООС
+                    </label>
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                        <input type="checkbox" id="fp-vodi" style="width:16px;height:16px"
+                               ${p.vodi?'checked':''}>
+                        Засяга води, заустване или санитарно-охранителна зона
                     </label>
                 </div>
             </div>
@@ -5778,6 +5879,7 @@ function renderPassportForm(projectId) {
 
     // Рисуват се след вмъкването на формата — съдържанието им е динамично.
     renderDocDates(p);
+    renderDokumenti(p);
     renderTeam(p, document.getElementById('fp-consultant')?.value);
     setFaza(faza);
     _aiKategoria = (p.osip || {}).ai_kategoria || null;
@@ -6034,9 +6136,11 @@ function savePassport() {
         zashtitena: !!document.getElementById('fp-zashtitena')?.checked,
         pametnik:   !!document.getElementById('fp-pametnik')?.checked,
         opasni:     !!document.getElementById('fp-opasni')?.checked,
+        vodi:       !!document.getElementById('fp-vodi')?.checked,
         imaMashini: !!document.getElementById('fp-ima-mashini')?.checked,
         metalnaKonstrukcia: !!document.getElementById('fp-metalna')?.checked,
         docDates: readDocDates(),
+        dokumenti: readDokumenti(),
         osip: {
             izh_nomer: document.getElementById('fp-osip-izh-nomer')?.value || '',
             izh_data:  document.getElementById('fp-osip-izh-data')?.value || '',
