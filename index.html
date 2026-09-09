@@ -7,7 +7,6 @@
     <title>АКТ СИСТЕМ — Система за управление v6</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.js"></script>
     <script>console.log('[HEAD] docx after script tag:', typeof docx, typeof window.docx);</script>
     
@@ -116,35 +115,6 @@
         .topbar-date {
             font-size: 13px;
             color: var(--muted);
-        }
-
-        #dropbox-indicator {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 5px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        #dropbox-indicator.connected {
-            background: rgba(45,125,82,0.2);
-            color: #6fcf97;
-        }
-
-        #dropbox-indicator.disconnected {
-            background: rgba(179,48,48,0.2);
-            color: #f4a4a4;
-        }
-
-        #dropbox-indicator .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
         }
 
         /* ═══════════════════════════════════
@@ -795,14 +765,8 @@
         }
 
         /* ═══════════════════════════════════
-           DROPBOX SECTION
+           (махнато: Dropbox)
         ═══════════════════════════════════ */
-        .dropbox-card {
-            background: linear-gradient(135deg, #0061ff15, #60efff10);
-            border: 1.5px solid #0061ff30;
-            border-radius: var(--r);
-            padding: 24px;
-        }
 
         /* ═══════════════════════════════════
            MODAL
@@ -1313,18 +1277,9 @@
         </div>
         <div class="topbar-info">
             <div class="topbar-date" id="current-date"></div>
-            <button onclick="syncWithCloud()" id="cloud-sync-btn"
-                style="background:none;border:1px solid var(--border-light);color:var(--muted);font-size:11px;font-weight:600;padding:4px 10px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:var(--transition)"
-                title="Синхронизирай с Dropbox">
-                ☁️ Sync
-            </button>
             <div id="api-indicator" class="disconnected" onclick="navigateTo('settings')" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;cursor:pointer;transition:var(--transition)">
                 <span class="dot" style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>
                 <span id="api-indicator-text">API: не е конфигуриран</span>
-            </div>
-            <div id="dropbox-indicator" class="disconnected" onclick="navigateTo('settings')">
-                <span class="dot"></span>
-                <span id="dropbox-indicator-text">Dropbox: не е свързан</span>
             </div>
             <div id="user-menu" style="display:none;align-items:center;gap:8px;padding-left:8px;border-left:1px solid var(--border-light)">
                 <span id="user-email-display" style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
@@ -1417,36 +1372,6 @@
                 </div>
             </div>
 
-            <div class="card" style="margin-top:0">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Python Автоматизация</div>
-                        <div class="card-subtitle">Workflow статус</div>
-                    </div>
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-                    <div style="text-align:center;padding:16px;background:var(--green-light);border-radius:var(--r-sm)">
-                        <div style="font-size:24px">📝</div>
-                        <div style="font-size:12px;font-weight:700;color:var(--green);margin-top:6px">1. PWA Паспорт</div>
-                        <div style="font-size:11px;color:var(--slate);margin-top:2px">Попълни данни</div>
-                    </div>
-                    <div style="text-align:center;padding:16px;background:var(--blue-light);border-radius:var(--r-sm)">
-                        <div style="font-size:24px">📊</div>
-                        <div style="font-size:12px;font-weight:700;color:var(--blue);margin-top:6px">2. Excel → Dropbox</div>
-                        <div style="font-size:11px;color:var(--slate);margin-top:2px">passport.xlsx</div>
-                    </div>
-                    <div style="text-align:center;padding:16px;background:rgba(201,149,42,0.1);border-radius:var(--r-sm)">
-                        <div style="font-size:24px">🐍</div>
-                        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-top:6px">3. Python Script</div>
-                        <div style="font-size:11px;color:var(--slate);margin-top:2px">Автоматично</div>
-                    </div>
-                    <div style="text-align:center;padding:16px;background:var(--surface-2);border-radius:var(--r-sm)">
-                        <div style="font-size:24px">📄</div>
-                        <div style="font-size:12px;font-weight:700;color:var(--slate);margin-top:6px">4. .docx документи</div>
-                        <div style="font-size:11px;color:var(--slate);margin-top:2px">Готови в Dropbox</div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- ═══════════ PASSPORTS LIST ═══════════ -->
@@ -1471,8 +1396,6 @@
                 </select>
                 <select class="form-select filter-select" id="filter-status" onchange="filterPassports()">
                     <option value="">Всички статуси</option>
-                    <option value="exported">Експортирани</option>
-                    <option value="not-exported">Неекспортирани</option>
                     <option value="with-docs">С генерирани документи</option>
                 </select>
             </div>
@@ -1703,32 +1626,6 @@
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                <div class="card dropbox-card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">📦 Dropbox интеграция</div>
-                            <div class="card-subtitle">Синхронизация с облака</div>
-                        </div>
-                        <div id="settings-dropbox-status"></div>
-                    </div>
-                    <div class="form-group" style="margin-bottom:14px">
-                        <label class="form-label">Access Token</label>
-                        <input type="password" id="dropbox-token" class="form-input" placeholder="sl.xxxxxxxxxxxxxxx">
-                        <span class="form-hint">
-                            Генерирайте от <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color:var(--blue)">Dropbox App Console</a>
-                        </span>
-                    </div>
-                    <div class="form-group" style="margin-bottom:14px">
-                        <label class="form-label">Папка в Dropbox</label>
-                        <input type="text" id="dropbox-folder" class="form-input" placeholder="/AKT_Projects" value="/AKT_Projects">
-                        <span class="form-hint">Базова папка за всички проекти</span>
-                    </div>
-                    <div style="display:flex;gap:10px">
-                        <button class="btn btn-primary" onclick="saveDropboxToken()">💾 Запази</button>
-                        <button class="btn btn-secondary" onclick="testDropboxConnection()">🔌 Тествай</button>
-                    </div>
-                </div>
-
                 <div class="card">
                     <div class="card-header">
                         <div>
@@ -1798,8 +1695,7 @@
                     <table style="width:100%;font-size:13px;border-collapse:collapse">
                         <tr><td style="padding:6px 0;color:var(--slate)">Версия</td><td style="font-weight:600">АКТ СИСТЕМ v6.0</td></tr>
                         <tr><td style="padding:6px 0;color:var(--slate)">Дата</td><td style="font-weight:600">Февруари 2026</td></tr>
-                        <tr><td style="padding:6px 0;color:var(--slate)">Excel библиотека</td><td style="font-weight:600">SheetJS (XLSX)</td></tr>
-                        <tr><td style="padding:6px 0;color:var(--slate)">Съхранение</td><td style="font-weight:600">localStorage + Dropbox + Railway API</td></tr>
+                        <tr><td style="padding:6px 0;color:var(--slate)">Съхранение</td><td style="font-weight:600">localStorage + Railway API (PostgreSQL)</td></tr>
                         <tr><td style="padding:6px 0;color:var(--slate)">Документи</td><td style="font-weight:600">Протокол 2, Акт 7, Акт 14, Образец 3, Заповедна книга</td></tr>
                         <tr><td style="padding:6px 0;color:var(--slate)">Нови функции</td><td style="font-weight:600">REST API интеграция, разширени проектанти, служители надзор в Excel</td></tr>
                     </table>
@@ -1820,9 +1716,6 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('passport-modal')">Затвори</button>
             <button class="btn btn-secondary" id="modal-edit-btn">✏️ Редактирай</button>
-            <button class="btn btn-secondary" id="modal-export-btn">📊 Експорт Excel</button>
-            <button class="btn btn-blue" id="modal-sync-api-btn" style="background:var(--blue-light);color:var(--blue);border:1px solid rgba(31,107,181,0.3);display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;">🔄 Sync API</button>
-            <button class="btn btn-success" id="modal-generate-btn">📄 Генерирай документи</button>
         </div>
     </div>
 </div>
@@ -2082,8 +1975,6 @@ let appData = {
     consultants: [],
     projects: [],
     currentProject: null,
-    dropboxToken: '',
-    dropboxFolder: '/AKT_Projects',
     apiUrl: 'https://web-production-220c7.up.railway.app',
     history: []
 };
@@ -2261,22 +2152,6 @@ async function generateDocumentViaApi(projectId, docType) {
     }
 }
 
-async function syncPassportToApi(projectId) {
-    const project = appData.projects.find(p => p.id === projectId);
-    if (!project) return;
-    if (!appData.apiUrl) { showAlert('error', 'API URL не е конфигуриран!'); return; }
-    try {
-        showAlert('info', `⏳ Синхронизация на PI-${project.pi}...`);
-        const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
-        const payload = buildExcelPayload(project, consultant);
-        await apiCall(`/api/passports/${project.pi}`, 'POST', { passport: payload });
-        addHistory('export', project.pi, `Паспортът синхронизиран с API`);
-        saveData();
-        showAlert('success', `✅ PI-${project.pi} синхронизиран с Python API!`);
-    } catch(e) {
-        showAlert('error', `❌ Синхронизация неуспешна: ${e.message}`);
-    }
-}
 
 const specializations = [
     'Архитектура','Конструктивна','ВиК','Електро','ОВК и ЕЕ',
@@ -2300,7 +2175,6 @@ function loadData() {
             const parsed = JSON.parse(saved);
             appData = { ...appData, ...parsed };
             if (!appData.history) appData.history = [];
-            if (!appData.dropboxFolder) appData.dropboxFolder = '/AKT_Projects';
             // Keep hardcoded default if nothing was ever saved
             if (!appData.apiUrl) appData.apiUrl = 'https://web-production-220c7.up.railway.app';
         } catch(e) {
@@ -2315,7 +2189,6 @@ function loadData() {
             const old = JSON.parse(oldData);
             if (old.projects) appData.projects = old.projects;
             if (old.consultants) appData.consultants = old.consultants;
-            if (old.dropboxToken) appData.dropboxToken = old.dropboxToken;
             addHistory('migrate', null, 'Мигрирани данни от v4');
             saveData();
             showAlert('info', '✅ Данните от предишната версия са мигрирани успешно!');
@@ -2339,11 +2212,8 @@ function loadData() {
         saveData();
     }
 
-    document.getElementById('dropbox-token').value = appData.dropboxToken || '';
-    document.getElementById('dropbox-folder').value = appData.dropboxFolder || '/AKT_Projects';
     const apiInput = document.getElementById('api-url-input');
     if (apiInput) apiInput.value = appData.apiUrl || '';
-    updateDropboxIndicator();
     updateApiIndicator();
     applyUserSession();
     renderDashboard();
@@ -2379,104 +2249,15 @@ function loadData() {
             .catch(() => {}); // silently fall back to localStorage cache
     }
 
-    // Автоматично зареждане от Dropbox при стартиране
-    if (appData.dropboxToken) {
-        cloudLoadProjects().then(loaded => {
-            if (loaded) {
-                renderDashboard();
-                filterPassports();
-                updateNavBadge();
-                console.log('✅ Паспортите са заредени от Dropbox');
-            }
-        }).catch(() => {});
-    }
 }
 
 function saveData() {
     appData.savedAt = new Date().toISOString();
     localStorage.setItem('akt_v5', JSON.stringify(appData));
-    // Автоматично синхронизира с Dropbox ако е свързан
-    if (appData.dropboxToken) {
-        cloudSaveProjects().catch(() => {}); // тихо — не блокира UI
-    }
 }
 
-// ── Cloud Sync (Dropbox) ──────────────────────────────────
-const CLOUD_FILE = () => `${appData.dropboxFolder}/_akt_projects.json`;
 
-async function cloudSaveProjects() {
-    if (!appData.apiUrl) return;
-    const payload = {
-        projects: appData.projects,
-        consultants: appData.consultants,
-        history: appData.history.slice(0, 100),
-        savedAt: new Date().toISOString(),
-    };
-    try {
-        await fetch(`${appData.apiUrl}/api/cloud/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-    } catch(e) {}
-}
 
-async function cloudLoadProjects(forceLoad = false) {
-    if (!appData.apiUrl) return false;
-    try {
-        const res = await fetch(`${appData.apiUrl}/api/cloud/load`);
-        if (!res.ok) return false;
-        const payload = await res.json();
-        if (!payload.projects) return false;
-
-        if (forceLoad) {
-            appData.projects = payload.projects || [];
-            appData.consultants = payload.consultants || appData.consultants;
-            if (payload.history) appData.history = payload.history;
-            localStorage.setItem('akt_v5', JSON.stringify(appData));
-            return true;
-        }
-
-        const cloudTime = new Date(payload.savedAt || 0).getTime();
-        const localSaved = localStorage.getItem('akt_v5');
-        const localTime = localSaved ? new Date(JSON.parse(localSaved).savedAt || 0).getTime() : 0;
-
-        if (cloudTime > localTime || appData.projects.length === 0) {
-            appData.projects = payload.projects || [];
-            appData.consultants = payload.consultants || appData.consultants;
-            if (payload.history) appData.history = payload.history;
-            localStorage.setItem('akt_v5', JSON.stringify(appData));
-            return true;
-        }
-        return false;
-    } catch(e) {
-        return false;
-    }
-}
-
-async function syncWithCloud() {
-    if (!appData.dropboxToken) {
-        showAlert('error', '❌ Dropbox не е свързан!');
-        return;
-    }
-    const btn = document.getElementById('cloud-sync-btn');
-    if (btn) btn.innerHTML = '⏳ Sync...';
-    showAlert('info', '🔄 Синхронизиране с Dropbox...');
-
-    // Винаги зарежда от Dropbox при ръчен Sync
-    const loaded = await cloudLoadProjects(true);
-    if (loaded) {
-        renderDashboard();
-        filterPassports();
-        updateNavBadge();
-        showAlert('success', `✅ Заредени ${appData.projects.length} паспорта от Dropbox!`);
-    } else {
-        // Файлът не съществува — запази текущите данни
-        await cloudSaveProjects();
-        showAlert('success', '✅ Данните са запазени в Dropbox!');
-    }
-    if (btn) btn.innerHTML = '☁️ Sync';
-}
 
 function addHistory(type, pi, detail) {
     appData.history.unshift({
@@ -2909,7 +2690,7 @@ function renderAiProtocols() {
                 </div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin-top:8px">
-                💡 Ключът се пази само в паметта на браузъра — не се изпраща към Railway или Dropbox
+                💡 Ключът се пази само в паметта на браузъра — не се изпраща към Railway
             </p>
         </div>
 
@@ -5153,7 +4934,6 @@ document.addEventListener('click', function(e) {
 function renderDashboard() {
     // Stats
     const totalProjects = appData.projects.length;
-    const totalExported = appData.projects.filter(p => p.exportedAt).length;
     const totalDocs = appData.projects.reduce((acc, p) => acc + (p.generatedDocs || []).length, 0);
     const totalConsultants = appData.consultants.length;
 
@@ -5162,11 +4942,6 @@ function renderDashboard() {
             <div class="stat-label">Общо паспорти</div>
             <div class="stat-value">${totalProjects}</div>
             <div class="stat-meta">проекта в системата</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Експортирани</div>
-            <div class="stat-value">${totalExported}</div>
-            <div class="stat-meta">Excel → Dropbox</div>
         </div>
         <div class="stat-card">
             <div class="stat-label">Генерирани документи</div>
@@ -5193,7 +4968,6 @@ function renderDashboard() {
                     <div style="font-size:12px;color:var(--slate)">${p.stroej || '—'}</div>
                 </div>
                 <div style="text-align:right">
-                    ${p.exportedAt ? '<span class="badge badge-green">✓ Excel</span>' : '<span class="badge badge-gold">⏳ Чака</span>'}
                 </div>
             </div>
         `).join('');
@@ -5260,11 +5034,7 @@ function filterPassports() {
         filtered = filtered.filter(p => p.consultant?.id == consultantFilter);
     }
 
-    if (statusFilter === 'exported') {
-        filtered = filtered.filter(p => p.exportedAt);
-    } else if (statusFilter === 'not-exported') {
-        filtered = filtered.filter(p => !p.exportedAt);
-    } else if (statusFilter === 'with-docs') {
+    if (statusFilter === 'with-docs') {
         filtered = filtered.filter(p => p.generatedDocs?.length > 0);
     }
 
@@ -5303,7 +5073,6 @@ function renderPassportsList(projects) {
                 <div class="passport-name">${p.stroej || '(без строеж)'}</div>
                 <div class="passport-details">${p.address || ''} ${p.consultant?.name ? '· '+p.consultant.name : ''}</div>
                 <div class="passport-docs">
-                    ${p.exportedAt ? `<span class="badge badge-green">📊 Excel ${formatDate2(p.exportedAt)}</span>` : '<span class="badge badge-gold">⏳ Неекспортиран</span>'}
                     ${docs.map(d => `<span class="badge badge-blue">${d.type}</span>`).join('')}
                 </div>
             </div>
@@ -5379,7 +5148,6 @@ function openPassportModal(id) {
         </div>` : ''}
         <div class="section-sep" style="margin-top:16px">Статус и документи</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-            ${project.exportedAt ? `<span class="badge badge-green">✅ Excel на ${formatDateTime(project.exportedAt)}</span>` : '<span class="badge badge-gold">⏳ Не е експортиран</span>'}
             ${appData.apiUrl ? '<span class="badge badge-blue">🔌 API конфигуриран</span>' : '<span class="badge badge-gray">API не е конфигуриран</span>'}
         </div>
         ${docs.length > 0 ? `
@@ -5411,9 +5179,6 @@ function openPassportModal(id) {
     `;
 
     document.getElementById('modal-edit-btn').onclick = () => { closeModal('passport-modal'); editPassport(id); };
-    document.getElementById('modal-export-btn').onclick = () => exportPassportExcel(id);
-    document.getElementById('modal-sync-api-btn').onclick = () => syncPassportToApi(id);
-    document.getElementById('modal-generate-btn').onclick = () => { appData.currentProject = project; saveData(); closeModal('passport-modal'); navigateTo('generate'); };
 
     document.getElementById('passport-modal').classList.add('open');
 }
@@ -5955,7 +5720,6 @@ function renderPassportForm(projectId) {
             <button class="btn btn-success btn-lg" onclick="savePassport()">
                 💾 ${isEdit ? 'Запази промените' : 'Запази паспорт'}
             </button>
-            ${isEdit ? `<button class="btn btn-primary btn-lg" onclick="exportPassportExcel(${projectId})">📊 Запази и Експорт Excel</button>` : ''}
             <button class="btn btn-secondary" onclick="navigateTo('passports')">Отказ</button>
         </div>
     `;
@@ -6267,7 +6031,6 @@ function savePassport() {
                 ...oldProject,
                 ...projectData,
                 updatedAt: new Date().toISOString(),
-                exportedAt: null // Reset export status when edited
             };
             addHistory('edit', pi, `Редактирани данни за паспорт ПИ ${pi}`);
             showAlert('success', `✅ Паспортът е актуализиран! Excel статусът е нулиран — моля, експортирайте отново.`);
@@ -6278,7 +6041,6 @@ function savePassport() {
             id: Date.now(),
             ...projectData,
             generatedDocs: [],
-            exportedAt: null,
             createdAt: new Date().toISOString()
         };
         appData.projects.push(newProject);
@@ -6323,109 +6085,10 @@ function deletePassport(id) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  EXCEL EXPORT (passport.xlsx for Python)
+//  ГЕНЕРИРАНЕ
 // ═══════════════════════════════════════════════════════════
 
-// Unified payload builder used by both Excel export and API sync
-function buildExcelPayload(project, consultant) {
-    const p = project;
-    const permit = p.permit || {};
-    const client = p.client || {};
-    const builder = p.builder || {};
-    const employees = consultant?.employees || [];
 
-    const rows = [
-        ['ПИ', p.pi || ''],
-        ['Дата', formatDateForExcel(p.date)],
-        ['Строеж', p.stroej || ''],
-        ['Адрес', p.address || ''],
-        // Консултант
-        ['Консултант_Фирма', consultant?.name || p.consultant?.name || ''],
-        ['Консултант_ЕИК', consultant?.eik || ''],
-        ['Консултант_Управител', consultant?.manager || ''],
-        ['Консултант_Адрес', consultant?.address || ''],
-        ['Консултант_Удостоверение', consultant?.cert || ''],
-        // Възложител
-        ['Възложител_Тип', client.type || 'ФЛ'],
-        ['Възложител_Фирма', client.name || ''],
-        ['Възложител_ЕИК', client.eik || ''],
-        ['Възложител_Адрес', client.address || ''],
-        ['Възложител_Представител', client.rep || client.name || ''],
-        // Строител
-        ['Строител_Фирма', builder.company || ''],
-        ['Строител_ЕИК', builder.eik || ''],
-        ['Строител_Адрес', builder.address || ''],
-        ['Строител_Управител', builder.manager || ''],
-        ['Строител_ТехРък', builder.tech || ''],
-        // Разрешение за строеж
-        ['РС_Номер', permit.number || ''],
-        ['РС_Дата', formatDateForExcel(permit.date)],
-        ['РС_Издател', permit.issuer || ''],
-        ['РС_ВСила', formatDateForExcel(permit.effective)],
-        // Служители надзор (брой)
-        ['Служители_Брой', employees.length],
-        // Проектанти брой
-        ['Проектанти_Брой', (p.projectants || []).length]
-    ];
-
-    // Служители надзор (всички специализации)
-    employees.forEach((e, i) => {
-        rows.push([`Служител_${i+1}_Име`, e.name || '']);
-        rows.push([`Служител_${i+1}_Специализация`, e.specialization || '']);
-        rows.push([`Служител_${i+1}_Титла`, e.title || 'инж.']);
-    });
-
-    // Геодезист (бърза референция)
-    rows.push(['Геодезист', getGeodezist(consultant) || '']);
-
-    // Проектанти — разширени полета (включително фирма, ЕИК, управител, адрес)
-    (p.projectants || []).forEach((pp, i) => {
-        rows.push([`Проектант_${i+1}_Име`, pp.name || '']);
-        rows.push([`Проектант_${i+1}_ППП`, pp.ppp || '']);
-        rows.push([`Проектант_${i+1}_Специализация`, pp.specialization || '']);
-        rows.push([`Проектант_${i+1}_Титла`, pp.title || 'инж.']);
-        rows.push([`Проектант_${i+1}_Фирма`, pp.company || '']);
-        rows.push([`Проектант_${i+1}_ЕИК`, pp.companyEik || '']);
-        rows.push([`Проектант_${i+1}_Управител`, pp.companyManager || '']);
-        rows.push([`Проектант_${i+1}_Адрес`, pp.companyAddress || '']);
-    });
-
-    return rows;
-}
-
-function exportPassportExcel(id) {
-    const project = appData.projects.find(p => p.id === id);
-    if (!project) { showAlert('error', 'Паспортът не е намерен'); return; }
-
-    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
-    const rows = buildExcelPayload(project, consultant);
-
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows.map(([k, v]) => [k, v]));
-
-    // Column widths
-    ws['!cols'] = [{ wch: 35 }, { wch: 60 }];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Паспорт');
-
-    const fileName = `passport.xlsx`;
-    XLSX.writeFile(wb, fileName);
-
-    // Update project export status
-    const idx = appData.projects.findIndex(pp => pp.id === id);
-    if (idx >= 0) {
-        appData.projects[idx].exportedAt = new Date().toISOString();
-        if (appData.currentProject?.id === id) {
-            appData.currentProject = appData.projects[idx];
-        }
-    }
-    addHistory('export', project.pi, `Excel паспорт експортиран: ${fileName}`);
-    saveData();
-    filterPassports();
-
-    showAlert('success', `✅ passport.xlsx изтеглен! Качете го в Dropbox: ${appData.dropboxFolder}/PI-${project.pi}/`);
-}
 
 function getGeodezist(consultant) {
     if (!consultant) return '';
@@ -6433,46 +6096,6 @@ function getGeodezist(consultant) {
     return geo ? geo.name : '';
 }
 
-async function exportAndUploadPassport(id) {
-    const project = appData.projects.find(p => p.id === id);
-    if (!project) return;
-
-    if (!appData.dropboxToken) {
-        showAlert('error', 'Моля, конфигурирайте Dropbox токен в Настройки!');
-        return;
-    }
-
-    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
-    const rows = buildExcelPayload(project, consultant);
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(rows.map(([k, v]) => [k, v]));
-    ws['!cols'] = [{ wch: 35 }, { wch: 60 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Паспорт');
-
-    const wbOut = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-    const blob = new Blob([wbOut], { type: 'application/octet-stream' });
-
-    const folderPath = `${appData.dropboxFolder || '/AKT_Projects'}/PI-${project.pi}`;
-    const filePath = `${folderPath}/passport.xlsx`;
-
-    try {
-        await createDropboxFolder(folderPath);
-        await uploadToDropbox(filePath, blob, 'overwrite');
-
-        const idx = appData.projects.findIndex(pp => pp.id === id);
-        if (idx >= 0) {
-            appData.projects[idx].exportedAt = new Date().toISOString();
-            appData.projects[idx].dropboxPath = filePath;
-        }
-        addHistory('export', project.pi, `Качено в Dropbox: ${filePath}`);
-        saveData();
-        filterPassports();
-        showAlert('success', `✅ passport.xlsx качен в Dropbox!<br>📂 ${filePath}`);
-    } catch(e) {
-        showAlert('error', `❌ Грешка при качване: ${e.message}`);
-    }
-}
 
 // ═══════════════════════════════════════════════════════════
 //  GENERATE DOCUMENTS — via Python REST API (.docx)
@@ -6532,7 +6155,6 @@ function renderGenerateSection() {
                 </div>
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-secondary btn-sm" onclick="navigateTo('passports')">← Смени</button>
-                    <button class="btn btn-primary btn-sm" onclick="exportAndUploadPassport(${project.id})">☁️ Sync Dropbox</button>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:12px">
@@ -6620,7 +6242,7 @@ function renderGenerateSection() {
         <div class="card">
             <div class="card-header">
                 <div class="card-title">📄 Документи за генериране (.docx)</div>
-                <div style="font-size:12px;color:var(--muted)">Ще се запазят в Dropbox и ще получиш линк за сваляне</div>
+                <div style="font-size:12px;color:var(--muted)">Ще се свалят като .docx файлове</div>
             </div>
             <div id="doc-results-list">
                 <!-- Група 0: Преди строителството -->
@@ -6859,7 +6481,7 @@ async function generateDocumentsViaApi() {
         }
         addHistory('generate', project.pi, `Генерирани .docx: ${results.map(d=>d.type).join(', ')}`);
         saveData();
-        showAlert('success', `✅ ${results.length} документа генерирани и качени в Dropbox!`);
+        showAlert('success', `✅ ${results.length} документа са генерирани.`);
     }
 
     btn.disabled = false;
@@ -7056,79 +6678,10 @@ function renderConsultants() {
     `).join('');
 }
 
-// ═══════════════════════════════════════════════════════════
-//  DROPBOX
-// ═══════════════════════════════════════════════════════════
-function saveDropboxToken() {
-    const token = document.getElementById('dropbox-token').value.trim();
-    const folder = document.getElementById('dropbox-folder').value.trim() || '/AKT_Projects';
-    appData.dropboxToken = token;
-    appData.dropboxFolder = folder;
-    saveData();
-    updateDropboxIndicator();
-    showAlert('success', 'Dropbox настройките са запазени!');
-}
 
-async function testDropboxConnection() {
-    const token = appData.dropboxToken;
-    if (!token) { showAlert('error', 'Въведете токен!'); return; }
 
-    try {
-        const r = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: '', recursive: false })
-        });
-        if (r.ok) {
-            updateDropboxIndicator(true);
-            showAlert('success', '✅ Dropbox е свързан успешно!');
-        } else throw new Error('Invalid token');
-    } catch(e) {
-        updateDropboxIndicator(false);
-        showAlert('error', '❌ Грешка при свързване с Dropbox!');
-    }
-}
 
-function updateDropboxIndicator(connected = null) {
-    const el = document.getElementById('dropbox-indicator');
-    const txt = document.getElementById('dropbox-indicator-text');
-    const settingsStatus = document.getElementById('settings-dropbox-status');
-    const hasToken = !!(appData.dropboxToken);
-    const isConnected = connected === true || (connected === null && hasToken);
 
-    el.className = isConnected ? 'connected' : 'disconnected';
-    txt.textContent = isConnected ? 'Dropbox: свързан' : 'Dropbox: не е свързан';
-
-    if (settingsStatus) {
-        settingsStatus.innerHTML = isConnected
-            ? '<span class="badge badge-green">● Свързан</span>'
-            : '<span class="badge" style="background:var(--red-light);color:var(--red)">● Не е свързан</span>';
-    }
-}
-
-async function uploadToDropbox(path, content, mode = 'add') {
-    const r = await fetch('https://content.dropboxapi.com/2/files/upload', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${appData.dropboxToken}`,
-            'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename: false, mute: false }),
-            'Content-Type': 'application/octet-stream'
-        },
-        body: content
-    });
-    if (!r.ok) { const e = await r.json(); throw new Error(e.error_summary || 'Upload failed'); }
-    return r.json();
-}
-
-async function createDropboxFolder(path) {
-    const r = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${appData.dropboxToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path, autorename: false })
-    });
-    if (!r.ok && r.status !== 409) throw new Error('Failed to create folder');
-    return true;
-}
 
 // ═══════════════════════════════════════════════════════════
 //  DATA IMPORT / EXPORT
@@ -7395,10 +6948,6 @@ function formatDate(dateStr) {
     return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
-function formatDateForExcel(dateStr) {
-    if (!dateStr) return '';
-    return formatDate(dateStr);
-}
 
 function formatDate2(isoStr) {
     if (!isoStr) return '';
