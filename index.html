@@ -3656,10 +3656,24 @@ function renderKatRezultat(r) {
         ne:      ['var(--red)',   '⚠️', 'Описанието НЕ попада в цитираната разпоредба'],
         ne_moga: ['var(--muted)', '⏳', 'Не може да се прецени'],
     }[r.otgovor] || ['var(--muted)', '⏳', ''];
+    // Записаната присъда важи за текста, върху който е дадена. Ако цитатът или
+    // наименованието са пипани след нея, тя вече не казва нищо за това, което
+    // стои на екрана — и трябва да го признае, вместо да мълчи в зелено.
+    const segashen = document.getElementById('fp-osip-kategoria')?.value.trim() || '';
+    const ostaryala = r.citat && segashen && r.citat !== segashen;
+    const kogato = r.proveren_na
+        ? new Date(r.proveren_na + 'Z').toLocaleString('bg-BG',
+            { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : null;
+
     box.innerHTML = `
-        <div style="border-left:3px solid ${vid[0]};padding:10px 12px;background:var(--surface);border-radius:var(--r-sm)">
+        <div style="border-left:3px solid ${ostaryala ? 'var(--muted)' : vid[0]};padding:10px 12px;background:var(--surface);border-radius:var(--r-sm)">
             <div style="font-weight:700;font-size:13px;margin-bottom:6px">${vid[1]} ${vid[2]}</div>
             <div style="font-size:12px;margin-bottom:8px">${r.obosnovka || ''}</div>
+            ${ostaryala ? `<div class="alert alert-warning" style="margin:0 0 8px;font-size:12px">
+                ⚠️ Цитатът е променен след тази проверка — присъдата е за предишния текст. Провери пак.
+            </div>` : ''}
+            ${kogato ? `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">проверено на ${kogato}</div>` : ''}
             ${r.razporedba ? `
             <details style="font-size:12px">
                 <summary style="cursor:pointer;color:var(--muted)">Двата текста — провери сама</summary>
@@ -3694,8 +3708,15 @@ async function proveriKategoria() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
         // „ne_moga“ преди модела идва без otgovor — привежда се към същия вид
-        _aiKategoria = d.otgovor ? d : { otgovor: 'ne_moga', obosnovka: d.obosnovka || '' };
-        renderKatRezultat(_aiKategoria);
+        const rez = d.otgovor ? d
+            : { otgovor: 'ne_moga', obosnovka: d.obosnovka || '', vid: d.vid };
+        renderKatRezultat(rez);
+        // Повреда в самия инструмент (липсва наредба, не съвпада отпечатък) не е
+        // находка за строежа. Показва се, но НЕ се записва в паспорта — иначе
+        // после се отваря месеци по-късно и изглежда като присъда за обекта.
+        _aiKategoria = rez.vid === 'sistemna' ? _aiKategoria : rez;
+        if (rez.vid === 'sistemna')
+            showAlert('error', 'Проверката не можа да се направи — виж Настройки → Заключени източници.');
         if (_aiKategoria.otgovor === 'ne')
             showAlert('error', 'Описанието не съвпада с цитираната разпоредба — провери категорията.');
     } catch (e) {
@@ -5944,7 +5965,15 @@ function renderPassportForm(projectId) {
     renderDokumenti(p);
     renderTeam(p, document.getElementById('fp-consultant')?.value);
     setFaza(faza);
-    _aiKategoria = (p.osip || {}).ai_kategoria || null;
+    // Присъди, записани преди повредата да се различава от находка, остават в
+    // паспортите. Такава се разпознава по обосновката и се изхвърля при
+    // отваряне — иначе показва „не може да се прецени“ вечно, макар сървърът
+    // отдавна да чете наредбата.
+    const zapisana = (p.osip || {}).ai_kategoria || null;
+    const povreda = zapisana && zapisana.otgovor === 'ne_moga' &&
+        (zapisana.vid === 'sistemna' ||
+         /не е намерена|не съвпада|отпечат|заключен/i.test(zapisana.obosnovka || ''));
+    _aiKategoria = povreda ? null : zapisana;
     renderKatRezultat(_aiKategoria);
 }
 
