@@ -1761,6 +1761,20 @@
 
                 <div class="card">
                     <div class="card-header">
+                        <div>
+                            <div class="card-title">📖 Заключени източници</div>
+                            <div class="card-subtitle">Какво вижда сървърът, не тази машина</div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="proveriIzvori()">Провери</button>
+                    </div>
+                    <div id="izvori-rezultat" style="font-size:13px;color:var(--muted)">
+                        Ако някой документ казва „не може да се прецени“ или
+                        „наредбата не е намерена“, отговорът е тук.
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
                         <div class="card-title">💾 Данни</div>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:10px">
@@ -3928,6 +3942,31 @@ async function proveriDokumenti() {
                 ✓ ${x.dokument}</div>`).join('')}`;
     } catch (e) {
         kutiya.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${e.message}</div>`;
+    }
+}
+
+// Отговорът трябва да идва от сървъра, не от тази машина: наредбите се четат
+// от папка, която локално я има, а на Railway — не. Точно това счупи проверката
+// на категорията („Наредба № 1 не е намерена до хранилището“).
+async function proveriIzvori() {
+    const k = document.getElementById('izvori-rezultat');
+    k.innerHTML = 'Питам сървъра…';
+    try {
+        const r = await apiCall('/api/izvori', 'GET');
+        k.innerHTML = `
+            <div class="alert ${r.vsichki_nalice ? 'alert-success' : 'alert-warning'}" style="margin:0 0 10px">
+                ${r.vsichki_nalice ? '✅ Сървърът вижда всички източници.'
+                                   : `⚠️ Сървърът не намира: ${r.lipsvat.join(', ')}.`}
+            </div>
+            ${r.izvori.map(x => `<div style="padding:3px 0">
+                ${!x.namereno ? '❌' : (x.zaklyucheno ? '✅' : '⚠️')}
+                <strong>${x.iztochnik}</strong>
+                <span style="color:var(--muted)">— ${!x.namereno ? 'не е намерен'
+                    : (x.zaklyucheno ? 'намерен и заключен' : 'намерен, но НЕ съвпада с отпечатъка')}</span>
+                ${x.papka ? `<div style="color:var(--muted);font-size:11px;margin-left:20px">${x.papka}</div>` : ''}
+            </div>`).join('')}`;
+    } catch (e) {
+        k.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${e.message}</div>`;
     }
 }
 
