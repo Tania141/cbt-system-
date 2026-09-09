@@ -3987,6 +3987,10 @@ function buildPassportRows(project, consultant, extra) {
     add('ЗК_Дата', project.zk?.date);
     add('Категория', project.osip?.kategoria);
     add('Фаза', project.osip?.faza);
+    // Оценката по чл. 142, ал. 5, т. 1 сочи с какво е одобрен планът — това е
+    // данна на обекта, не шаблонен текст, затова идва оттук.
+    add('ПУП_Одобрен', project.gradoustroystvo?.pup);
+    add('Кадастрална_Карта', project.gradoustroystvo?.kadastr);
     add('Одобряващ_Орган', project.osip?.organ);
     add('Договор_Надзор', project.osip?.dogovor);
     add('ТехКонтрол', project.osip?.tk);
@@ -5451,6 +5455,26 @@ function renderPassportForm(projectId) {
                 в диапазона по Наредба № 7 за зоната.
             </p>
             <div class="form-grid">
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Подробният устройствен план е одобрен с</label>
+                    <input type="text" id="fp-g-pup" class="form-input"
+                           placeholder="Решение на СОС № 50 по Протокол № 24/30.03.2001 г."
+                           value="${(p.gradoustroystvo||{}).pup||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Влиза дословно в оценката по чл. 142, ал. 5, т. 1 — решението или
+                        заповедта, с които планът е одобрен, заедно с органа и датата.
+                    </p>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Кадастралната карта е одобрена със</label>
+                    <input type="text" id="fp-g-kadastr" class="form-input"
+                           placeholder="Заповед № РД-18-108/13.12.2016 г. на изпълнителния директор на АГКК"
+                           value="${(p.gradoustroystvo||{}).kadastr||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Ако е изменяна — и последното изменение. Празно поле просто не се
+                        споменава в доклада.
+                    </p>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Устройствена зона</label>
                     <select id="fp-zona" class="form-input">
@@ -5908,6 +5932,8 @@ function savePassport() {
         gradoustroystvo: {
             zona:     document.getElementById('fp-zona')?.value || '',
             darvesna: document.getElementById('fp-g-darvesna')?.value || '',
+            pup:      document.getElementById('fp-g-pup')?.value || '',
+            kadastr:  document.getElementById('fp-g-kadastr')?.value || '',
             viza:   Object.fromEntries(['plytnost','kint','ozel'].map(k =>
                         [k, document.getElementById('fp-g-viza-' + k)?.value || ''])),
             proekt: Object.fromEntries(['plytnost','kint','ozel'].map(k =>
