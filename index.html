@@ -3855,6 +3855,23 @@ function addDokRow(ime, nomer) {
     if (box) box.insertAdjacentHTML('beforeend', dokRowHtml(ime, nomer));
 }
 
+// Липсващият документ се вписва с бутон, не с преписване на ръка: съвпадението
+// е по име, а имената в чеклиста са дълги („Становище от РСПБЗН за съответствие
+// с нормите за пожарна безопасност“). Една буква разлика и редът мълчи.
+function vpishiLipsvasht(ime64) {
+    const ime = decodeURIComponent(ime64);
+    let red = [...document.querySelectorAll('#fp-dok-rows .dok-row')]
+        .find(r => (r.querySelector('.dok-ime')?.value || '').trim().toLowerCase()
+                   === ime.toLowerCase());
+    if (!red) {
+        addDokRow(ime, '');
+        red = document.querySelector('#fp-dok-rows .dok-row:last-child');
+    }
+    const nomer = red.querySelector('.dok-nomer');
+    red.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    nomer.focus();
+}
+
 function renderDokumenti(project) {
     const box = document.getElementById('fp-dok-rows');
     if (!box) return;
@@ -3897,9 +3914,15 @@ async function proveriDokumenti() {
                 ${lipsvat.length ? `⏳ Липсват ${lipsvat.length} от ${r.iziskvani} изисквани документа.`
                                  : `✅ Всички ${r.iziskvani} изисквани документа са налице.`}
             </div>
-            ${lipsvat.map(x => `<div style="font-size:13px;padding:3px 0">
-                ⏳ <strong>${x.dokument}</strong>
-                <span style="color:var(--muted)">— ${x.uslovie}${x.dokazva_se ? ' · доказва се с ' + x.dokazva_se : ''}</span>
+            ${lipsvat.map(x => `<div style="font-size:13px;padding:3px 0;display:flex;gap:8px;align-items:baseline">
+                <span style="flex:1">
+                    ${x.lipsva_nomer ? '№' : '⏳'} <strong>${x.dokument}</strong>
+                    <span style="color:var(--muted)">— ${x.lipsva_nomer
+                        ? 'вписан е, но без ' + x.dokazva_se
+                        : x.uslovie + (x.dokazva_se ? ' · доказва се с ' + x.dokazva_se : '')}</span>
+                </span>
+                <button type="button" class="btn btn-ghost btn-sm"
+                        onclick="vpishiLipsvasht('${encodeURIComponent(x.dokument)}')">Впиши</button>
             </div>`).join('')}
             ${nalice.map(x => `<div style="font-size:13px;padding:3px 0;color:var(--green)">
                 ✓ ${x.dokument}</div>`).join('')}`;
