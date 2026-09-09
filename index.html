@@ -5981,7 +5981,9 @@ function savePassport() {
     const payloadForSync = { passport: projectData, pi: piForSync };
     if (appData.apiUrl) {
         apiCall(`/api/passports/${piForSync}`, 'POST', payloadForSync)
-            .then(() => showAlert('success', `☁️ Паспорт ПИ-${piForSync} запазен в базата данни.`))
+            .then(r => showAlert('success', `☁️ Паспорт ПИ-${piForSync} запазен в базата данни.`
+                + (r && r.zk_vpisana
+                   ? ` Заповедна книга № ${r.zk_vpisana} е вписана в регистъра.` : '')))
             .catch(e => showAlert('error', `⚠️ Локално запазен, но API грешка: ${e.message}`));
     }
 }
