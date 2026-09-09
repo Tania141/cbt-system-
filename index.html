@@ -1292,35 +1292,38 @@
 
     <!-- SIDEBAR -->
     <nav class="sidebar">
-        <div class="sidebar-section-label">Основни</div>
-        <button class="nav-item active" onclick="navigateTo('dashboard')" id="nav-dashboard">
-            <span class="nav-icon">📊</span> Табло
-        </button>
-        <button class="nav-item" onclick="navigateTo('passports')" id="nav-passports">
-            <span class="nav-icon">📋</span> Паспорти
+        <!-- Групите повтарят фазата, която паспортът вече познава: преди
+             разрешението за строеж и след него. Един и същ обект се вижда и в
+             двете — сменя се какво показваме за него. -->
+        <div class="sidebar-section-label">До разрешение за строеж</div>
+        <button class="nav-item active" onclick="navigateTo('passports')" id="nav-passports">
+            <span class="nav-icon">📋</span> Обекти
             <span class="nav-badge" id="nav-passports-count">0</span>
         </button>
         <button class="nav-item" onclick="navigateTo('new-passport')" id="nav-new-passport">
-            <span class="nav-icon">➕</span> Нов паспорт
+            <span class="nav-icon">➕</span> Нов обект
+        </button>
+        <button class="nav-item" onclick="navigateTo('normativna')" id="nav-normativna">
+            <span class="nav-icon">📖</span> Нормативна уредба
         </button>
 
-        <div class="sidebar-section-label" style="margin-top:8px">Документи</div>
+        <div class="sidebar-section-label" style="margin-top:8px">По време на строителството</div>
         <button class="nav-item" onclick="navigateTo('generate')" id="nav-generate">
-            <span class="nav-icon">📄</span> Генериране
-        </button>
-        <button class="nav-item" onclick="navigateTo('ai-protocols')" id="nav-ai-protocols">
-            <span class="nav-icon">🤖</span> AI Протоколи
+            <span class="nav-icon">📄</span> Актове и протоколи
         </button>
         <button class="nav-item" onclick="navigateTo('zk')" id="nav-zk">
             <span class="nav-icon">📓</span> Заповедни книги
         </button>
-        <button class="nav-item" onclick="navigateTo('history')" id="nav-history">
-            <span class="nav-icon">🕐</span> История
+        <button class="nav-item" onclick="navigateTo('ai-protocols')" id="nav-ai-protocols">
+            <span class="nav-icon">🤖</span> AI протоколи
         </button>
 
-        <div class="sidebar-section-label" style="margin-top:8px">Конфигурация</div>
+        <div class="sidebar-section-label" style="margin-top:8px">Общи</div>
         <button class="nav-item" onclick="navigateTo('consultants')" id="nav-consultants">
             <span class="nav-icon">🏢</span> Консултанти
+        </button>
+        <button class="nav-item" onclick="navigateTo('history')" id="nav-history">
+            <span class="nav-icon">🕐</span> История
         </button>
         <button class="nav-item" onclick="navigateTo('settings')" id="nav-settings">
             <span class="nav-icon">⚙️</span> Настройки
@@ -1334,48 +1337,8 @@
         <div id="alerts-container"></div>
 
         <!-- ═══════════ DASHBOARD ═══════════ -->
-        <div class="page active" id="page-dashboard">
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">Добре дошла, Таня</h1>
-                    <p class="page-subtitle">Преглед на АКТ СИСТЕМ документна система</p>
-                </div>
-                <button class="btn btn-primary" onclick="navigateTo('new-passport')">
-                    ➕ Нов паспорт
-                </button>
-            </div>
-
-            <div class="stats-grid" id="stats-grid">
-                <!-- rendered by JS -->
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">Последни паспорти</div>
-                            <div class="card-subtitle">Последно добавени проекти</div>
-                        </div>
-                        <button class="btn btn-ghost btn-sm" onclick="navigateTo('passports')">Виж всички →</button>
-                    </div>
-                    <div id="dashboard-recent"></div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">Последни действия</div>
-                            <div class="card-subtitle">История на промените</div>
-                        </div>
-                        <button class="btn btn-ghost btn-sm" onclick="navigateTo('history')">Виж всички →</button>
-                    </div>
-                    <div id="dashboard-history" class="timeline"></div>
-                </div>
-            </div>
-
-        </div>
-
         <!-- ═══════════ PASSPORTS LIST ═══════════ -->
-        <div class="page" id="page-passports">
+        <div class="page active" id="page-passports">
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Паспорти</h1>
@@ -1616,6 +1579,32 @@
             </div>
         </div>
 
+        <!-- ═══════════ НОРМАТИВНА УРЕДБА ═══════════ -->
+        <div class="page" id="page-normativna">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Нормативна уредба</h1>
+                    <p class="page-subtitle">Заключени източници, върху които стъпва оценката</p>
+                </div>
+            </div>
+
+            <div style="max-width:760px">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">📖 Заключени източници</div>
+                            <div class="card-subtitle">Какво вижда сървърът, не тази машина</div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="proveriIzvori()">Провери</button>
+                    </div>
+                    <div id="izvori-rezultat" style="font-size:13px;color:var(--muted)">
+                        Ако някой документ казва „не може да се прецени“ или
+                        „наредбата не е намерена“, отговорът е тук.
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ═══════════ SETTINGS ═══════════ -->
         <div class="page" id="page-settings">
             <div class="page-header">
@@ -1653,20 +1642,6 @@
                         <code style="display:block;margin:2px 0">POST /api/generate/akt14 → Акт 14</code>
                         <code style="display:block;margin:2px 0">POST /api/generate/obrazec3 → Образец 3</code>
                         <code style="display:block;margin:2px 0">POST /api/generate/zapovedna → Заповедна книга</code>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">📖 Заключени източници</div>
-                            <div class="card-subtitle">Какво вижда сървърът, не тази машина</div>
-                        </div>
-                        <button class="btn btn-secondary btn-sm" onclick="proveriIzvori()">Провери</button>
-                    </div>
-                    <div id="izvori-rezultat" style="font-size:13px;color:var(--muted)">
-                        Ако някой документ казва „не може да се прецени“ или
-                        „наредбата не е намерена“, отговорът е тук.
                     </div>
                 </div>
 
@@ -2216,7 +2191,6 @@ function loadData() {
     if (apiInput) apiInput.value = appData.apiUrl || '';
     updateApiIndicator();
     applyUserSession();
-    renderDashboard();
     renderConsultants();
     filterPassports();
     updateNavBadge();
@@ -2241,7 +2215,6 @@ function loadData() {
                         return p;
                     });
                     saveData();
-                    renderDashboard();
                     filterPassports();
                     updateNavBadge();
                 }
@@ -2281,8 +2254,7 @@ function navigateTo(page) {
     if (navBtn) navBtn.classList.add('active');
 
     // Render on navigate
-    if (page === 'dashboard') renderDashboard();
-    else if (page === 'passports') { filterPassports(); populateFilterDropdowns(); }
+    if (page === 'passports') { filterPassports(); populateFilterDropdowns(); }
     else if (page === 'new-passport') renderPassportForm(null);
     else if (page === 'generate') renderGenerateSection();
     else if (page === 'ai-protocols') renderAiProtocols();
@@ -3497,7 +3469,7 @@ async function proveriKategoria() {
         // после се отваря месеци по-късно и изглежда като присъда за обекта.
         _aiKategoria = rez.vid === 'sistemna' ? _aiKategoria : rez;
         if (rez.vid === 'sistemna')
-            showAlert('error', 'Проверката не можа да се направи — виж Настройки → Заключени източници.');
+            showAlert('error', 'Проверката не можа да се направи — виж Нормативна уредба.');
         if (_aiKategoria.otgovor === 'ne')
             showAlert('error', 'Описанието не съвпада с цитираната разпоредба — провери категорията.');
     } catch (e) {
@@ -4931,66 +4903,6 @@ document.addEventListener('click', function(e) {
 // ═══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════
-function renderDashboard() {
-    // Stats
-    const totalProjects = appData.projects.length;
-    const totalDocs = appData.projects.reduce((acc, p) => acc + (p.generatedDocs || []).length, 0);
-    const totalConsultants = appData.consultants.length;
-
-    document.getElementById('stats-grid').innerHTML = `
-        <div class="stat-card">
-            <div class="stat-label">Общо паспорти</div>
-            <div class="stat-value">${totalProjects}</div>
-            <div class="stat-meta">проекта в системата</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Генерирани документи</div>
-            <div class="stat-value">${totalDocs}</div>
-            <div class="stat-meta">HTML файла</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">Консултанти</div>
-            <div class="stat-value">${totalConsultants}</div>
-            <div class="stat-meta">активни фирми</div>
-        </div>
-    `;
-
-    // Recent passports
-    const recent = [...appData.projects].sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0)).slice(0,4);
-    const recContainer = document.getElementById('dashboard-recent');
-    if (recent.length === 0) {
-        recContainer.innerHTML = `<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-text">Няма паспорти</div></div>`;
-    } else {
-        recContainer.innerHTML = recent.map(p => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-light);cursor:pointer" onclick="openPassportModal('${p.id}')">
-                <div>
-                    <div style="font-weight:700;font-size:14px;color:var(--ink)">ПИ: ${p.pi}</div>
-                    <div style="font-size:12px;color:var(--slate)">${p.stroej || '—'}</div>
-                </div>
-                <div style="text-align:right">
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // History mini
-    const histContainer = document.getElementById('dashboard-history');
-    const recentHistory = appData.history.slice(0,6);
-    if (recentHistory.length === 0) {
-        histContainer.innerHTML = `<p style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Няма история</p>`;
-    } else {
-        histContainer.innerHTML = recentHistory.map(h => `
-            <div class="timeline-item">
-                <div class="timeline-dot ${h.type}"></div>
-                <div class="timeline-content">
-                    <div class="timeline-action">${historyActionLabel(h)}</div>
-                    <div class="timeline-date">${formatDateTime(h.date)}</div>
-                    ${h.detail ? `<div class="timeline-detail">${h.detail}</div>` : ''}
-                </div>
-            </div>
-        `).join('');
-    }
-}
 
 function historyActionLabel(h) {
     const icons = {create:'🆕', edit:'✏️', export:'📊', generate:'📄', delete:'🗑️', migrate:'🔄'};
