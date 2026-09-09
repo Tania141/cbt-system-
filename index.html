@@ -3991,6 +3991,15 @@ function buildPassportRows(project, consultant, extra) {
     // данна на обекта, не шаблонен текст, затова идва оттук.
     add('ПУП_Одобрен', project.gradoustroystvo?.pup);
     add('Кадастрална_Карта', project.gradoustroystvo?.kadastr);
+    // Признаци, от които се сглобяват оценките в комплексния доклад
+    add('Вид', project.vid);
+    add('Предназначение', project.prednaznachenie);
+    add('Повод', project.povod);
+    add('СПО', (project.spo || []).join('; '));
+    add('РСПБЗН', project.rspbzn);
+    add('Защитена_Зона', project.zashtitena ? 'да' : 'не');
+    add('Паметник', project.pametnik ? 'да' : 'не');
+    add('Опасни_Вещества', project.opasni ? 'да' : 'не');
     add('Одобряващ_Орган', project.osip?.organ);
     add('Договор_Надзор', project.osip?.dogovor);
     add('ТехКонтрол', project.osip?.tk);
@@ -5446,6 +5455,82 @@ function renderPassportForm(projectId) {
                     onclick="addDocDateRow()">+ Добави документ</button>
         </div>
 
+        <!-- ПРИЗНАЦИ ЗА КОМПЛЕКСНИЯ ДОКЛАД -->
+        <div class="card" data-faza="osip">
+            <div class="card-title" style="margin-bottom:8px">📑 Признаци за оценката</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                От тези отговори се сглобяват двайсетте оценки по чл. 142, ал. 5 и
+                чл. 169 в комплексния доклад — вместо да се пишат на ръка.
+                Всеки текст е от твой доклад и носи източника си.
+            </p>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Предназначение</label>
+                    <select id="fp-prednaznachenie" class="form-input">
+                        ${[['жилищна','Жилищна сграда'],['смесена','Смесена — жилища и обслужване'],
+                           ['административна','Административна, офисна'],['търговска','Търговски обект'],
+                           ['хотел','Хотел, места за настаняване'],['хранене','Обществено хранене'],
+                           ['спорт','Спортен, зрелищен обект'],['здравеопазване','Лечебно заведение'],
+                           ['образование','Детска градина, училище'],['наука','Научен, университетски'],
+                           ['производствена','Производствена сграда'],['складова','Склад, логистика'],
+                           ['път','Път, улица'],['мост','Мост, виадукт, тунел'],
+                           ['енергийна','Електроцентрала, подстанция, мрежа'],['вей','Фотоволтаичен, вятърен парк'],
+                           ['газ','Газ, топлофикация'],['вик','ВиК мрежи'],
+                           ['телекомуникации','Телекомуникации'],['подземни','Подземни мрежи'],
+                           ['култура','Културна ценност'],['оръжия','Оръжия, боеприпаси'],['друго','Друго']]
+                          .map(([k,v]) => `<option value="${k}" ${(p.prednaznachenie||'жилищна')===k?'selected':''}>${v}</option>`).join('')}
+                    </select>
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Определя и специалните изисквания по чл. 142, ал. 5, т. 7,
+                        и приложимите наредби.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Повод за доклада</label>
+                    <select id="fp-povod" class="form-input">
+                        <option value="ново" ${(p.povod||'ново')==='ново'?'selected':''}>Ново строителство</option>
+                        <option value="преработка_154" ${(p.povod||'')==='преработка_154'?'selected':''}>Преработка по чл. 154 ЗУТ</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Съоръжения с повишена опасност</label>
+                    <input type="text" id="fp-spo" class="form-input"
+                           placeholder="асансьорна уредба; котел над 116,3 kW — през точка и запетая"
+                           value="${(p.spo||[]).join('; ')}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Не само асансьори: котли, съдове под налягане, газови уредби,
+                        повдигателни съоръжения, въжени линии. Празно = няма.
+                    </p>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Становище от РСПБЗН</label>
+                    <input type="text" id="fp-rspbzn" class="form-input"
+                           placeholder="06 РСПБЗН, рег. № 561701-314 от 04.12.2019 г."
+                           value="${p.rspbzn||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Задължително за първа, втора и трета категория.
+                    </p>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                        <input type="checkbox" id="fp-zashtitena" style="width:16px;height:16px"
+                               ${p.zashtitena?'checked':''}>
+                        Попада в защитена територия или НАТУРА 2000
+                    </label>
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                        <input type="checkbox" id="fp-pametnik" style="width:16px;height:16px"
+                               ${p.pametnik?'checked':''}>
+                        Културна ценност — обектът или в близост
+                    </label>
+                    <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+                        <input type="checkbox" id="fp-opasni" style="width:16px;height:16px"
+                               ${p.opasni?'checked':''}>
+                        Опасни вещества по глава седма, раздел I от ЗООС
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <!-- ГРАДОУСТРОЙСТВЕНИ ПОКАЗАТЕЛИ -->
         <div class="card" data-faza="osip">
             <div class="card-title" style="margin-bottom:8px">📊 Градоустройствени показатели</div>
@@ -5940,6 +6025,15 @@ function savePassport() {
                         [k, document.getElementById('fp-g-proekt-' + k)?.value || ''])),
         },
         vid: document.getElementById('fp-vid')?.value || 'sgrada',
+        // Признаци за комплексния доклад — от тях се сглобяват оценките
+        prednaznachenie: document.getElementById('fp-prednaznachenie')?.value || 'жилищна',
+        povod:      document.getElementById('fp-povod')?.value || 'ново',
+        spo:        (document.getElementById('fp-spo')?.value || '')
+                        .split(';').map(s => s.trim()).filter(Boolean),
+        rspbzn:     document.getElementById('fp-rspbzn')?.value || '',
+        zashtitena: !!document.getElementById('fp-zashtitena')?.checked,
+        pametnik:   !!document.getElementById('fp-pametnik')?.checked,
+        opasni:     !!document.getElementById('fp-opasni')?.checked,
         imaMashini: !!document.getElementById('fp-ima-mashini')?.checked,
         metalnaKonstrukcia: !!document.getElementById('fp-metalna')?.checked,
         docDates: readDocDates(),
