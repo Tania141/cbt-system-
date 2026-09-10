@@ -1303,6 +1303,12 @@
         <button class="nav-item" onclick="navigateTo('new-passport')" id="nav-new-passport">
             <span class="nav-icon">➕</span> Нов обект
         </button>
+        <button class="nav-item" onclick="navigateTo('osip')" id="nav-osip">
+            <span class="nav-icon">📐</span> Оценка на съответствието
+        </button>
+        <button class="nav-item" onclick="navigateTo('dokumenti')" id="nav-dokumenti">
+            <span class="nav-icon">📎</span> Изходни документи
+        </button>
         <button class="nav-item" onclick="navigateTo('normativna')" id="nav-normativna">
             <span class="nav-icon">📖</span> Нормативна уредба
         </button>
@@ -1577,6 +1583,28 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- ═══════════ ОЦЕНКА НА СЪОТВЕТСТВИЕТО ═══════════ -->
+        <div class="page" id="page-osip">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Оценка на съответствието</h1>
+                    <p class="page-subtitle">Данни за комплексния доклад по чл. 142 ЗУТ</p>
+                </div>
+            </div>
+            <div id="osip-content" style="max-width:900px"></div>
+        </div>
+
+        <!-- ═══════════ ИЗХОДНИ ДОКУМЕНТИ ═══════════ -->
+        <div class="page" id="page-dokumenti">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Изходни документи</h1>
+                    <p class="page-subtitle">Собственост, устройствена основа, съгласувания, разрешителни</p>
+                </div>
+            </div>
+            <div id="dokumenti-content" style="max-width:900px"></div>
         </div>
 
         <!-- ═══════════ НОРМАТИВНА УРЕДБА ═══════════ -->
@@ -2258,6 +2286,8 @@ function navigateTo(page) {
     if (page === 'passports') { filterPassports(); populateFilterDropdowns(); }
     else if (page === 'new-passport') renderPassportForm(null);
     else if (page === 'generate') renderGenerateSection();
+    else if (page === 'osip') renderOsipPage();
+    else if (page === 'dokumenti') renderDokumentiPage();
     else if (page === 'ai-protocols') renderAiProtocols();
     else if (page === 'history') renderHistory();
     else if (page === 'zk') renderZK();
@@ -2608,7 +2638,8 @@ function smeniObekt(id, stranica) {
     appData.currentProject = appData.projects.find(p => String(p.id) === String(id)) || null;
     // Първо екранът, после записът: изборът трябва да се види, дори ако
     // запомнянето му в браузъра не мине.
-    if (stranica === 'ai') renderAiProtocols(); else renderGenerateSection();
+    ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage }[stranica]
+        || renderGenerateSection)();
     try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
 }
 
@@ -3468,7 +3499,7 @@ function renderKatRezultat(r) {
 }
 
 async function proveriKategoria() {
-    const opisanie = document.getElementById('fp-stroej')?.value.trim() || '';
+    const opisanie = (document.getElementById('fp-stroej')?.value || _zhivObekt()?.stroej || '').trim();
     const citat = document.getElementById('fp-osip-kategoria')?.value.trim() || '';
     if (!opisanie) { showAlert('error', 'Първо въведи наименованието на строежа.'); return; }
     if (!citat)    { showAlert('error', 'Първо въведи цитата за категорията.'); return; }
@@ -3705,16 +3736,19 @@ async function proveriDokumenti() {
     const kutiya = document.getElementById('fp-dok-rezultat');
     kutiya.innerHTML = '<p style="font-size:13px;color:var(--muted)">Проверявам…</p>';
     const dok = readDokumenti();
+    // Признаците живеят в паспорта, а тази проверка — на своя страница. Чете
+    // ги от ЗАПИСАНИЯ обект: промяна в паспорта важи, след като се запази.
+    const p = _zhivObekt() || {};
     const rows = [
-        ['Категория', document.getElementById('fp-kategoria')?.value || ''],
-        ['Предназначение', document.getElementById('fp-prednaznachenie')?.value || ''],
-        ['Вид', document.getElementById('fp-vid')?.value || ''],
-        ['Повод', document.getElementById('fp-povod')?.value || ''],
-        ['СПО', document.getElementById('fp-spo')?.value || ''],
-        ['Паметник', document.getElementById('fp-pametnik')?.checked ? 'да' : 'не'],
-        ['Защитена_Зона', document.getElementById('fp-zashtitena')?.checked ? 'да' : 'не'],
-        ['Опасни_Вещества', document.getElementById('fp-opasni')?.checked ? 'да' : 'не'],
-        ['Води', document.getElementById('fp-vodi')?.checked ? 'да' : 'не'],
+        ['Категория_Номер', p.kategoria || ''],
+        ['Предназначение', p.prednaznachenie || ''],
+        ['Вид', p.vid || ''],
+        ['Повод', p.povod || ''],
+        ['СПО', (p.spo || []).join('; ')],
+        ['Паметник', p.pametnik ? 'да' : 'не'],
+        ['Защитена_Зона', p.zashtitena ? 'да' : 'не'],
+        ['Опасни_Вещества', p.opasni ? 'да' : 'не'],
+        ['Води', p.vodi ? 'да' : 'не'],
         ['Документи_Брой', dok.length],
         ...dok.flatMap((d, i) => [[`Документ_${i+1}_Име`, d.ime],
                                   [`Документ_${i+1}_Номер`, d.nomer]]),
@@ -3924,6 +3958,9 @@ function buildPassportRows(project, consultant, extra) {
     add('ЗК_Номер', project.zk?.number);
     add('ЗК_Дата', project.zk?.date);
     add('Категория', project.osip?.kategoria);
+    // Цифрата — отделно: „Категория“ е дословният цитат за раздел А и първият
+    // му знак е „т“, не „3“. Без това „категория ∈ 1,2,3“ не се изпълнява.
+    add('Категория_Номер', project.kategoria);
     add('Фаза', project.osip?.faza);
     // Оценката по чл. 142, ал. 5, т. 1 сочи с какво е одобрен планът — това е
     // данна на обекта, не шаблонен текст, затова идва оттук.
@@ -5265,7 +5302,7 @@ function renderPassportForm(projectId) {
 
         <!-- ВИД НА СТРОЕЖА -->
         <div class="card">
-            <div class="card-title" style="margin-bottom:8px">🏗️ Вид на строежа</div>
+            <div class="card-title" style="margin-bottom:8px">🏗️ Обектът — вид и признаци</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
                 От това зависи кои документи изобщо се изискват. Системата няма да иска акт,
                 който на този строеж не се съставя.
@@ -5306,44 +5343,8 @@ function renderPassportForm(projectId) {
                     </p>
                 </div>
             </div>
-        </div>
-
-        <!-- РЕГИСТЪР НА СЪСТАВЕНИТЕ ДОКУМЕНТИ -->
-        <div class="card" data-faza="stroitelstvo">
-            <div class="card-title" style="margin-bottom:8px">📅 Съставени документи</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Датата, <strong>написана в документа</strong> — не датата на генериране. Вписва се,
-                когато документът се върне подписан или заверен. Добавяй само каквото е съставено;
-                липсващият ред не е грешка.
-            </p>
-            <div id="fp-dd-rows"></div>
-            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px"
-                    onclick="addDocDateRow()">+ Добави документ</button>
-        </div>
-
-        <!-- ВХОДНИ ДОКУМЕНТИ И СЪГЛАСУВАНИЯ -->
-        <div class="card" data-faza="osip">
-            <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Кои документи се изискват за този обект решава чеклистът —
-                файл, който редактираш ти, не кодът. Впиши каквото е налице;
-                останалото излиза като <strong>не е доказано</strong>, не се премълчава.
-            </p>
-            <div id="fp-dok-rows"></div>
-            <div style="display:flex;gap:8px;margin-top:10px">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="addDokRow()">
-                    + Добави документ
-                </button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="proveriDokumenti()">
-                    🔍 Провери какво липсва
-                </button>
-            </div>
-            <div id="fp-dok-rezultat" style="margin-top:12px"></div>
-        </div>
-
-        <!-- ПРИЗНАЦИ ЗА КОМПЛЕКСНИЯ ДОКЛАД -->
-        <div class="card" data-faza="osip">
-            <div class="card-title" style="margin-bottom:8px">📑 Признаци за оценката</div>
+            <div style="border-top:1px solid var(--border-light);margin:18px 0 12px"></div>
+            <div class="card-title" style="margin-bottom:8px;font-size:14px">📑 Признаци за оценката</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
                 От тези отговори се сглобяват двайсетте оценки по чл. 142, ал. 5 и
                 чл. 169 в комплексния доклад — вместо да се пишат на ръка.
@@ -5420,6 +5421,19 @@ function renderPassportForm(projectId) {
                     </label>
                 </div>
             </div>
+        </div>
+
+        <!-- РЕГИСТЪР НА СЪСТАВЕНИТЕ ДОКУМЕНТИ -->
+        <div class="card" data-faza="stroitelstvo">
+            <div class="card-title" style="margin-bottom:8px">📅 Съставени документи</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Датата, <strong>написана в документа</strong> — не датата на генериране. Вписва се,
+                когато документът се върне подписан или заверен. Добавяй само каквото е съставено;
+                липсващият ред не е грешка.
+            </p>
+            <div id="fp-dd-rows"></div>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px"
+                    onclick="addDocDateRow()">+ Добави документ</button>
         </div>
 
         <!-- ГРАДОУСТРОЙСТВЕНИ ПОКАЗАТЕЛИ -->
@@ -5501,79 +5515,16 @@ function renderPassportForm(projectId) {
             </button>
         </div>
 
-        <!-- ОЦЕНКА НА СЪОТВЕТСТВИЕТО -->
+        <!-- ОЦЕНКАТА И ДОКУМЕНТИТЕ — НА СВОИТЕ СТРАНИЦИ -->
         <div class="card" data-faza="osip">
-            <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
+            <div class="card-title" style="margin-bottom:8px">📐 Оценка и изходни документи</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Данни за комплексния доклад. Категорията се изписва изцяло, с правното основание —
-                тя влиза дословно в раздел А.
+                Водят се на своите страници, за да не натежава паспортът.
             </p>
-            <div class="form-grid">
-                <div class="form-group form-grid-full">
-                    <label class="form-label">Категория — правно основание, дословно за раздел А</label>
-                    <input type="text" id="fp-osip-kategoria" class="form-input"
-                           placeholder="пета КАТЕГОРИЯ, съгласно чл. 10, ал. 1, буква „а“ от Наредба № 1/30.07.2003 г. за номенклатурата на видовете строежи и чл. 137, ал. 1, т. 5 от ЗУТ"
-                           value="${(p.osip||{}).kategoria||''}">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Самата категория се избира горе, при вида на строежа. Тук се пише цитатът,
-                        който влиза дословно в изречението на раздел А.
-                    </p>
-                    <div style="margin-top:10px">
-                        <button type="button" class="btn btn-secondary btn-sm" id="btn-proveri-kat"
-                                onclick="proveriKategoria()">
-                            🔍 Провери цитата срещу наредбата
-                        </button>
-                        <span style="font-size:11px;color:var(--muted);margin-left:8px">
-                            намира разпоредбата и сверява описанието на строежа с нея
-                        </span>
-                    </div>
-                    <div id="kat-rezultat" style="margin-top:10px"></div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Изх. № на доклада</label>
-                    <input type="text" id="fp-osip-izh-nomer" class="form-input" placeholder="1281"
-                           value="${(p.osip||{}).izh_nomer||''}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Дата на доклада</label>
-                    <input type="text" id="fp-osip-izh-data" class="form-input" placeholder="дд.мм.гггг"
-                           value="${(p.osip||{}).izh_data||''}" oninput="formatDateInput(this)">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Трябва да предхожда разрешението за строеж — тя е основанието за издаването му.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Фаза на проекта</label>
-                    <input type="text" id="fp-osip-faza" class="form-input" list="osip-faza-list"
-                           placeholder="Технически проект (ТП)" value="${(p.osip||{}).faza||''}">
-                    <datalist id="osip-faza-list">
-                        <option value="Технически проект (ТП)"></option>
-                        <option value="Работен проект (РП)"></option>
-                        <option value="Идеен проект (ИП)"></option>
-                    </datalist>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Одобряващ орган</label>
-                    <input type="text" id="fp-osip-organ" class="form-input"
-                           placeholder="Главния архитект на Столична община" value="${(p.osip||{}).organ||''}">
-                </div>
-                <div class="form-group form-grid-full">
-                    <label class="form-label">Договор за надзор</label>
-                    <input type="text" id="fp-osip-dogovor" class="form-input"
-                           placeholder="сключен Договор за упражняване на строителен надзор между Възложителя и Консултанта"
-                           value="${(p.osip||{}).dogovor||''}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Технически контрол „Конструктивна“</label>
-                    <input type="text" id="fp-osip-tk" class="form-input" placeholder="инж. Маргарита Янкова Йорданова"
-                           value="${(p.osip||{}).tk||''}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">ТК — рег. №</label>
-                    <input type="text" id="fp-osip-tk-reg" class="form-input" placeholder="0319"
-                           value="${(p.osip||{}).tkReg||''}">
-                </div>
-            </div>
+            ${isEdit ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="kamStranica('${project.id}','osip')">📐 Оценка на съответствието →</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="kamStranica('${project.id}','dokumenti')">📎 Изходни документи →</button>
+            </div>` : `<p style="font-size:12px;color:var(--muted);margin:0">Първо запази паспорта — после оценката и документите се водят за него.</p>`}
         </div>
 
         <!-- ЗАПОВЕДНА КНИГА -->
@@ -5668,19 +5619,8 @@ function renderPassportForm(projectId) {
 
     // Рисуват се след вмъкването на формата — съдържанието им е динамично.
     renderDocDates(p);
-    renderDokumenti(p);
     renderTeam(p, document.getElementById('fp-consultant')?.value);
     setFaza(faza);
-    // Присъди, записани преди повредата да се различава от находка, остават в
-    // паспортите. Такава се разпознава по обосновката и се изхвърля при
-    // отваряне — иначе показва „не може да се прецени“ вечно, макар сървърът
-    // отдавна да чете наредбата.
-    const zapisana = (p.osip || {}).ai_kategoria || null;
-    const povreda = zapisana && zapisana.otgovor === 'ne_moga' &&
-        (zapisana.vid === 'sistemna' ||
-         /не е намерена|не съвпада|отпечат|заключен/i.test(zapisana.obosnovka || ''));
-    _aiKategoria = povreda ? null : zapisana;
-    renderKatRezultat(_aiKategoria);
 }
 
 function clientRowHTML(cl, i) {
@@ -5937,18 +5877,6 @@ function savePassport() {
         imaMashini: !!document.getElementById('fp-ima-mashini')?.checked,
         metalnaKonstrukcia: !!document.getElementById('fp-metalna')?.checked,
         docDates: readDocDates(),
-        dokumenti: readDokumenti(),
-        osip: {
-            izh_nomer: document.getElementById('fp-osip-izh-nomer')?.value || '',
-            izh_data:  document.getElementById('fp-osip-izh-data')?.value || '',
-            kategoria: document.getElementById('fp-osip-kategoria')?.value || '',
-            ai_kategoria: _aiKategoria || undefined,
-            faza:      document.getElementById('fp-osip-faza')?.value || '',
-            organ:     document.getElementById('fp-osip-organ')?.value || '',
-            dogovor:   document.getElementById('fp-osip-dogovor')?.value || '',
-            tk:        document.getElementById('fp-osip-tk')?.value || '',
-            tkReg:     document.getElementById('fp-osip-tk-reg')?.value || ''
-        },
         client: tempClients[0] || { type: 'ФЛ', name: '' },
         clients: tempClients.filter(c => c.name),
         upalnomoshten_predstavitel: document.getElementById('fp-upalnomoshten')?.value.trim() || '',
@@ -5975,7 +5903,7 @@ function savePassport() {
                 updatedAt: new Date().toISOString(),
             };
             addHistory('edit', pi, `Редактирани данни за паспорт ПИ ${pi}`);
-            showAlert('success', `✅ Паспортът е актуализиран! Excel статусът е нулиран — моля, експортирайте отново.`);
+            showAlert('success', '✅ Паспортът е актуализиран!');
         }
     } else {
         // New project
@@ -5997,7 +5925,14 @@ function savePassport() {
 
     // Async sync to API — does not block navigation
     const piForSync = projectData.pi;
-    const payloadForSync = { passport: projectData, pi: piForSync };
+    // Към сървъра — СЛЕТИЯТ обект, не само полетата от формата: save_passport
+    // подменя паспорта изцяло, а оценката и документите вече се пишат от
+    // своите страници — без това всяко запазване на паспорта би ги изтривало.
+    // Без `id`: при зареждане сървърът го връща като ПИ и строгите сравнения
+    // в „Редактирай“/„Изтрий“ разчитат на това.
+    const slyat = appData.projects.find(p => p.pi === piForSync) || projectData;
+    const { id: _bezId, ...zaSarvara } = slyat;
+    const payloadForSync = { passport: zaSarvara, pi: piForSync };
     if (appData.apiUrl) {
         apiCall(`/api/passports/${piForSync}`, 'POST', payloadForSync)
             .then(r => showAlert('success', `☁️ Паспорт ПИ-${piForSync} запазен в базата данни.`
@@ -6011,13 +5946,216 @@ function savePassport() {
 // обект. Генерирането остава там, където стоят подробностите за всеки образец.
 // Предишният бутон объркваше точно защото изглеждаше, че документът се прави
 // от паспорта.
-function kamGenerirane(id) {
+// Преки пътища от паспорта към страница за този обект. Не генерират и не пишат
+// нищо на място — само избират обекта и отварят страницата.
+function kamStranica(id, stranica) {
     const project = appData.projects.find(p => String(p.id) === String(id));
     if (!project) return;
     appData.currentProject = project;
     closeModal('passport-modal');
-    navigateTo('generate');
+    navigateTo(stranica);
     try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
+}
+
+function kamGenerirane(id) { kamStranica(id, 'generate'); }
+
+// ── Страниците „Оценка на съответствието“ и „Изходни документи“ ─────────────
+// Всяка пише САМО своята част от обекта и праща към сървъра целия обект:
+// save_passport подменя паспорта изцяло, така че част от него би изтрила
+// останалото. По същата причина паспортът вече не пише тези две части.
+
+// currentProject е снимка (при зареждане от браузъра — копие); работи се
+// върху живия запис в appData.projects.
+function _zhivObekt() {
+    const c = appData.currentProject;
+    return c ? appData.projects.find(x => String(x.id) === String(c.id)) || null : null;
+}
+
+function _obektIliIzbor(kutiyaId, stranica, podkana) {
+    const p = _zhivObekt();
+    if (!p) {
+        document.getElementById(kutiyaId).innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">Изберете обект</div>
+                <div class="empty-text">${podkana}</div>
+                ${izborObektHtml(stranica)}
+            </div>`;
+    }
+    return p;
+}
+
+function _lentaObekt(p, stranica) {
+    return `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">📋 Обект</div>
+                    <div class="card-subtitle">ПИ: ${p.pi} — ${p.stroej || ''}</div>
+                </div>
+                ${izborObektHtml(stranica)}
+            </div>
+        </div>`;
+}
+
+function _zapishiObekt(p, saobshtenie) {
+    p.updatedAt = new Date().toISOString();
+    appData.currentProject = p;
+    try { saveData(); } catch (e) { console.warn('не е записано в браузъра:', e); }
+    addHistory('edit', p.pi, saobshtenie);
+    showAlert('success', `✅ ${saobshtenie}.`);
+    if (!appData.apiUrl) return;
+    const { id: _bezId, ...zaSarvara } = p;
+    apiCall(`/api/passports/${p.pi}`, 'POST', { passport: zaSarvara, pi: p.pi })
+        .then(() => showAlert('success', `☁️ ПИ-${p.pi} запазен в базата данни.`))
+        .catch(e => showAlert('error', `⚠️ Локално запазен, но API грешка: ${e.message}`));
+}
+
+function renderOsipPage() {
+    const p = _obektIliIzbor('osip-content', 'osip',
+        'Изберете обекта, чиято оценка на съответствието се попълва');
+    if (!p) return;
+    document.getElementById('osip-content').innerHTML = _lentaObekt(p, 'osip') + `
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Данни за комплексния доклад. Категорията се изписва изцяло, с правното основание —
+                тя влиза дословно в раздел А.
+            </p>
+            <div class="form-grid">
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Категория — правно основание, дословно за раздел А</label>
+                    <input type="text" id="fp-osip-kategoria" class="form-input"
+                           placeholder="пета КАТЕГОРИЯ, съгласно чл. 10, ал. 1, буква „а“ от Наредба № 1/30.07.2003 г. за номенклатурата на видовете строежи и чл. 137, ал. 1, т. 5 от ЗУТ"
+                           value="${(p.osip||{}).kategoria||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Самата категория се избира горе, при вида на строежа. Тук се пише цитатът,
+                        който влиза дословно в изречението на раздел А.
+                    </p>
+                    <div style="margin-top:10px">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-proveri-kat"
+                                onclick="proveriKategoria()">
+                            🔍 Провери цитата срещу наредбата
+                        </button>
+                        <span style="font-size:11px;color:var(--muted);margin-left:8px">
+                            намира разпоредбата и сверява описанието на строежа с нея
+                        </span>
+                    </div>
+                    <div id="kat-rezultat" style="margin-top:10px"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Изх. № на доклада</label>
+                    <input type="text" id="fp-osip-izh-nomer" class="form-input" placeholder="1281"
+                           value="${(p.osip||{}).izh_nomer||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата на доклада</label>
+                    <input type="text" id="fp-osip-izh-data" class="form-input" placeholder="дд.мм.гггг"
+                           value="${(p.osip||{}).izh_data||''}" oninput="formatDateInput(this)">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Трябва да предхожда разрешението за строеж — тя е основанието за издаването му.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Фаза на проекта</label>
+                    <input type="text" id="fp-osip-faza" class="form-input" list="osip-faza-list"
+                           placeholder="Технически проект (ТП)" value="${(p.osip||{}).faza||''}">
+                    <datalist id="osip-faza-list">
+                        <option value="Технически проект (ТП)"></option>
+                        <option value="Работен проект (РП)"></option>
+                        <option value="Идеен проект (ИП)"></option>
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Одобряващ орган</label>
+                    <input type="text" id="fp-osip-organ" class="form-input"
+                           placeholder="Главния архитект на Столична община" value="${(p.osip||{}).organ||''}">
+                </div>
+                <div class="form-group form-grid-full">
+                    <label class="form-label">Договор за надзор</label>
+                    <input type="text" id="fp-osip-dogovor" class="form-input"
+                           placeholder="сключен Договор за упражняване на строителен надзор между Възложителя и Консултанта"
+                           value="${(p.osip||{}).dogovor||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Технически контрол „Конструктивна“</label>
+                    <input type="text" id="fp-osip-tk" class="form-input" placeholder="инж. Маргарита Янкова Йорданова"
+                           value="${(p.osip||{}).tk||''}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ТК — рег. №</label>
+                    <input type="text" id="fp-osip-tk-reg" class="form-input" placeholder="0319"
+                           value="${(p.osip||{}).tkReg||''}">
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;gap:12px;margin:16px 0 40px">
+            <button class="btn btn-success btn-lg" onclick="zapishiOsip()">💾 Запази оценката</button>
+        </div>`;
+    // Присъди, записани преди повредата да се различава от находка, остават в
+    // паспортите. Разпознават се по обосновката и се изхвърлят при отваряне —
+    // иначе показват „не може да се прецени“ вечно.
+    const zapisana = (p.osip || {}).ai_kategoria || null;
+    const povreda = zapisana && zapisana.otgovor === 'ne_moga' &&
+        (zapisana.vid === 'sistemna' ||
+         /не е намерена|не съвпада|отпечат|заключен/i.test(zapisana.obosnovka || ''));
+    _aiKategoria = povreda ? null : zapisana;
+    renderKatRezultat(_aiKategoria);
+}
+
+function zapishiOsip() {
+    const p = _zhivObekt();
+    if (!p) return;
+    const v = id => document.getElementById(id)?.value || '';
+    p.osip = {
+        ...(p.osip || {}),
+        izh_nomer: v('fp-osip-izh-nomer'),
+        izh_data:  v('fp-osip-izh-data'),
+        kategoria: v('fp-osip-kategoria'),
+        ai_kategoria: _aiKategoria || undefined,
+        faza:      v('fp-osip-faza'),
+        organ:     v('fp-osip-organ'),
+        dogovor:   v('fp-osip-dogovor'),
+        tk:        v('fp-osip-tk'),
+        tkReg:     v('fp-osip-tk-reg'),
+    };
+    _zapishiObekt(p, 'Оценката на съответствието е запазена');
+}
+
+function renderDokumentiPage() {
+    const p = _obektIliIzbor('dokumenti-content', 'dokumenti',
+        'Изберете обекта, чиито изходни документи се вписват');
+    if (!p) return;
+    document.getElementById('dokumenti-content').innerHTML = _lentaObekt(p, 'dokumenti') + `
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Кои документи се изискват за този обект решава чеклистът —
+                файл, който редактираш ти, не кодът. Впиши каквото е налице;
+                останалото излиза като <strong>не е доказано</strong>, не се премълчава.
+            </p>
+            <div id="fp-dok-rows"></div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addDokRow()">
+                    + Добави документ
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="proveriDokumenti()">
+                    🔍 Провери какво липсва
+                </button>
+            </div>
+            <div id="fp-dok-rezultat" style="margin-top:12px"></div>
+        </div>
+        <div style="display:flex;gap:12px;margin:16px 0 40px">
+            <button class="btn btn-success btn-lg" onclick="zapishiDokumenti()">💾 Запази документите</button>
+        </div>`;
+    renderDokumenti(p);
+}
+
+function zapishiDokumenti() {
+    const p = _zhivObekt();
+    if (!p) return;
+    p.dokumenti = readDokumenti();
+    _zapishiObekt(p, 'Изходните документи са запазени');
 }
 
 function editPassport(id) {
