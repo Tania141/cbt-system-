@@ -2655,6 +2655,67 @@ function shortName(fullName) {
 // от бутон в паспорта; той отпадна (генериране само от „Актове и протоколи“ и
 // „AI протоколи“), а „← Смени“ пращаше в Обекти, откъдето нямаше как да се
 // избере — оставаше завинаги първият обект.
+// Предназначенията — един списък за паспорта и за резюмето на признаците.
+// Ключът е този, по който матрицата търси група (PREDNAZNACHENIE_KAM_GRUPA в
+// rules/normativna_matrica.py) — нов ред тук иска и ред там.
+const PREDNAZNACHENIA = [['жилищна','Жилищна сграда'],['смесена','Смесена — жилища и обслужване'],
+    ['административна','Административна, офисна'],['търговска','Търговски обект'],
+    ['хотел','Хотел, места за настаняване'],['хранене','Обществено хранене'],
+    ['спорт','Спортен, зрелищен обект'],['здравеопазване','Лечебно заведение'],
+    ['образование','Детска градина, училище'],['наука','Научен, университетски'],
+    ['производствена','Производствена сграда'],['складова','Склад, логистика'],
+    ['път','Път, улица'],['мост','Мост, виадукт, тунел'],
+    ['енергийна','Електроцентрала, подстанция, мрежа'],['вей','Фотоволтаичен, вятърен парк'],
+    ['газ','Газ, топлофикация'],['вик','ВиК мрежи'],
+    ['телекомуникации','Телекомуникации'],['подземни','Подземни мрежи'],
+    ['култура','Културна ценност'],['оръжия','Оръжия, боеприпаси'],['друго','Друго']];
+
+// Признаците на обекта — резюме само за четене. Пишат се на едно място, в
+// паспорта; тук само се показват, защото от тях зависи какво излиза в доклада
+// и кои документи се искат. Два места за писане значат две истини.
+function _priznaciKarta(p) {
+    const vid = { sgrada: 'Сграда', lineen: 'Линеен обект',
+                  lineen_ktp: 'Линеен обект с КТП (и сграда)', saorajenie: 'Съоръжение' }[p.vid || 'sgrada'] || p.vid;
+    const predn = (PREDNAZNACHENIA.find(([k]) => k === (p.prednaznachenie || 'жилищна')) || [])[1]
+                  || p.prednaznachenie || '—';
+    const kat = p.kategoria
+        ? `${['', 'първа', 'втора', 'трета', 'четвърта', 'пета'][p.kategoria] || p.kategoria} категория`
+        : '<span style="color:var(--red)">не е посочена</span>';
+    const povod = p.povod === 'преработка_154' ? 'Преработка по чл. 154 ЗУТ' : 'Ново строителство';
+    const rezhimi = [[p.pametnik, 'паметник на културата'], [p.zashtitena, 'защитена зона'],
+                     [p.vodi, 'засяга води'], [p.opasni, 'опасни вещества']]
+        .filter(([da]) => da).map(([, t]) => `<span class="badge badge-gold">${t}</span>`).join(' ');
+    const spo = (p.spo || []).join(', ');
+    const red = (et, st) => `<div style="color:var(--muted)">${et}</div><div>${st}</div>`;
+    return `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">🏗️ Обектът — вид и признаци</div>
+                    <div class="card-subtitle">От записания паспорт. От тях зависят разделите на доклада,
+                        нормативният списък и изискваните документи.</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="kamPasport('${p.id}')">✏️ Промени в паспорта</button>
+            </div>
+            <div style="display:grid;grid-template-columns:160px 1fr;gap:6px 12px;font-size:13px">
+                ${red('Вид', vid)}
+                ${red('Предназначение', predn)}
+                ${red('Категория', kat)}
+                ${red('Повод', povod)}
+                ${red('Особени режими', rezhimi || '<span style="color:var(--muted)">няма</span>')}
+                ${red('СПО', spo || '<span style="color:var(--muted)">няма</span>')}
+            </div>
+        </div>`;
+}
+
+// Отваря паспорта на обекта за редакция. „Редактирай“ сравнява id строго, а
+// id-то е число за местно създадените и текст (ПИ) за заредените от сървъра —
+// затова обектът се намира тук и се подава с истинския си вид.
+function kamPasport(id) {
+    const pr = appData.projects.find(x => String(x.id) === String(id));
+    if (pr) editPassport(pr.id);
+}
+
 function izborObektHtml(stranica) {
     const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     const tekusht = appData.currentProject?.id;
@@ -5388,17 +5449,7 @@ function renderPassportForm(projectId) {
                 <div class="form-group">
                     <label class="form-label">Предназначение</label>
                     <select id="fp-prednaznachenie" class="form-input">
-                        ${[['жилищна','Жилищна сграда'],['смесена','Смесена — жилища и обслужване'],
-                           ['административна','Административна, офисна'],['търговска','Търговски обект'],
-                           ['хотел','Хотел, места за настаняване'],['хранене','Обществено хранене'],
-                           ['спорт','Спортен, зрелищен обект'],['здравеопазване','Лечебно заведение'],
-                           ['образование','Детска градина, училище'],['наука','Научен, университетски'],
-                           ['производствена','Производствена сграда'],['складова','Склад, логистика'],
-                           ['път','Път, улица'],['мост','Мост, виадукт, тунел'],
-                           ['енергийна','Електроцентрала, подстанция, мрежа'],['вей','Фотоволтаичен, вятърен парк'],
-                           ['газ','Газ, топлофикация'],['вик','ВиК мрежи'],
-                           ['телекомуникации','Телекомуникации'],['подземни','Подземни мрежи'],
-                           ['култура','Културна ценност'],['оръжия','Оръжия, боеприпаси'],['друго','Друго']]
+                        ${PREDNAZNACHENIA
                           .map(([k,v]) => `<option value="${k}" ${(p.prednaznachenie||'жилищна')===k?'selected':''}>${v}</option>`).join('')}
                     </select>
                     <p style="font-size:11px;color:var(--muted);margin-top:4px">
@@ -6055,7 +6106,7 @@ function renderOsipPage() {
     const p = _obektIliIzbor('osip-content', 'osip',
         'Изберете обекта, чиято оценка на съответствието се попълва');
     if (!p) return;
-    document.getElementById('osip-content').innerHTML = _lentaObekt(p, 'osip') + `
+    document.getElementById('osip-content').innerHTML = _lentaObekt(p, 'osip') + _priznaciKarta(p) + `
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
@@ -6166,7 +6217,7 @@ function renderDokumentiPage() {
     const p = _obektIliIzbor('dokumenti-content', 'dokumenti',
         'Изберете обекта, чиито изходни документи се вписват');
     if (!p) return;
-    document.getElementById('dokumenti-content').innerHTML = _lentaObekt(p, 'dokumenti') + `
+    document.getElementById('dokumenti-content').innerHTML = _lentaObekt(p, 'dokumenti') + _priznaciKarta(p) + `
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
