@@ -1341,11 +1341,11 @@
         <div class="page active" id="page-passports">
             <div class="page-header">
                 <div>
-                    <h1 class="page-title">Паспорти</h1>
-                    <p class="page-subtitle">Всички проекти в системата</p>
+                    <h1 class="page-title">Обекти</h1>
+                    <p class="page-subtitle">Всички обекти в системата</p>
                 </div>
                 <button class="btn btn-primary" onclick="navigateTo('new-passport')">
-                    ➕ Нов паспорт
+                    ➕ Нов обект
                 </button>
             </div>
 
@@ -1370,7 +1370,7 @@
         <div class="page" id="page-new-passport">
             <div class="page-header">
                 <div>
-                    <h1 class="page-title" id="form-page-title">Нов паспорт</h1>
+                    <h1 class="page-title" id="form-page-title">Нов обект</h1>
                     <p class="page-subtitle" id="form-page-subtitle">Въведете данните за новия проект</p>
                 </div>
             </div>
@@ -1691,6 +1691,7 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal('passport-modal')">Затвори</button>
             <button class="btn btn-secondary" id="modal-edit-btn">✏️ Редактирай</button>
+            <button class="btn btn-primary" id="modal-gen-btn">📄 Генерирай →</button>
         </div>
     </div>
 </div>
@@ -4992,7 +4993,7 @@ function renderPassportsList(projects) {
                 <div class="empty-icon">📋</div>
                 <div class="empty-title">Няма намерени паспорти</div>
                 <div class="empty-text">Опитайте с различни филтри или добавете нов паспорт</div>
-                <button class="btn btn-primary" onclick="navigateTo('new-passport')">➕ Нов паспорт</button>
+                <button class="btn btn-primary" onclick="navigateTo('new-passport')">➕ Нов обект</button>
             </div>
         `;
         return;
@@ -5016,6 +5017,8 @@ function renderPassportsList(projects) {
             </div>
             <div class="passport-actions">
                 <span style="font-size:12px;color:var(--muted)">${formatDate(p.date)}</span>
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();kamGenerirane('${p.id}')"
+                        title="Генерирай — отваря „Актове и протоколи“ за този обект">📄 Генерирай</button>
                 <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editPassport('${p.id}')">✏️</button>
                 <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePassport('${p.id}')">🗑️</button>
             </div>
@@ -5117,6 +5120,7 @@ function openPassportModal(id) {
     `;
 
     document.getElementById('modal-edit-btn').onclick = () => { closeModal('passport-modal'); editPassport(id); };
+    document.getElementById('modal-gen-btn').onclick = () => kamGenerirane(id);
 
     document.getElementById('passport-modal').classList.add('open');
 }
@@ -5144,7 +5148,7 @@ function renderPassportForm(projectId) {
     const isEdit = projectId !== null;
     const project = isEdit ? appData.projects.find(p => p.id === projectId) : null;
 
-    document.getElementById('form-page-title').textContent = isEdit ? `Редакция: ПИ ${project?.pi}` : 'Нов паспорт';
+    document.getElementById('form-page-title').textContent = isEdit ? `Редакция: ПИ ${project?.pi}` : 'Нов обект';
     document.getElementById('form-page-subtitle').textContent = isEdit ? 'Актуализирайте данните за проекта' : 'Въведете данните за новия проект';
 
     if (appData.consultants.length === 0) {
@@ -6001,6 +6005,19 @@ function savePassport() {
                    ? ` Заповедна книга № ${r.zk_vpisana} е вписана в регистъра.` : '')))
             .catch(e => showAlert('error', `⚠️ Локално запазен, но API грешка: ${e.message}`));
     }
+}
+
+// Бутонът НЕ генерира на място: отваря „Актове и протоколи“ с избран този
+// обект. Генерирането остава там, където стоят подробностите за всеки образец.
+// Предишният бутон объркваше точно защото изглеждаше, че документът се прави
+// от паспорта.
+function kamGenerirane(id) {
+    const project = appData.projects.find(p => String(p.id) === String(id));
+    if (!project) return;
+    appData.currentProject = project;
+    closeModal('passport-modal');
+    navigateTo('generate');
+    try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
 }
 
 function editPassport(id) {
