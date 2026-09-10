@@ -2585,6 +2585,32 @@ function shortName(fullName) {
     return parts[0] || fullName;
 }
 
+// ── Избор на обект за генериране ─────────────────────────────────────────────
+// Изборът живее там, където е генерирането. Досега текущият обект се задаваше
+// от бутон в паспорта; той отпадна (генериране само от „Актове и протоколи“ и
+// „AI протоколи“), а „← Смени“ пращаше в Обекти, откъдето нямаше как да се
+// избере — оставаше завинаги първият обект.
+function izborObektHtml(stranica) {
+    const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const tekusht = appData.currentProject?.id;
+    if (!appData.projects.length)
+        return `<button class="btn btn-primary" onclick="navigateTo('new-passport')">➕ Нов обект</button>`;
+    return `<select class="form-select" style="width:auto;max-width:420px"
+                onchange="smeniObekt(this.value, '${stranica}')">
+        ${tekusht ? '' : '<option value="">— избери обект —</option>'}
+        ${appData.projects.map(p => `<option value="${esc(p.id)}" ${p.id === tekusht ? 'selected' : ''}>
+            ПИ ${esc(p.pi)} — ${esc(p.stroej)}</option>`).join('')}
+    </select>`;
+}
+
+function smeniObekt(id, stranica) {
+    appData.currentProject = appData.projects.find(p => String(p.id) === String(id)) || null;
+    // Първо екранът, после записът: изборът трябва да се види, дори ако
+    // запомнянето му в браузъра не мине.
+    if (stranica === 'ai') renderAiProtocols(); else renderGenerateSection();
+    try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
+}
+
 function renderAiProtocols() {
     const content = document.getElementById('ai-protocols-content');
     const project = appData.currentProject;
@@ -2595,8 +2621,8 @@ function renderAiProtocols() {
             <div class="empty-state">
                 <div class="empty-icon">🤖</div>
                 <div class="empty-title">Изберете проект</div>
-                <div class="empty-text">Изберете активен проект от паспортите преди да генерирате AI протокол</div>
-                <button class="btn btn-primary" onclick="navigateTo('passports')">📋 Паспорти</button>
+                <div class="empty-text">Изберете обекта, за който ще се генерира AI протокол</div>
+                ${izborObektHtml('ai')}
             </div>`;
         return;
     }
@@ -2636,7 +2662,7 @@ function renderAiProtocols() {
                     <div class="card-title">📋 Активен проект</div>
                     <div class="card-subtitle">ПИ: ${project.pi} — ${project.stroej}</div>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="navigateTo('passports')">← Смени</button>
+                ${izborObektHtml('ai')}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
                 <div><strong>Консултант:</strong> ${consultant?.name || '—'}</div>
@@ -6044,8 +6070,8 @@ function renderGenerateSection() {
             <div class="empty-state">
                 <div class="empty-icon">📄</div>
                 <div class="empty-title">Изберете проект</div>
-                <div class="empty-text">Изберете активен проект от списъка с паспорти</div>
-                <button class="btn btn-primary" onclick="navigateTo('passports')">📋 Паспорти</button>
+                <div class="empty-text">Изберете обекта, за който ще се генерират актове и протоколи</div>
+                ${izborObektHtml('generate')}
             </div>`;
         return;
     }
@@ -6066,7 +6092,7 @@ function renderGenerateSection() {
                     <div class="card-subtitle">ПИ: ${project.pi} — ${project.stroej}</div>
                 </div>
                 <div style="display:flex;gap:8px">
-                    <button class="btn btn-secondary btn-sm" onclick="navigateTo('passports')">← Смени</button>
+                    ${izborObektHtml('generate')}
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:12px">
