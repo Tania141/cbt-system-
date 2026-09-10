@@ -2344,6 +2344,7 @@ async function renderZK() {
                     <th style="padding:6px 8px">ПИ</th>
                     <th style="padding:6px 8px">Статус</th>
                     <th style="padding:6px 8px">Бележка</th>
+                    <th style="padding:6px 8px"></th>
                 </tr>
             </thead>
             <tbody>
@@ -2357,6 +2358,10 @@ async function renderZK() {
                     <td style="padding:6px 8px">${znak[r.status] || ''} ${r.status}${
                         r.sledvashta ? ` → № ${r.sledvashta}` : ''}</td>
                     <td style="padding:6px 8px;color:var(--muted)">${r.belejka || ''}</td>
+                    <td style="padding:6px 8px;text-align:right">${r.status === 'издадена'
+                        ? `<button class="btn btn-ghost btn-sm" title="Грешно генерирана — анулира номера"
+                              onclick="event.stopPropagation();anulirajZK(${JSON.stringify(r).replace(/"/g, '&quot;')})">Анулирай</button>`
+                        : ''}</td>
                 </tr>`).join('')}
             </tbody>
         </table>
@@ -2374,6 +2379,35 @@ function popalniZK(r) {
     document.getElementById('zk-sledvashta').value = r.sledvashta || '';
     document.getElementById('zk-belejka').value    = r.belejka || '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Грешно генерирана книга се анулира, не се трие: номерът остава в поредицата.
+// Ако след нея още няма издадена, регистърът ще го даде отново на следващото
+// генериране — пробата не оставя дупка. Анулирана в средата остава завинаги.
+async function anulirajZK(r) {
+    if (!confirm(`Анулирай заповедна книга № ${r.nomer}?
+
+` +
+                 `Ако след нея няма издадена, номерът ще се даде отново при ` +
+                 `следващото генериране. Иначе остава анулиран в поредицата.`)) return;
+    try {
+        await apiCall('/api/zk', 'POST', {
+            ...r,
+            status: 'анулирана',
+            belejka: [r.belejka, `анулирана ${new Date().toLocaleDateString('bg-BG')}`]
+                        .filter(Boolean).join('; '),
+        });
+        // Паспортът на обекта да не показва анулирания номер като свой.
+        const p = appData.projects.find(x => x.pi && x.pi === r.pi && String((x.zk || {}).number) === String(r.nomer));
+        if (p) {
+            p.zk = { ...(p.zk || {}), number: '' };
+            try { saveData(); } catch (e) { console.warn(e); }
+        }
+        showAlert('success', `Заповедна книга № ${r.nomer} е анулирана`);
+        renderZK();
+    } catch (e) {
+        showAlert('error', e.message);
+    }
 }
 
 async function zapishiZK() {
@@ -5532,8 +5566,10 @@ function renderPassportForm(projectId) {
             <div class="card-title" style="margin-bottom:16px">📕 Заповедна книга</div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Номер</label>
-                    <input type="text" id="fp-zk-num" class="form-input" placeholder="1050" value="${(p.zk||{}).number||''}">
+                    <label class="form-label">Номер <span style="font-weight:400;color:var(--muted)">— от регистъра</span></label>
+                    <input type="text" id="fp-zk-num" class="form-input" readonly
+                           placeholder="взима се при генериране на книгата"
+                           value="${(p.zk||{}).number||''}" style="background:var(--surface)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Дата</label>
@@ -5935,9 +5971,13 @@ function savePassport() {
     const payloadForSync = { passport: zaSarvara, pi: piForSync };
     if (appData.apiUrl) {
         apiCall(`/api/passports/${piForSync}`, 'POST', payloadForSync)
-            .then(r => showAlert('success', `☁️ Паспорт ПИ-${piForSync} запазен в базата данни.`
-                + (r && r.zk_vpisana
-                   ? ` Заповедна книга № ${r.zk_vpisana} е вписана в регистъра.` : '')))
+            .then(r => {
+                showAlert('success', `☁️ Паспорт ПИ-${piForSync} запазен в базата данни.`
+                    + (r && r.zk_vpisana
+                       ? ` Заповедна книга № ${r.zk_vpisana} е вписана в регистъра.` : ''));
+                // Номер, който регистърът не прие, не бива да мълчи.
+                if (r && r.zk_greshka) showAlert('error', `📓 ${r.zk_greshka}`);
+            })
             .catch(e => showAlert('error', `⚠️ Локално запазен, но API грешка: ${e.message}`));
     }
 }
@@ -6275,10 +6315,10 @@ function renderGenerateSection() {
             </p>
             <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label">Номер</label>
-                    <input type="text" id="gen-zk-num" class="form-input" placeholder="1050"
-                           value="${(project?.zk||{}).number||''}"
-                           onchange="proveriZK(this.value)">
+                    <label class="form-label">Номер <span style="font-weight:400;color:var(--muted)">— от регистъра</span></label>
+                    <input type="text" id="gen-zk-num" class="form-input" readonly
+                           placeholder="ще се вземе от регистъра при генериране"
+                           value="${(project?.zk||{}).number||''}" style="background:var(--surface)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Дата</label>
@@ -6458,7 +6498,7 @@ async function generateDocumentsViaApi() {
 
     // Допълнителни параметри
     // Празно означава „ползвай паспорта“ — не се подменя с подразбираща се стойност.
-    const zkNum = document.getElementById('gen-zk-num')?.value.trim() || '';
+    let zkNum = document.getElementById('gen-zk-num')?.value.trim() || '';
     const zkDate = document.getElementById('gen-zk-date')?.value.trim() || '';
 
     const selected = DOC_CONFIG.filter(doc => document.getElementById(`doc-${doc.id}`)?.checked);
@@ -6467,6 +6507,36 @@ async function generateDocumentsViaApi() {
         btn.disabled = false;
         btn.innerHTML = '🚀 Генерирай .docx чрез Python API';
         return;
+    }
+
+    // Заповедната книга взима номера си от регистъра — сървърът го раздава, за
+    // да не получат двама един и същ. Повторно генериране за същия обект връща
+    // неговия номер, не изяжда нов. Грешно генерирана книга се анулира в
+    // „Заповедни книги“. Без номер от регистъра книга не се генерира.
+    if (selected.some(doc => doc.apiType === 'zapovedna')) {
+        try {
+            const z = await apiCall('/api/zk/zaemi', 'POST', {
+                pi: project.pi,
+                obekt: [project.stroej, project.address].filter(Boolean).join(', '),
+                data: zkDate,
+            });
+            zkNum = String(z.nomer);
+            const pole = document.getElementById('gen-zk-num');
+            if (pole) pole.value = zkNum;
+            const zhiv = _zhivObekt() || project;
+            if ((zhiv.zk || {}).number !== zkNum || (zhiv.zk || {}).date !== zkDate) {
+                zhiv.zk = { number: zkNum, date: zkDate };
+                _zapishiObekt(zhiv, z.nov
+                    ? `Заповедна книга № ${zkNum} е взета от регистъра`
+                    : `Заповедна книга № ${zkNum} — вече е на този обект`);
+            }
+            proveriZK(zkNum);
+        } catch (e) {
+            showAlert('error', `Заповедната книга не получи номер от регистъра: ${e.message}`);
+            btn.disabled = false;
+            btn.innerHTML = '🚀 Генерирай .docx чрез Python API';
+            return;
+        }
     }
 
     const results = [];
