@@ -1455,6 +1455,9 @@
                 <button class="btn btn-secondary btn-sm" onclick="renderZK()">↻ Обнови</button>
             </div>
 
+            <!-- Генериране на книга — само оттук (операторът, 11.09.2026) -->
+            <div class="card" id="zk-gen-kutiya"></div>
+
             <div class="card">
                 <div class="card-title" style="margin-bottom:8px">🔢 Номерация</div>
                 <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
@@ -2315,6 +2318,7 @@ function navigateTo(page) {
 // смяна на надзора се издава нова и следващите документи се позовават на нея.
 
 async function renderZK() {
+    renderZkGen();
     const spisak = document.getElementById('zk-spisak');
     const kutiya = document.getElementById('zk-sledvasht-kutiya');
     spisak.innerHTML = '<div class="empty-text">Зареждане…</div>';
@@ -2745,7 +2749,7 @@ function smeniObekt(id, stranica) {
     appData.currentProject = appData.projects.find(p => String(p.id) === String(id)) || null;
     // Първо екранът, после записът: изборът трябва да се види, дори ако
     // запомнянето му в браузъра не мине.
-    ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage }[stranica]
+    ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage, zk: renderZkGen }[stranica]
         || renderGenerateSection)();
     try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
 }
@@ -5407,23 +5411,6 @@ function renderPassportForm(projectId) {
             </div>` : `<p style="font-size:12px;color:var(--muted);margin:0">Първо запази паспорта — после изходните данни и оценката се водят за него.</p>`}
         </div>
 
-        <!-- ЗАПОВЕДНА КНИГА -->
-        <div class="card" data-faza="stroitelstvo">
-            <div class="card-title" style="margin-bottom:16px">📕 Заповедна книга</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Номер <span style="font-weight:400;color:var(--muted)">— от регистъра</span></label>
-                    <input type="text" id="fp-zk-num" class="form-input" readonly
-                           placeholder="взима се при генериране на книгата"
-                           value="${(p.zk||{}).number||''}" style="background:var(--surface)">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Дата</label>
-                    <input type="text" id="fp-zk-date" class="form-input" placeholder="дд.мм.гггг" value="${(p.zk||{}).date||''}" oninput="formatDateInput(this)">
-                </div>
-            </div>
-        </div>
-
         <!-- ВЪЗЛОЖИТЕЛИ -->
         <div class="card">
             <div class="card-header" style="margin-bottom:16px">
@@ -5721,10 +5708,6 @@ function savePassport() {
         stroej: document.getElementById('fp-stroej').value,
         address: document.getElementById('fp-address').value,
         consultant: { id: consultant.id, name: consultant.name },
-        zk: {
-            number: document.getElementById('fp-zk-num')?.value || '',
-            date:   document.getElementById('fp-zk-date')?.value || ''
-        },
         employees: readTeam(consultantId),
         faza: document.getElementById('fp-faza')?.value || 'osip',
         client: tempClients[0] || { type: 'ФЛ', name: '' },
@@ -5943,8 +5926,9 @@ function renderOsipPage() {
                 </div>
             </div>
         </div>
-        <div style="display:flex;gap:12px;margin:16px 0 40px">
+        <div style="display:flex;gap:12px;margin:16px 0 40px;flex-wrap:wrap">
             <button class="btn btn-success btn-lg" onclick="zapishiOsip()">💾 Запази оценката</button>
+            <button class="btn btn-primary btn-lg" id="btn-gen-osip" onclick="generiraiOsip()">📄 Запази и генерирай ОСИП (.docx)</button>
         </div>`;
     // Присъди, записани преди повредата да се различава от находка, остават в
     // паспортите. Разпознават се по обосновката и се изхвърлят при отваряне —
@@ -6207,7 +6191,120 @@ function renderDokumentiPage() {
 // бутонът в паспорта) минават през нея.
 function renderGenerateSection() {
     _renderGenerateSectionOsnova();
-    renderDocDates(_zhivObekt() || appData.currentProject);
+    const p = _zhivObekt() || appData.currentProject;
+    renderDocDates(p);
+    // Червената лампа: книгата, която актовете цитират, заменена ли е.
+    if (p?.zk?.number) proveriZK(p.zk.number);
+}
+
+// Генериране на един документ — общото на ОСИП (от оценката) и ЗК (от
+// регистъра). Същото като в цикъла на „Актове и протоколи“: заявка, сваляне,
+// запис в историята на обекта.
+async function _generirai(p, apiType, dopalnitelno, etiket, ime) {
+    const consultant = appData.consultants.find(c => c.id == p.consultant?.id);
+    const body = { passport: buildPassportRows(p, consultant, {}), pi: p.pi, ...dopalnitelno };
+    const token = getToken();
+    const r = await fetch(`${(appData.apiUrl || '').replace(/\/$/, '')}/api/generate/${apiType}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: r.statusText }));
+        throw new Error(err.error || `HTTP ${r.status}`);
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = ime; a.click();
+    URL.revokeObjectURL(url);
+
+    const nd = { type: etiket, date: new Date().toISOString(), url: '', path: '' };
+    p.generatedDocs = p.generatedDocs || [];
+    const i = p.generatedDocs.findIndex(d => d.type === etiket);
+    if (i >= 0) p.generatedDocs[i] = nd; else p.generatedDocs.push(nd);
+    addHistory('generate', p.pi, `Генериран .docx: ${etiket}`);
+    try { saveData(); } catch (e) { console.warn(e); }
+}
+
+// ОСИП — само оттук. Първо се записва оценката: докладът трябва да излезе
+// с това, което е на екрана, а изх. № и датата се пишат на едно място.
+async function generiraiOsip() {
+    const p = _zhivObekt();
+    if (!p) return;
+    zapishiOsip();
+    const btn = document.getElementById('btn-gen-osip');
+    const staro = btn?.innerHTML;
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Генериране…'; }
+    try {
+        await _generirai(p, 'osip',
+            { osip_number: p.osip?.izh_nomer || '', osip_date: p.osip?.izh_data || '' },
+            'ОСИП (комплексен доклад)', `osip_${p.pi}.docx`);
+        showAlert('success', '✅ ОСИП е генериран.');
+    } catch (e) {
+        showAlert('error', `❌ ОСИП: ${e.message}`);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = staro; }
+    }
+}
+
+// Генерирането на ЗК в регистъра: избор на обект, дата, бутон. Номерът се
+// взима от регистъра; повторно генериране за същия обект връща неговия.
+function renderZkGen() {
+    const k = document.getElementById('zk-gen-kutiya');
+    if (!k) return;
+    const p = _zhivObekt();
+    k.innerHTML = `
+        <div class="card-header">
+            <div>
+                <div class="card-title">📄 Генерирай заповедна книга</div>
+                <div class="card-subtitle">Номерът идва от регистъра; всички данни — от паспорта на обекта.</div>
+            </div>
+            ${izborObektHtml('zk')}
+        </div>
+        ${p ? `
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="margin:0">
+                <label class="form-label">Дата на книгата</label>
+                <input type="text" id="zk-gen-data" class="form-input" style="width:160px"
+                       placeholder="дд.мм.гггг" value="${(p.zk || {}).date || ''}" oninput="formatDateInput(this)">
+            </div>
+            <button class="btn btn-primary" id="btn-gen-zk" onclick="generiraiZK()">📄 Генерирай .docx</button>
+            <span style="font-size:13px;color:var(--muted)">
+                ${(p.zk || {}).number
+                    ? `Обектът има книга № <strong>${p.zk.number}</strong> — ново генериране дава същия номер.`
+                    : 'Обектът ще получи следващия номер от регистъра.'}
+            </span>
+        </div>` : ''}`;
+}
+
+async function generiraiZK() {
+    const p = _zhivObekt();
+    if (!p) return;
+    const data = document.getElementById('zk-gen-data')?.value.trim() || '';
+    const btn = document.getElementById('btn-gen-zk');
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Генериране…'; }
+    try {
+        const z = await apiCall('/api/zk/zaemi', 'POST', {
+            pi: p.pi,
+            obekt: [p.stroej, p.address].filter(Boolean).join(', '),
+            data,
+        });
+        const nomer = String(z.nomer);
+        // Номерът остава в обекта — актовете го цитират.
+        if ((p.zk || {}).number !== nomer || (p.zk || {}).date !== data) {
+            p.zk = { number: nomer, date: data };
+            _zapishiObekt(p, z.nov ? `Заповедна книга № ${nomer} е взета от регистъра`
+                                   : `Заповедна книга № ${nomer} — вече е на този обект`);
+        }
+        await _generirai(p, 'zapovedna', { zapovedna_number: nomer, zapovedna_date: data },
+                         'Заповедна книга', `zapovedna_${nomer}_${p.pi}.docx`);
+        showAlert('success', `✅ Заповедна книга № ${nomer} е генерирана.`);
+        renderZK();
+    } catch (e) {
+        showAlert('error', `❌ Заповедна книга: ${e.message}`);
+        if (btn) { btn.disabled = false; btn.innerHTML = '📄 Генерирай .docx'; }
+    }
 }
 
 function zapishiDatiDokumenti() {
@@ -6290,7 +6387,9 @@ function getGeodezist(consultant) {
 const DOC_CONFIG = [
     // ── По време на строителството ──────────────────────────
     { id: 'protokol1',    label: 'Протокол 1 (предаване на проект и РС)', apiType: 'protokol1', group: 'construction' },
-    { id: 'zapovedna',    label: 'Заповедна книга',            apiType: 'zapovedna',    group: 'construction' },
+    // Генерира се само от регистъра (операторът, 11.09.2026) — затова тук
+    // няма отметка. Описанието остава, за да се чете историята.
+    { id: 'zapovedna',    label: 'Заповедна книга',            apiType: 'zapovedna',    group: 'construction', drugade: 'zk' },
     { id: 'protokol2',    label: 'Протокол 2',                 apiType: 'protokol2combined', group: 'construction' },
     { id: 'protokol2a',   label: 'Протокол 2а (линейни)',      apiType: 'protokol2a',   group: 'construction' },
     { id: 'obrazec3',     label: 'Образец 3',                  apiType: 'obrazec3',     group: 'construction' },
@@ -6306,7 +6405,8 @@ const DOC_CONFIG = [
     // ── Въвеждане в експлоатация ────────────────────────────
     { id: 'akt15',        label: 'Акт 15',                     apiType: 'akt15',        group: 'completion'   },
     { id: 'doklad',       label: 'Окончателен доклад',         apiType: 'doklad',       group: 'completion'   },
-    { id: 'osip',         label: 'ОСИП (комплексен доклад)',   apiType: 'osip',         group: 'start'        },
+    // Генерира се само от „Оценка на съответствието“ (операторът, 11.09.2026).
+    { id: 'osip',         label: 'ОСИП (комплексен доклад)',   apiType: 'osip',         group: 'start',        drugade: 'osip' },
     { id: 'protokol17',   label: 'Протокол 17 (72-часова проба)', apiType: 'protokol17', group: 'completion'   },
     { id: 'akt16',        label: 'Акт 16 (ДПК)',               apiType: 'akt16',        group: 'completion'   },
 ];
@@ -6360,53 +6460,21 @@ function _renderGenerateSectionOsnova() {
                 </div>`}
         </div>
 
-        <!-- Параметри само за Заповедна книга -->
+        <!-- Заповедната книга на обекта — само за сведение: актовете я цитират.
+             Самата книга се генерира от регистъра. Червената лампа остава тук,
+             защото предупреждава за актовете, не за книгата. -->
         <div class="card">
-            <div class="card-title" style="margin-bottom:8px">⚙️ Параметри на Заповедна книга</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Взети от паспорта. Промяна тук важи само за това генериране —
-                за постоянно се пише в паспорта.
-            </p>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Номер <span style="font-weight:400;color:var(--muted)">— от регистъра</span></label>
-                    <input type="text" id="gen-zk-num" class="form-input" readonly
-                           placeholder="ще се вземе от регистъра при генериране"
-                           value="${(project?.zk||{}).number||''}" style="background:var(--surface)">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Дата</label>
-                    <input type="text" id="gen-zk-date" class="form-input" placeholder="дд.мм.гггг"
-                           value="${(project?.zk||{}).date||''}" oninput="formatDateInput(this)">
-                </div>
+            <div class="card-title" style="margin-bottom:8px">📕 Заповедна книга на обекта</div>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px">
+                ${(project?.zk||{}).number
+                    ? `<span>№ <strong>${project.zk.number}</strong>${project.zk.date ? ' / ' + project.zk.date : ''}</span>`
+                    : '<span style="color:var(--muted)">Още няма — генерира се от регистъра.</span>'}
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('zk')">📓 Регистър</button>
             </div>
-            <p style="font-size:12px;color:var(--muted);margin-top:8px">
-                💡 Геодезист, конструктор и СН се взимат автоматично от служителите на консултанта
-            </p>
             <!-- Свети червено, ако книгата е заменена, анулирана или има бележка -->
             <div id="zk-preduprezhdenie"></div>
         </div>
 
-        <!-- Изходящ номер за ОСИП -->
-        <div class="card">
-            <div class="card-title" style="margin-bottom:8px">📐 ОСИП — изходящ номер</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Номерът е на доклада, не на проекта — един строеж може да получи доклад
-                за техническа и отделно за работна фаза.
-            </p>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Изх. №</label>
-                    <input type="text" id="gen-osip-num" class="form-input" placeholder="1281"
-                           value="${(project?.osip||{}).izh_nomer||''}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Дата</label>
-                    <input type="text" id="gen-osip-date" class="form-input" placeholder="дд.мм.гггг"
-                           value="${(project?.osip||{}).izh_data||''}" oninput="formatDateInput(this)">
-                </div>
-            </div>
-        </div>
 
         <!-- Части за Акт 12 -->
         <div class="card">
@@ -6448,32 +6516,17 @@ function _renderGenerateSectionOsnova() {
                 <div style="font-size:12px;color:var(--muted)">Ще се свалят като .docx файлове</div>
             </div>
             <div id="doc-results-list">
-                <!-- Група 0: Преди строителството -->
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">
-                    Преди строителството
+                <!-- Група 0: Преди строителството — ОСИП се генерира от своята страница -->
+                <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+                    📐 ОСИП се генерира от
+                    <a href="#" onclick="navigateTo('osip');return false" style="color:var(--blue)">Оценка на съответствието →</a>
                 </div>
-                ${DOC_CONFIG.filter(d => d.group === 'start').map(doc => {
-                    const existing = docs.filter(d => d.type === doc.label);
-                    const last = existing[existing.length - 1];
-                    return `
-                    <div class="doc-gen-row" id="row-${doc.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-light)">
-                        <div style="display:flex;align-items:center;gap:12px">
-                            <input type="checkbox" id="doc-${doc.id}" style="width:16px;height:16px;accent-color:var(--gold)">
-                            <div>
-                                <div style="font-weight:700;font-size:14px">${doc.label}</div>
-                                ${last ? `<div style="font-size:11px;color:var(--green)">✅ Последно: ${formatDateTime(last.date)}${last.url ? ` · <a href="${last.url}" target="_blank" style="color:var(--blue)">⬇ Свали</a>` : ''}</div>`
-                                       : `<div style="font-size:11px;color:var(--muted)">Не е генериран</div>`}
-                            </div>
-                        </div>
-                        <div id="status-${doc.id}" style="min-width:120px;text-align:right"></div>
-                    </div>`;
-                }).join('')}
 
                 <!-- Група 1: По време на строителството -->
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 0 4px">
                     По време на строителството
                 </div>
-                ${DOC_CONFIG.filter(d => d.group === 'construction').map(doc => {
+                ${DOC_CONFIG.filter(d => d.group === 'construction' && !d.drugade).map(doc => {
                     const existing = docs.filter(d => d.type === doc.label);
                     const last = existing[existing.length - 1];
                     return `
@@ -6494,7 +6547,7 @@ function _renderGenerateSectionOsnova() {
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:16px 0 4px">
                     Въвеждане в експлоатация
                 </div>
-                ${DOC_CONFIG.filter(d => d.group === 'completion').map(doc => {
+                ${DOC_CONFIG.filter(d => d.group === 'completion' && !d.drugade).map(doc => {
                     const existing = docs.filter(d => d.type === doc.label);
                     const last = existing[existing.length - 1];
                     return `
@@ -6568,8 +6621,6 @@ async function generateDocumentsViaApi() {
 
     // Допълнителни параметри
     // Празно означава „ползвай паспорта“ — не се подменя с подразбираща се стойност.
-    let zkNum = document.getElementById('gen-zk-num')?.value.trim() || '';
-    const zkDate = document.getElementById('gen-zk-date')?.value.trim() || '';
 
     const selected = DOC_CONFIG.filter(doc => document.getElementById(`doc-${doc.id}`)?.checked);
     if (selected.length === 0) {
@@ -6579,35 +6630,6 @@ async function generateDocumentsViaApi() {
         return;
     }
 
-    // Заповедната книга взима номера си от регистъра — сървърът го раздава, за
-    // да не получат двама един и същ. Повторно генериране за същия обект връща
-    // неговия номер, не изяжда нов. Грешно генерирана книга се анулира в
-    // „Заповедни книги“. Без номер от регистъра книга не се генерира.
-    if (selected.some(doc => doc.apiType === 'zapovedna')) {
-        try {
-            const z = await apiCall('/api/zk/zaemi', 'POST', {
-                pi: project.pi,
-                obekt: [project.stroej, project.address].filter(Boolean).join(', '),
-                data: zkDate,
-            });
-            zkNum = String(z.nomer);
-            const pole = document.getElementById('gen-zk-num');
-            if (pole) pole.value = zkNum;
-            const zhiv = _zhivObekt() || project;
-            if ((zhiv.zk || {}).number !== zkNum || (zhiv.zk || {}).date !== zkDate) {
-                zhiv.zk = { number: zkNum, date: zkDate };
-                _zapishiObekt(zhiv, z.nov
-                    ? `Заповедна книга № ${zkNum} е взета от регистъра`
-                    : `Заповедна книга № ${zkNum} — вече е на този обект`);
-            }
-            proveriZK(zkNum);
-        } catch (e) {
-            showAlert('error', `Заповедната книга не получи номер от регистъра: ${e.message}`);
-            btn.disabled = false;
-            btn.innerHTML = '🚀 Генерирай .docx чрез Python API';
-            return;
-        }
-    }
 
     const results = [];
     const today = new Date().toISOString();
@@ -6642,17 +6664,9 @@ async function generateDocumentsViaApi() {
                 passport: passportRows,
                 pi: project.pi,
             };
-            if (doc.apiType === 'zapovedna') {
-                body.zapovedna_number = zkNum;
-                body.zapovedna_date = zkDate;
-            }
             if (job.akt12) {
                 body.chast = job.akt12.chast;
                 body.akt12_number = job.akt12.number;
-            }
-            if (doc.apiType === 'osip') {
-                body.osip_number = document.getElementById('gen-osip-num')?.value.trim() || '';
-                body.osip_date   = document.getElementById('gen-osip-date')?.value.trim() || '';
             }
 
             const apiUrl = (appData.apiUrl || '').replace(/\/$/, '');
