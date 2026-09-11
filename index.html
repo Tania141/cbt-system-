@@ -6081,9 +6081,9 @@ function renderDokumentiPage() {
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📊 Градоустройствени показатели</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Визата <strong>задава</strong>, проектът <strong>постига</strong> — два различни документа,
-                затова това е истинска проверка, а не преписване. Освен това самата виза трябва да е
-                в диапазона по Наредба № 7 за зоната.
+                Визата <strong>задава</strong>, проектът <strong>постига</strong>. Впиши показателите по
+                виза и стойностите от проекта — постигнатото системата го смята сама. Нормата по
+                Наредба № 7 я прилага главният архитект, когато издава визата.
             </p>
             <div class="form-grid">
                 <div class="form-group" style="grid-column:1/-1">
@@ -6107,39 +6107,40 @@ function renderDokumentiPage() {
                     </p>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Устройствена зона</label>
-                    <select id="fp-zona" class="form-input">
-                        <option value="">— не е посочена —</option>
-                        ${[['Жм','жилищна, малка височина (до 10 м)'],['Жс','жилищна, средна височина (до 15 м)'],
-                           ['Жг','жилищна, голяма височина (над 15 м)'],['Жк','комплексно жилищно застрояване'],
-                           ['Пч','чисто производствена'],['Пп','предимно производствена'],
-                           ['Пс','високотехнологична производствена'],['Ов','вилна зона']]
-                          .map(([k,v]) => `<option value="${k}" ${((p.gradoustroystvo||{}).zona)===k?'selected':''}>${k} — ${v}</option>`).join('')}
-                    </select>
+                    <label class="form-label">Устройствена зона по виза</label>
+                    <input type="text" id="fp-zona" class="form-input" placeholder="Жм"
+                           value="${(p.gradoustroystvo||{}).zona||''}" oninput="smetniPokazateli()">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Както е записана във визата. Нормата по Наредба № 7 я прилага главният архитект.
+                    </p>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Дървесна растителност, % от имота</label>
-                    <input type="text" id="fp-g-darvesna" class="form-input" placeholder="20"
-                           value="${(p.gradoustroystvo||{}).darvesna||''}">
+                    <label class="form-label">Площ на имота (УПИ), м²</label>
+                    <input type="text" id="fp-g-plosht" class="form-input" placeholder="5000"
+                           value="${(p.gradoustroystvo||{}).plosht||''}" oninput="smetniPokazateli()">
                     <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Иска се <strong>една трета</strong> от озеленяването — при вилна зона половината.
+                        От нея се смятат плътността (ЗП ÷ площ) и интензивността (РЗП ÷ площ).
                     </p>
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;align-items:end;margin-top:8px">
+            <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;align-items:center;margin-top:12px">
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">показател</div>
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">по виза</div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">от проекта</div>
                 <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">постигнато</div>
-                ${[['plytnost','Плътност на застрояване, %','max'],
-                   ['kint','Интензивност, К инт.','max'],
-                   ['ozel','Озеленена площ, %','min']].map(([k,label,posoka]) => `
+                ${[['plytnost','Плътност на застрояване','max','%','zp','ЗП, м²'],
+                   ['kint','Интензивност, К инт.','max','','rzp','РЗП, м²'],
+                   ['ozel','Озеленена площ','min','%','ozel','%'],
+                   ['kk','Кота корниз, Н','max','м','kk','м']].map(([k,label,posoka,ed,pk,pe]) => `
                     <div style="font-size:13px">${label}
                         <span style="color:var(--muted);font-size:11px">${posoka==='min'?'· минимум':'· максимум'}</span></div>
-                    <input type="text" id="fp-g-viza-${k}" class="form-input"
-                           value="${((p.gradoustroystvo||{}).viza||{})[k]||''}">
-                    <input type="text" id="fp-g-proekt-${k}" class="form-input"
-                           value="${((p.gradoustroystvo||{}).proekt||{})[k]||''}">`).join('')}
+                    <input type="text" id="fp-g-viza-${k}" class="form-input" placeholder="${ed || '—'}"
+                           value="${((p.gradoustroystvo||{}).viza||{})[k]||''}" oninput="smetniPokazateli()">
+                    <input type="text" id="fp-g-proekt-${pk}" class="form-input" placeholder="${pe}"
+                           value="${((p.gradoustroystvo||{}).proekt||{})[pk]||''}" oninput="smetniPokazateli()">
+                    <div id="g-post-${k}" style="font-size:13px;font-weight:600">—</div>`).join('')}
             </div>
+            <div id="g-darvesna-info" style="font-size:12px;margin-top:12px"></div>
         </div>
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
@@ -6184,6 +6185,7 @@ function renderDokumentiPage() {
             <button class="btn btn-success btn-lg" onclick="zapishiDokumenti()">💾 Запази изходните данни</button>
         </div>`;
     renderDokumenti(p);
+    smetniPokazateli();
 }
 
 // „Актове и протоколи“ рисува и датите на съставените документи. Обвивката е
@@ -6307,6 +6309,66 @@ async function generiraiZK() {
     }
 }
 
+// Градоустройствени показатели: постигнатото се СМЯТА от стойностите на проекта —
+// ЗП и РЗП върху площта на имота; озеленяването и котата корниз се сравняват
+// направо. Същата сметка прави правило G1 на сървъра.
+function _gChislo(v) {
+    const m = String(v ?? '').match(/-?\d+(?:[.,]\d+)?/);
+    return m ? parseFloat(m[0].replace(',', '.')) : null;
+}
+
+// Делът с дървесна растителност — само там, където наредбата го казва ясно:
+// една трета от озеленяването за жилищните и производствените зони (чл. 19,
+// ал. 2; чл. 20; чл. 24–26), половината за вилните (чл. 29). Другаде не се гадае.
+function _darvesnaDelitel(zona) {
+    const z = String(zona || '').trim().toLowerCase();
+    if (!z) return null;
+    if (z.startsWith('ов') || z.includes('вилн')) return 2;
+    if (/^[жп]/.test(z) || z.includes('жилищ') || z.includes('производ')) return 3;
+    return null;
+}
+
+function smetniPokazateli() {
+    const v = id => _gChislo(document.getElementById(id)?.value);
+    const plosht = v('fp-g-plosht');
+    const zp = v('fp-g-proekt-zp'), rzp = v('fp-g-proekt-rzp');
+    const post = {
+        plytnost: plosht && zp != null ? zp / plosht * 100 : null,
+        kint:     plosht && rzp != null ? rzp / plosht : null,
+        ozel:     v('fp-g-proekt-ozel'),
+        kk:       v('fp-g-proekt-kk'),
+    };
+    const bg = x => String(x).replace('.', ',');
+    const fmt = { plytnost: x => bg(x.toFixed(1)) + ' %', kint: x => bg(x.toFixed(2)),
+                  ozel: x => bg(x) + ' %', kk: x => bg(x) + ' м' };
+    const posoka = { plytnost: 'max', kint: 'max', ozel: 'min', kk: 'max' };
+    Object.keys(post).forEach(k => {
+        const el = document.getElementById('g-post-' + k);
+        if (!el) return;
+        const p = post[k], z = v('fp-g-viza-' + k);
+        if (p == null) {
+            el.innerHTML = (k === 'plytnost' || k === 'kint') && !plosht && (zp != null || rzp != null)
+                ? '<span style="color:var(--muted);font-weight:400">няма площ на имота</span>' : '—';
+            return;
+        }
+        const zle = z != null && (posoka[k] === 'max' ? p > z + 1e-9 : p < z - 1e-9);
+        el.innerHTML = `<span style="color:${z == null ? 'inherit' : zle ? 'var(--red)' : 'var(--green)'}">`
+            + `${z == null ? '' : zle ? '⚠️ ' : '✓ '}${fmt[k](p)}</span>`;
+    });
+    // Дървесната растителност — изискването, изписано за оператора, за да го
+    // провери в част „Озеленяване“ на проекта.
+    const info = document.getElementById('g-darvesna-info');
+    if (!info) return;
+    const del = _darvesnaDelitel(document.getElementById('fp-zona')?.value);
+    const ozV = v('fp-g-viza-ozel');
+    if (!del || ozV == null) { info.innerHTML = ''; return; }
+    const nuzhno = ozV / del;
+    const m2 = plosht ? ` (${Math.ceil(nuzhno / 100 * plosht)} м²)` : '';
+    info.innerHTML = `🌳 Дървесна растителност: поне <strong>${bg(nuzhno.toFixed(1))} %</strong> от имота${m2}
+        — ${del === 3 ? 'една трета' : 'половината'} от озеленяването по виза (Наредба № 7,
+        ${del === 3 ? 'чл. 19, ал. 2' : 'чл. 29'}). Провери го в част „Озеленяване“ на проекта.`;
+}
+
 function zapishiDatiDokumenti() {
     const p = _zhivObekt();
     if (!p) return;
@@ -6335,10 +6397,13 @@ function zapishiDokumenti() {
         opasni: ch('fp-opasni'),
         vodi: ch('fp-vodi'),
         gradoustroystvo: {
-            zona: v('fp-zona'), darvesna: v('fp-g-darvesna'),
+            zona: v('fp-zona'), plosht: v('fp-g-plosht'),
             pup: v('fp-g-pup'), kadastr: v('fp-g-kadastr'),
-            viza:   Object.fromEntries(['plytnost', 'kint', 'ozel'].map(k => [k, v('fp-g-viza-' + k)])),
-            proekt: Object.fromEntries(['plytnost', 'kint', 'ozel'].map(k => [k, v('fp-g-proekt-' + k)])),
+            viza: Object.fromEntries(['plytnost', 'kint', 'ozel', 'kk'].map(k => [k, v('fp-g-viza-' + k)])),
+            // Стойностите от проекта. Старите проценти (plytnost, kint) се пазят,
+            // докато не се въведат ЗП и РЗП — да не изчезнат при запис.
+            proekt: { ...((p.gradoustroystvo || {}).proekt || {}),
+                      ...Object.fromEntries(['zp', 'rzp', 'ozel', 'kk'].map(k => [k, v('fp-g-proekt-' + k)])) },
         },
         permit: {
             number: v('fp-permit-num'), date: v('fp-permit-date'),
