@@ -1300,9 +1300,6 @@
             <span class="nav-icon">📋</span> Обекти
             <span class="nav-badge" id="nav-passports-count">0</span>
         </button>
-        <button class="nav-item" onclick="navigateTo('new-passport')" id="nav-new-passport">
-            <span class="nav-icon">➕</span> Нов обект
-        </button>
         <button class="nav-item" onclick="navigateTo('osip')" id="nav-osip">
             <span class="nav-icon">📐</span> Оценка на съответствието
         </button>
@@ -1350,7 +1347,9 @@
                     <h1 class="page-title">Обекти</h1>
                     <p class="page-subtitle">Всички обекти в системата</p>
                 </div>
-                <button class="btn btn-primary" onclick="navigateTo('new-passport')">
+                <!-- Единственият вход за нов обект — затова е голям (операторът, 11.09.2026). -->
+                <button class="btn btn-primary btn-lg" onclick="navigateTo('new-passport')"
+                        style="font-size:16px;padding:14px 28px;font-weight:700">
                     ➕ Нов обект
                 </button>
             </div>
@@ -2279,7 +2278,10 @@ function navigateTo(page) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
     document.getElementById(`page-${page}`).classList.add('active');
-    const navBtn = document.getElementById(`nav-${page}`);
+    // Формата за нов обект няма свой ред в менюто — влиза се от „Обекти“,
+    // затова там свети „Обекти“.
+    const navBtn = document.getElementById(`nav-${page}`)
+        || (page === 'new-passport' ? document.getElementById('nav-passports') : null);
     if (navBtn) navBtn.classList.add('active');
 
     // Render on navigate
@@ -5123,8 +5125,8 @@ function renderPassportsList(projects) {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📋</div>
-                <div class="empty-title">Няма намерени паспорти</div>
-                <div class="empty-text">Опитайте с различни филтри или добавете нов паспорт</div>
+                <div class="empty-title">Няма намерени обекти</div>
+                <div class="empty-text">Опитайте с различни филтри или добавете нов обект</div>
                 <button class="btn btn-primary" onclick="navigateTo('new-passport')">➕ Нов обект</button>
             </div>
         `;
