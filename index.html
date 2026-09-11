@@ -3840,7 +3840,11 @@ function readDokumenti() {
         .filter(d => d.ime);
 }
 
-async function proveriDokumenti() {
+// Коя фаза е показана последно — за да се пречертае същата след „не се отнася“.
+let _dokFaza = 'osip';
+
+async function proveriDokumenti(faza) {
+    _dokFaza = faza || _dokFaza || 'osip';
     const kutiya = document.getElementById('fp-dok-rezultat');
     kutiya.innerHTML = '<p style="font-size:13px;color:var(--muted)">Проверявам…</p>';
     const dok = readDokumenti();
@@ -3862,30 +3866,59 @@ async function proveriDokumenti() {
                                   [`Документ_${i+1}_Номер`, d.nomer]]),
     ];
     try {
-        const r = await apiCall('/api/cheklist', 'POST', { passport: rows });
+        const r = await apiCall('/api/cheklist', 'POST',
+                                { passport: rows, faza: _dokFaza, neotnasya: p.neotnasya || [] });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-warning" style="margin:0">⚠️ ${r.greshka}</div>`; return; }
-        const lipsvat = r.redove.filter(x => x.sastoyanie === 'не е доказано');
-        const nalice  = r.redove.filter(x => x.sastoyanie === 'налице');
+        const po = st => r.redove.filter(x => x.sastoyanie === st);
+        const lipsvat = po('не е доказано'), precenka = po('за преценка'),
+              nalice = po('налице'), neot = po('не се отнася');
+        const ime = x => encodeURIComponent(x.dokument);
+        const red = (znak, x, obyasnenie, butoni) => `
+            <div style="font-size:13px;padding:3px 0;display:flex;gap:8px;align-items:baseline">
+                <span style="flex:1">${znak} <strong>${x.dokument}</strong>
+                    <span style="color:var(--muted)">${obyasnenie}</span></span>${butoni}
+            </div>`;
+        const bVpishi = x => `<button type="button" class="btn btn-ghost btn-sm"
+                onclick="vpishiLipsvasht('${ime(x)}')">Впиши</button>`;
+        const bNeOt = x => `<button type="button" class="btn btn-ghost btn-sm"
+                onclick="neSeOtnasya('${ime(x)}', true)">Не се отнася</button>`;
+        const zaglavie = _dokFaza === 'od' ? 'за Акт 15 / окончателен доклад' : 'за ОСИП';
         kutiya.innerHTML = `
+            <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;
+                        letter-spacing:1px;margin-bottom:6px">Чеклист ${zaglavie}</div>
             <div class="alert ${lipsvat.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 10px">
                 ${lipsvat.length ? `⏳ Липсват ${lipsvat.length} от ${r.iziskvani} изисквани документа.`
                                  : `✅ Всички ${r.iziskvani} изисквани документа са налице.`}
+                ${precenka.length ? ` · ❔ ${precenka.length} за преценка.` : ''}
             </div>
-            ${lipsvat.map(x => `<div style="font-size:13px;padding:3px 0;display:flex;gap:8px;align-items:baseline">
-                <span style="flex:1">
-                    ${x.lipsva_nomer ? '№' : '⏳'} <strong>${x.dokument}</strong>
-                    <span style="color:var(--muted)">— ${x.lipsva_nomer
-                        ? 'вписан е, но без ' + x.dokazva_se
-                        : x.uslovie + (x.dokazva_se ? ' · доказва се с ' + x.dokazva_se : '')}</span>
-                </span>
-                <button type="button" class="btn btn-ghost btn-sm"
-                        onclick="vpishiLipsvasht('${encodeURIComponent(x.dokument)}')">Впиши</button>
-            </div>`).join('')}
-            ${nalice.map(x => `<div style="font-size:13px;padding:3px 0;color:var(--green)">
-                ✓ ${x.dokument}</div>`).join('')}`;
+            ${lipsvat.map(x => red(x.lipsva_nomer ? '№' : '⏳', x,
+                '— ' + (x.lipsva_nomer ? 'вписан е, но без ' + x.dokazva_se
+                        : x.uslovie + (x.dokazva_se ? ' · доказва се с ' + x.dokazva_se : '')),
+                bVpishi(x) + (x.precenka ? bNeOt(x) : ''))).join('')}
+            ${precenka.length ? `<div style="font-size:12px;color:var(--muted);margin:10px 0 4px">
+                Зависи от обстоятелства, които паспортът не знае — впиши или отбележи:</div>` : ''}
+            ${precenka.map(x => red('❔', x, x.dokazva_se ? '— доказва се с ' + x.dokazva_se : '',
+                bVpishi(x) + bNeOt(x))).join('')}
+            ${nalice.map(x => `<div style="font-size:13px;padding:3px 0;color:var(--green)">✓ ${x.dokument}</div>`).join('')}
+            ${neot.map(x => red('<span style="color:var(--muted)">—</span>', x,
+                '<span style="color:var(--muted)">— не се отнася за обекта</span>',
+                `<button type="button" class="btn btn-ghost btn-sm"
+                    onclick="neSeOtnasya('${ime(x)}', false)">Върни</button>`)).join('')}`;
     } catch (e) {
         kutiya.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${e.message}</div>`;
     }
+}
+
+// „Не се отнася“ — отбелязва се веднъж и се пази в обекта, за да не пита пак.
+function neSeOtnasya(ime64, da) {
+    const p = _zhivObekt();
+    if (!p) return;
+    const ime = decodeURIComponent(ime64);
+    const spisak = new Set(p.neotnasya || []);
+    if (da) spisak.add(ime); else spisak.delete(ime);
+    p.neotnasya = [...spisak];
+    _zapishiObekt(p, da ? `„${ime}“ — не се отнася за обекта` : `„${ime}“ — върнат за преценка`);
+    proveriDokumenti(_dokFaza);
 }
 
 // Отговорът трябва да идва от сървъра, не от тази машина: наредбите се четат
@@ -6148,14 +6181,20 @@ function renderDokumentiPage() {
                 Кои документи се изискват за този обект решава чеклистът —
                 файл, който редактираш ти, не кодът. Впиши каквото е налице;
                 останалото излиза като <strong>не е доказано</strong>, не се премълчава.
+                Каквото зависи от обстоятелства, които паспортът не знае, излиза
+                <strong>за преценка</strong> — впиши го или го отбележи „не се отнася“.
             </p>
             <div id="fp-dok-rows"></div>
             <div style="display:flex;gap:8px;margin-top:10px">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addDokRow()">
                     + Добави документ
                 </button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="proveriDokumenti()">
-                    🔍 Провери какво липсва
+                <!-- Двата раздела на чеклиста (операторът, 11.09.2026) -->
+                <button type="button" class="btn btn-primary btn-sm" onclick="proveriDokumenti('osip')">
+                    🔍 Провери — за ОСИП
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="proveriDokumenti('od')">
+                    🔍 Провери — за Акт 15 / ОД
                 </button>
             </div>
             <div id="fp-dok-rezultat" style="margin-top:12px"></div>
