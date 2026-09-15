@@ -3848,23 +3848,8 @@ async function proveriDokumenti(faza) {
     const kutiya = document.getElementById('fp-dok-rezultat');
     kutiya.innerHTML = '<p style="font-size:13px;color:var(--muted)">Проверявам…</p>';
     const dok = readDokumenti();
-    // Признаците живеят в паспорта, а тази проверка — на своя страница. Чете
-    // ги от ЗАПИСАНИЯ обект: промяна в паспорта важи, след като се запази.
     const p = _zhivObekt() || {};
-    const rows = [
-        ['Категория_Номер', p.kategoria || ''],
-        ['Предназначение', p.prednaznachenie || ''],
-        ['Вид', p.vid || ''],
-        ['Повод', p.povod || ''],
-        ['СПО', (p.spo || []).join('; ')],
-        ['Паметник', p.pametnik ? 'да' : 'не'],
-        ['Защитена_Зона', p.zashtitena ? 'да' : 'не'],
-        ['Опасни_Вещества', p.opasni ? 'да' : 'не'],
-        ['Води', p.vodi ? 'да' : 'не'],
-        ['Документи_Брой', dok.length],
-        ...dok.flatMap((d, i) => [[`Документ_${i+1}_Име`, d.ime],
-                                  [`Документ_${i+1}_Номер`, d.nomer]]),
-    ];
+    const rows = _cheklistRows(p, dok);
     try {
         const r = await apiCall('/api/cheklist', 'POST',
                                 { passport: rows, faza: _dokFaza, neotnasya: p.neotnasya || [] });
@@ -3919,6 +3904,195 @@ function neSeOtnasya(ime64, da) {
     p.neotnasya = [...spisak];
     _zapishiObekt(p, da ? `„${ime}“ — не се отнася за обекта` : `„${ime}“ — върнат за преценка`);
     proveriDokumenti(_dokFaza);
+}
+
+// Признаците за чеклиста — едни и същи за ръчната проверка и за слой 2.
+// Живеят в паспорта, а проверката е на своя страница — затова се четат от
+// ЗАПИСАНИЯ обект: промяна в паспорта важи, след като се запази.
+function _cheklistRows(p, dok) {
+    return [
+        ['Категория_Номер', p.kategoria || ''],
+        ['Предназначение', p.prednaznachenie || ''],
+        ['Вид', p.vid || ''],
+        ['Повод', p.povod || ''],
+        ['СПО', (p.spo || []).join('; ')],
+        ['Паметник', p.pametnik ? 'да' : 'не'],
+        ['Защитена_Зона', p.zashtitena ? 'да' : 'не'],
+        ['Опасни_Вещества', p.opasni ? 'да' : 'не'],
+        ['Води', p.vodi ? 'да' : 'не'],
+        ['Документи_Брой', dok.length],
+        ...dok.flatMap((d, i) => [[`Документ_${i+1}_Име`, d.ime],
+                                  [`Документ_${i+1}_Номер`, d.nomer]]),
+    ];
+}
+
+// ── Слой 2: АИ-то чете документите, кодът ги сравнява ────────────────────────
+// Файл по файл — сканът на 15 страници се чете до минута. Пазят се само
+// фактите (p.sloy2.od.dokumenti), не файловете; сравнението е само код и се
+// пуска наново без ново четене.
+const _s2esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+async function sloy2Cheti() {
+    const p = _zhivObekt();
+    if (!p) { showAlert('error', 'Първо избери обект.'); return; }
+    const fajlove = [...(document.getElementById('s2-fajlove')?.files || [])];
+    if (!fajlove.length) { showAlert('error', 'Избери файловете на обекта.'); return; }
+    const hod = document.getElementById('s2-hod');
+    const s2 = ((p.sloy2 = p.sloy2 || {}).od = p.sloy2.od || { dokumenti: [] });
+    const redove = fajlove.map(f => `<div id="s2-f-${fajlove.indexOf(f)}">· ${_s2esc(f.name)}</div>`);
+    hod.innerHTML = redove.join('');
+    const znak = (i, t) => { const e = document.getElementById('s2-f-' + i); if (e) e.innerHTML = t; };
+    let procheteni = 0;
+    for (let i = 0; i < fajlove.length; i++) {
+        const f = fajlove[i], ime = _s2esc(f.name);
+        if (/\.doc$/i.test(f.name)) { znak(i, `⚠️ ${ime} — стар .doc, запиши го като PDF или .docx`); continue; }
+        if (f.size > 25 * 1024 * 1024) { znak(i, `⚠️ ${ime} — над 25 MB, раздели го`); continue; }
+        znak(i, `⏳ ${ime} — чета…`);
+        try {
+            const data = await fileToBase64(f);
+            const r = await apiCall('/api/sloy2/chete', 'POST',
+                { agenda: 'od', pi: p.pi, fajl: { ime: f.name, media_type: f.type, data } });
+            if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
+            s2.dokumenti = s2.dokumenti.filter(d => d.fajl !== f.name);
+            s2.dokumenti.push(r.dokument);
+            procheteni++;
+            const d = r.dokument;
+            znak(i, `✓ ${ime} — ${_s2esc(d.vid || '?')}${d.sken ? ' <span style="color:var(--muted)">(скан)</span>' : ''}`
+                    + (d.belezhka ? ` <span style="color:var(--muted)">· ${_s2esc(d.belezhka)}</span>` : ''));
+        } catch (e) {
+            znak(i, `❌ ${ime} — ${_s2esc(e.message)}`);
+        }
+    }
+    if (procheteni) {
+        s2.koga = new Date().toISOString();
+        _zapishiObekt(p, `Слой 2: прочетени ${procheteni} файла`);
+    }
+    sloy2Sravni();
+}
+
+function sloy2Izchisti() {
+    const p = _zhivObekt();
+    if (!p || !p.sloy2?.od) return;
+    if (!confirm('Да изчистя прочетеното за този обект? Файловете ще трябва да се прочетат наново.')) return;
+    delete p.sloy2.od;
+    _zapishiObekt(p, 'Слой 2: прочетеното е изчистено');
+    document.getElementById('s2-rezultat').innerHTML = '';
+    document.getElementById('s2-hod').innerHTML = '';
+}
+
+async function sloy2Sravni() {
+    const p = _zhivObekt();
+    const kutiya = document.getElementById('s2-rezultat');
+    if (!p || !kutiya) return;
+    const dokumenti = p.sloy2?.od?.dokumenti || [];
+    if (!dokumenti.length) {
+        kutiya.innerHTML = '<p style="font-size:13px;color:var(--muted)">Още няма прочетени документи.</p>';
+        return;
+    }
+    kutiya.innerHTML = '<p style="font-size:13px;color:var(--muted)">Сравнявам…</p>';
+    const cl = (p.clients && p.clients.length ? p.clients : [p.client || {}]);
+    const pasport = {
+        identifikator: p.pi || '',
+        rs_nomer: p.permit?.number || '', rs_data: p.permit?.date || '',
+        rs_v_sila: p.permit?.effective || '',
+        zk_nomer: p.zk?.number || '',
+        vazlozhiteli: cl.filter(c => c.name).map(c => ({ ime: c.name, eik: c.eik || '', predstavlyavan_ot: c.rep || '' })),
+        stroitel: { ime: p.builder?.company || '', eik: p.builder?.eik || '', predstavlyavan_ot: p.builder?.manager || '' },
+    };
+    try {
+        const r = await apiCall('/api/sloy2/sravni', 'POST', {
+            agenda: 'od', dokumenti, pasport,
+            passport: _cheklistRows(p, readDokumenti()), neotnasya: p.neotnasya || [] });
+        if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-warning" style="margin:0">⚠️ ${_s2esc(r.greshka)}</div>`; return; }
+        kutiya.innerHTML = _sloy2Html(r, dokumenti);
+    } catch (e) {
+        kutiya.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${_s2esc(e.message)}</div>`;
+    }
+}
+
+function _sloy2Izvor(i) {
+    const kade = [i.fajl, i.stranica ? 'стр. ' + i.stranica : ''].filter(Boolean).join(', ');
+    const sv = i.sverka === 'сверено с текста' ? '<span style="color:var(--green)">сверено</span>'
+             : `<span style="color:var(--muted)">${_s2esc(i.sverka)}</span>`;
+    return `<div style="font-size:12px;padding-left:14px">${_s2esc(kade)}${i.rol === 'позоваване' ? ' · позоваване' : ''}
+            ${i.citat ? ` — „${_s2esc(i.citat)}“` : ''}${i.rakopisno ? ' · на ръка' : ''} · ${sv}</div>`;
+}
+
+function _sloy2Html(r, dokumenti) {
+    const zagl = t => `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;
+                         letter-spacing:1px;margin:14px 0 6px">${t}</div>`;
+    const razm = r.razminavania || [];
+    const tvardi = razm.filter(x => x.tezhest === 'разминаване');
+    let h = `<div class="alert ${tvardi.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 6px">
+        Прочетени ${r.dokumenti} документа${r.ot_skan ? ` (${r.ot_skan} от скан — стойностите са за потвърждение)` : ''}.
+        ${tvardi.length ? `⚠️ ${tvardi.length} разминавания между документите.` : '✅ Не намирам разминавания между документите.'}
+        ${razm.length - tvardi.length ? ` · ❔ ${razm.length - tvardi.length} за проверка.` : ''}</div>`;
+
+    if (razm.length) {
+        h += zagl('Разминавания между документите');
+        h += razm.map(x => `
+            <div style="border-left:3px solid ${x.tezhest === 'разминаване' ? 'var(--orange, #d97706)' : 'var(--border, #ccc)'};
+                        padding:4px 0 6px 10px;margin-bottom:8px">
+                <div style="font-size:13px"><strong>${x.tezhest === 'разминаване' ? '⚠️' : '❔'} ${_s2esc(x.kakvo)}</strong>
+                    ${x.obyasnenie ? `<span style="color:var(--muted)"> — ${_s2esc(x.obyasnenie)}</span>` : ''}</div>
+                ${x.stoynosti.map(s => `<div style="font-size:13px;margin-top:4px"><strong>${_s2esc(s.stoynost)}</strong></div>
+                    ${s.izvori.map(_sloy2Izvor).join('')}`).join('')}
+            </div>`).join('');
+    }
+
+    if ((r.hronologia || []).length) {
+        h += zagl('Хронология и срокове');
+        h += r.hronologia.map(x => `<div style="font-size:13px;padding:2px 0">${x.status === 'ok' ? '✓' : '⚠️'} ${_s2esc(x.tekst)}</div>`).join('');
+    }
+
+    if ((r.predlozhenie || []).length) {
+        const nalichni = new Set(readDokumenti().map(d => d.ime.toLowerCase()));
+        h += zagl('За чеклиста — кои редове доказват прочетените файлове');
+        h += r.predlozhenie.map(e => {
+            const vpisan = nalichni.has(e.dokument.toLowerCase());
+            return `<div style="font-size:13px;padding:3px 0;display:flex;gap:8px;align-items:baseline">
+                <span style="flex:1">${vpisan ? '✓' : '＋'} <strong>${_s2esc(e.dokument)}</strong>
+                    ${e.nomer ? ' — ' + _s2esc(e.nomer) : ''}
+                    <span style="color:var(--muted)">· ${_s2esc(e.fajlove.join(', '))}${e.sken ? ' · от скан' : ''}</span></span>
+                ${vpisan ? '' : `<button type="button" class="btn btn-ghost btn-sm"
+                    onclick="sloy2Vpishi('${encodeURIComponent(e.dokument)}','${encodeURIComponent(e.nomer || '')}')">Впиши</button>`}
+            </div>`; }).join('');
+        h += `<p style="font-size:12px;color:var(--muted);margin-top:6px">Вписаното влиза в „Изходни данни и
+              съгласувания“ горе; запази и натисни „Провери — за Акт 15 / ОД“.</p>`;
+    }
+    const c = r.cheklist;
+    if (c && !c.greshka) {
+        const lipsvat = (c.redove || []).filter(x => x.sastoyanie === 'не е доказано');
+        if (lipsvat.length) {
+            h += zagl(`Не е намерено сред прочетените — ${lipsvat.length} от ${c.iziskvani}`);
+            h += lipsvat.map(x => `<div style="font-size:13px;padding:1px 0">⏳ ${_s2esc(x.dokument)}</div>`).join('');
+        }
+    }
+    if ((r.bez_red || []).length) {
+        h += zagl('Прочетени, без ред в чеклиста');
+        h += `<div style="font-size:13px">${r.bez_red.map(_s2esc).join(' · ')}</div>`;
+    }
+
+    h += `<details style="margin-top:14px"><summary style="font-size:13px;cursor:pointer">Какво е прочетено от всеки файл</summary>
+        ${dokumenti.map(d => `<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border, #eee)">
+            <strong>${_s2esc(d.fajl)}</strong> — ${_s2esc(d.vid || '?')}
+            ${d.nomer?.stoynost ? ' · № ' + _s2esc(d.nomer.stoynost) : ''}${d.data?.stoynost ? ' · ' + _s2esc(d.data.stoynost) : ''}
+            ${d.izdatel?.stoynost ? ' · ' + _s2esc(d.izdatel.stoynost) : ''}${d.sken ? ' · скан' : ''}
+            ${(d.pozovavania || []).length ? `<div style="color:var(--muted)">позовава се на: ${d.pozovavania.map(x =>
+                _s2esc([x.opisanie || x.vid_kod, x.nomer ? '№ ' + x.nomer : '', x.data].filter(Boolean).join(' '))).join('; ')}</div>` : ''}
+            ${d.zabelezhki ? `<div style="color:var(--muted)">бележка: ${_s2esc(d.zabelezhki)}</div>` : ''}
+        </div>`).join('')}</details>`;
+    return h;
+}
+
+function sloy2Vpishi(ime64, nomer64) {
+    const ime = decodeURIComponent(ime64), nomer = decodeURIComponent(nomer64);
+    const ima = [...document.querySelectorAll('#fp-dok-rows .dok-row')]
+        .some(r => (r.querySelector('.dok-ime')?.value || '').trim().toLowerCase() === ime.toLowerCase());
+    if (!ima) addDokRow(ime, nomer);
+    showAlert('success', `„${ime}“ е вписан — запази изходните данни.`);
+    sloy2Sravni();
 }
 
 // Отговорът трябва да идва от сървъра, не от тази машина: наредбите се четат
@@ -6200,6 +6374,25 @@ function renderDokumentiPage() {
             <div id="fp-dok-rezultat" style="margin-top:12px"></div>
         </div>
         <div class="card">
+            <div class="card-title" style="margin-bottom:8px">🤖 Прочети документите — за Акт 15 / ОД</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Избери документите на обекта (PDF, снимки, .docx). АИ-то чете всеки —
+                номер, дата, издател, обект, участници и на какво се позовава; кодът
+                сравнява между тях и показва <strong>къде се разминават</strong>.
+                Файловете не се пазят — пазят се само прочетените факти.
+                Прочетеното от скан е <strong>за потвърждение</strong>: няма текст, срещу който да се свери.
+            </p>
+            <input type="file" id="s2-fajlove" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.docx"
+                   class="form-input" style="margin-bottom:10px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-primary btn-sm" onclick="sloy2Cheti()">📖 Прочети избраните</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="sloy2Sravni()">🔁 Сравни пак</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="sloy2Izchisti()">Изчисти прочетеното</button>
+            </div>
+            <div id="s2-hod" style="margin-top:10px;font-size:12px"></div>
+            <div id="s2-rezultat" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
             <div class="card-title" style="margin-bottom:16px">📜 Разрешение за строеж</div>
             <div class="form-grid">
                 <div class="form-group">
@@ -6225,6 +6418,7 @@ function renderDokumentiPage() {
         </div>`;
     renderDokumenti(p);
     smetniPokazateli();
+    if (p.sloy2?.od?.dokumenti?.length) sloy2Sravni();
 }
 
 // „Актове и протоколи“ рисува и датите на съставените документи. Обвивката е
