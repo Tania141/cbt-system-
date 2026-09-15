@@ -2095,7 +2095,7 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     }
     if (!r.ok) {
         const err = await r.json().catch(() => ({ detail: r.statusText }));
-        throw new Error(err.detail || `HTTP ${r.status}`);
+        throw new Error(err.detail || err.error || `HTTP ${r.status}`);
     }
     return r.json();
 }
