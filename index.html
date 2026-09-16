@@ -3955,14 +3955,16 @@ async function sloy2Cheti() {
                 { agenda: 'od', pi: p.pi, chetec: document.getElementById('s2-chetec')?.value || 'auto',
                   fajl: { ime: f.name, media_type: f.type, data } });
             if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
+            // Един файл може да е няколко документа (серия актове обр. 7).
+            const novi = r.dokumenti || [r.dokument];
             s2.dokumenti = s2.dokumenti.filter(d => d.fajl !== f.name);
-            s2.dokumenti.push(r.dokument);
+            s2.dokumenti.push(...novi);
             // Ново четене — старите потвърждения са за друго прочетено и не важат.
             for (const kl of Object.keys(s2.potvardeni || {}))
-                if (kl.startsWith(f.name + '::')) delete s2.potvardeni[kl];
+                if (kl.startsWith(f.name + '::') || kl.startsWith(f.name + '#')) delete s2.potvardeni[kl];
             procheteni++;
-            const d = r.dokument;
-            znak(i, `✓ ${ime} — ${_s2esc(d.vid || '?')}${d.sken ? ' <span style="color:var(--muted)">(скан)</span>' : ''}`
+            const d = novi[0];
+            znak(i, `✓ ${ime} — ${novi.length > 1 ? `<strong>${novi.length} документа</strong> (${_s2esc(d.vid || '?')}…)` : _s2esc(d.vid || '?')}${d.sken ? ' <span style="color:var(--muted)">(скан)</span>' : ''}`
                     + ` <span style="color:var(--muted)">· ${_s2esc(d.chetec || '')}</span>`
                     + (d.rakopis_nenadezhden ? ` <strong style="color:#d97706">· резервен четец — не отбелязва ръкопис, провери всяка стойност</strong>` : '')
                     + (d.belezhka ? ` <span style="color:var(--muted)">· ${_s2esc(d.belezhka)}</span>` : ''));
@@ -4062,7 +4064,7 @@ function _sloy2Html(r, dokumenti, potvardeni) {
 
     if ((r.hronologia || []).length) {
         h += zagl('Хронология и срокове');
-        h += r.hronologia.map(x => `<div style="font-size:13px;padding:2px 0">${x.status === 'ok' ? '✓' : '⚠️'} ${_s2esc(x.tekst)}</div>`).join('');
+        h += r.hronologia.map(x => `<div style="font-size:13px;padding:2px 0">${x.status === 'ok' ? '✓' : x.status === 'unknown' ? '❔' : '⚠️'} ${_s2esc(x.tekst)}</div>`).join('');
     }
 
     if ((r.predlozhenie || []).length) {
@@ -4103,7 +4105,11 @@ function _sloy2Html(r, dokumenti, potvardeni) {
 // два модела прочетоха еднакво грешно една и съща ръкописна дата.
 // Пази се в p.sloy2.od.potvardeni["файл::поле"] = {stoynost, prochetena, koy, koga}.
 
-let _s2Otvoreni = new Set();   // кои файлове са разгънати — да не се свиват при всяко „✔“
+let _s2Otvoreni = new Set();   // кои документи са разгънати — да не се свиват при всяко „✔“
+
+// Ключът на документа: „файл“, а в серия — „файл#стр.3“ (от сървъра). Старите
+// четения нямат id — за тях е името на файла, затова старите потвърждения важат.
+const _s2Id = d => d.id || d.fajl;
 
 function _s2Fakti(d) {
     const out = [];
@@ -4130,7 +4136,7 @@ function _s2Prilozhi(dokumenti, potv) {
     return JSON.parse(JSON.stringify(dokumenti)).map(d => {
         for (const [kl, v] of Object.entries(potv || {})) {
             const i = kl.indexOf('::');
-            if (kl.slice(0, i) !== d.fajl) continue;
+            if (kl.slice(0, i) !== _s2Id(d)) continue;
             const k = kl.slice(i + 2), m = k.match(/^([up])(\d+)\.(\w+)$/);
             if (m && m[1] === 'p') {
                 const p = (d.pozovavania || [])[+m[2]];
@@ -4149,10 +4155,10 @@ function _s2PotvardiHtml(dokumenti, potv) {
     let vsichki = 0, gotovi = 0;
     const blokove = dokumenti.map(d => {
         const fakti = _s2Fakti(d);
-        const tuk = fakti.filter(x => potv[`${d.fajl}::${x.k}`]).length;
+        const tuk = fakti.filter(x => potv[`${_s2Id(d)}::${x.k}`]).length;
         vsichki += fakti.length; gotovi += tuk;
         const redove = fakti.map(x => {
-            const kl = `${d.fajl}::${x.k}`, v = potv[kl], k64 = encodeURIComponent(kl);
+            const kl = `${_s2Id(d)}::${x.k}`, v = potv[kl], k64 = encodeURIComponent(kl);
             const vazhno = x.obj.rakopisno || d.rakopis_nenadezhden;
             return `<div style="font-size:12px;padding:4px 0;display:flex;gap:8px;align-items:baseline;border-bottom:1px dotted var(--border,#e5e5e5)">
                 <span style="flex:1">
@@ -4168,11 +4174,12 @@ function _s2PotvardiHtml(dokumenti, potv) {
                        <button type="button" class="btn btn-ghost btn-sm" onclick="s2Popravi('${k64}')">✎ Поправи</button>`}
             </div>`;
         }).join('');
-        const f64 = encodeURIComponent(d.fajl);
-        return `<details data-fajl="${f64}" ontoggle="_s2Tog(this)" ${_s2Otvoreni.has(d.fajl) ? 'open' : ''}
+        const f64 = encodeURIComponent(_s2Id(d));
+        const stranici = d.stranica_ot ? ` · стр. ${_s2esc(d.stranica_ot)}${d.stranica_do && d.stranica_do !== d.stranica_ot ? '–' + _s2esc(d.stranica_do) : ''}` : '';
+        return `<details data-fajl="${f64}" ontoggle="_s2Tog(this)" ${_s2Otvoreni.has(_s2Id(d)) ? 'open' : ''}
                          style="padding:6px 0;border-bottom:1px solid var(--border,#eee)">
             <summary style="font-size:13px;cursor:pointer">
-                <strong>${_s2esc(d.fajl)}</strong> — ${_s2esc(d.vid || '?')}
+                <strong>${_s2esc(d.fajl)}</strong>${stranici} — ${_s2esc(d.vid || '?')}
                 <span style="color:${d.rakopis_nenadezhden ? '#d97706' : 'var(--muted)'}"> · чел: ${_s2esc(d.chetec || 'Claude')}</span>
                 <span style="color:${tuk === fakti.length ? 'var(--green)' : 'var(--muted)'}"> · сверени ${tuk} от ${fakti.length}</span>
             </summary>
@@ -4195,7 +4202,7 @@ function _s2Tog(el) {
 
 function _s2Namer(k64) {
     const p = _zhivObekt(), kl = decodeURIComponent(k64), i = kl.indexOf('::');
-    const d = (p?.sloy2?.od?.dokumenti || []).find(x => x.fajl === kl.slice(0, i));
+    const d = (p?.sloy2?.od?.dokumenti || []).find(x => _s2Id(x) === kl.slice(0, i));
     const fakt = d ? _s2Fakti(d).find(x => x.k === kl.slice(i + 2)) : null;
     return { p, kl, fakt };
 }
