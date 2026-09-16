@@ -3943,7 +3943,7 @@ async function sloy2Cheti() {
     const redove = fajlove.map(f => `<div id="s2-f-${fajlove.indexOf(f)}">· ${_s2esc(f.name)}</div>`);
     hod.innerHTML = redove.join('');
     const znak = (i, t) => { const e = document.getElementById('s2-f-' + i); if (e) e.innerHTML = t; };
-    let procheteni = 0;
+    let procheteni = 0, rezervenKazan = false;
     for (let i = 0; i < fajlove.length; i++) {
         const f = fajlove[i], ime = _s2esc(f.name);
         if (/\.doc$/i.test(f.name)) { znak(i, `⚠️ ${ime} — стар .doc, запиши го като PDF или .docx`); continue; }
@@ -3959,7 +3959,14 @@ async function sloy2Cheti() {
             procheteni++;
             const d = r.dokument;
             znak(i, `✓ ${ime} — ${_s2esc(d.vid || '?')}${d.sken ? ' <span style="color:var(--muted)">(скан)</span>' : ''}`
+                    + ` <span style="color:var(--muted)">· ${_s2esc(d.chetec || '')}</span>`
+                    + (d.rakopis_nenadezhden ? ` <strong style="color:#d97706">· резервен четец — не отбелязва ръкопис, провери всяка стойност</strong>` : '')
                     + (d.belezhka ? ` <span style="color:var(--muted)">· ${_s2esc(d.belezhka)}</span>` : ''));
+            // Основният не е могъл — кажи го веднъж, високо: резервът е предпазна мрежа, не нормата.
+            if (d.zashto_rezerven && !rezervenKazan) {
+                rezervenKazan = true;
+                showAlert('error', `⚠️ Основният четец не може да чете (${d.zashto_rezerven.slice(0, 120)}). Чете резервният — провери кредита.`);
+            }
         } catch (e) {
             znak(i, `❌ ${ime} — ${_s2esc(e.message)}`);
         }
@@ -4026,6 +4033,9 @@ function _sloy2Html(r, dokumenti) {
     const tvardi = razm.filter(x => x.tezhest === 'разминаване');
     let h = `<div class="alert ${tvardi.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 6px">
         Прочетени ${r.dokumenti} документа${r.ot_skan ? ` (${r.ot_skan} от скан — стойностите са за потвърждение)` : ''}.
+        ${dokumenti.filter(d => d.rakopis_nenadezhden).length ? `<br><strong style="color:#d97706">
+            ${dokumenti.filter(d => d.rakopis_nenadezhden).length} прочетени от резервния четец — той не отбелязва ръкопис;
+            провери всяка стойност в тях.</strong>` : ''}
         ${tvardi.length ? `⚠️ ${tvardi.length} разминавания между документите.` : '✅ Не намирам разминавания между документите.'}
         ${razm.length - tvardi.length ? ` · ❔ ${razm.length - tvardi.length} за проверка.` : ''}</div>`;
 
@@ -4077,6 +4087,7 @@ function _sloy2Html(r, dokumenti) {
     h += `<details style="margin-top:14px"><summary style="font-size:13px;cursor:pointer">Какво е прочетено от всеки файл</summary>
         ${dokumenti.map(d => `<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border, #eee)">
             <strong>${_s2esc(d.fajl)}</strong> — ${_s2esc(d.vid || '?')}
+            <span style="color:${d.rakopis_nenadezhden ? '#d97706' : 'var(--muted)'}"> · чел: ${_s2esc(d.chetec || 'Claude')}</span>
             ${d.nomer?.stoynost ? ' · № ' + _s2esc(d.nomer.stoynost) : ''}${d.data?.stoynost ? ' · ' + _s2esc(d.data.stoynost) : ''}
             ${d.izdatel?.stoynost ? ' · ' + _s2esc(d.izdatel.stoynost) : ''}${d.sken ? ' · скан' : ''}
             ${(d.pozovavania || []).length ? `<div style="color:var(--muted)">позовава се на: ${d.pozovavania.map(x =>
