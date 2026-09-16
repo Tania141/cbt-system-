@@ -3952,7 +3952,8 @@ async function sloy2Cheti() {
         try {
             const data = await fileToBase64(f);
             const r = await apiCall('/api/sloy2/chete', 'POST',
-                { agenda: 'od', pi: p.pi, fajl: { ime: f.name, media_type: f.type, data } });
+                { agenda: 'od', pi: p.pi, chetec: document.getElementById('s2-chetec')?.value || 'auto',
+                  fajl: { ime: f.name, media_type: f.type, data } });
             if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
             s2.dokumenti = s2.dokumenti.filter(d => d.fajl !== f.name);
             s2.dokumenti.push(r.dokument);
@@ -6541,6 +6542,15 @@ function renderDokumentiPage() {
             </p>
             <input type="file" id="s2-fajlove" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.docx"
                    class="form-input" style="margin-bottom:10px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                <label for="s2-chetec" style="font-size:13px;color:var(--muted)">Четец:</label>
+                <select id="s2-chetec" class="form-input" style="width:auto"
+                        onchange="try { localStorage.setItem('s2_chetec', this.value) } catch (e) {}">
+                    <option value="auto">Автоматично — Claude, при проблем Mistral</option>
+                    <option value="claude">Само Claude</option>
+                    <option value="mistral">Само Mistral</option>
+                </select>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button type="button" class="btn btn-primary btn-sm" onclick="sloy2Cheti()">📖 Прочети избраните</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="sloy2Sravni()">🔁 Сравни пак</button>
@@ -6575,6 +6585,7 @@ function renderDokumentiPage() {
         </div>`;
     renderDokumenti(p);
     smetniPokazateli();
+    try { const s = localStorage.getItem('s2_chetec'); if (s) document.getElementById('s2-chetec').value = s; } catch (e) {}
     if (p.sloy2?.od?.dokumenti?.length) sloy2Sravni();
 }
 
