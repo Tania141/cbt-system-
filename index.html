@@ -3949,12 +3949,19 @@ async function sloy2Cheti() {
     for (let i = 0; i < fajlove.length; i++) {
         const f = fajlove[i], ime = _s2esc(f.name);
         if (/\.doc$/i.test(f.name)) { znak(i, `⚠️ ${ime} — стар .doc, запиши го като PDF или .docx`); continue; }
-        if (f.size > 25 * 1024 * 1024) { znak(i, `⚠️ ${ime} — над 25 MB, раздели го`); continue; }
+        // С избрани страници към четеца отива само изрязаното — тогава се приема
+        // и големият файл (нотариалните актове са 27 MB).
+        const izbrani = (document.getElementById('s2-stranici')?.value || '').trim();
+        const granica = izbrani ? 60 : 25;
+        if (f.size > granica * 1024 * 1024) {
+            znak(i, `⚠️ ${ime} — над ${granica} MB${izbrani ? '' : ' — раздели го или избери страници'}`); continue;
+        }
         znak(i, `⏳ ${ime} — чета…`);
         try {
             const data = await fileToBase64(f);
             const r = await apiCall('/api/sloy2/chete', 'POST',
                 { agenda: 'od', pi: p.pi, chetec: document.getElementById('s2-chetec')?.value || 'auto',
+                  stranici: document.getElementById('s2-stranici')?.value || '',
                   fajl: { ime: f.name, media_type: f.type, data } });
             if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
             // Един файл може да е няколко документа (серия актове обр. 7).
@@ -4120,6 +4127,14 @@ function _s2Fakti(d) {
     const f = (k, etiket, obj) => { if (obj && String(obj.stoynost ?? '').trim()) out.push({ k, etiket, obj }); };
     f('nomer', 'номер', d.nomer); f('data', 'дата', d.data); f('izdatel', 'издател', d.izdatel);
     f('material', 'материал/изделие', d.material); f('proizvoditel', 'производител/доставчик', d.proizvoditel);
+    // нотариален акт — за таблицата на собствениците
+    [['nt_tom', 'нот. акт — том'], ['nt_reg', 'нот. акт — рег. №'], ['nt_delo', 'нот. акт — дело'],
+     ['nt_notarius', 'нотариус'], ['vp_vh_reg', 'вписване — вх. рег. №'], ['vp_akt', 'вписване — акт №'],
+     ['vp_tom', 'вписване — том'], ['vp_delo', 'вписване — дело']].forEach(([k, et]) => f(k, et, d[k]));
+    (d.razpredelenie || []).forEach((r, i) => {
+        f(`r${i}.obekti`, `обекти (група ${i + 1})`, r.obekti);
+        f(`r${i}.sobstvenici`, `собственици (група ${i + 1})`, r.sobstvenici);
+    });
     const o = d.obekt || {};
     f('obekt.upi', 'УПИ', o.upi); f('obekt.identifikator', 'идентификатор', o.identifikator); f('obekt.adres', 'адрес', o.adres);
     (d.uchastnici || []).forEach((u, i) => {
@@ -4142,13 +4157,13 @@ function _s2Prilozhi(dokumenti, potv) {
         for (const [kl, v] of Object.entries(potv || {})) {
             const i = kl.indexOf('::');
             if (kl.slice(0, i) !== _s2Id(d)) continue;
-            const k = kl.slice(i + 2), m = k.match(/^([up])(\d+)\.(\w+)$/);
+            const k = kl.slice(i + 2), m = k.match(/^([upr])(\d+)\.(\w+)$/);
             if (m && m[1] === 'p') {
                 const p = (d.pozovavania || [])[+m[2]];
                 if (p) { p[m[3]] = v.stoynost; p.sverka = 'потвърдено от оператора'; }
                 continue;
             }
-            const obj = m ? (d.uchastnici || [])[+m[2]]?.[m[3]]
+            const obj = m ? ((m[1] === 'r' ? d.razpredelenie : d.uchastnici) || [])[+m[2]]?.[m[3]]
                       : k.startsWith('obekt.') ? (d.obekt || {})[k.slice(6)] : d[k];
             if (obj && typeof obj === 'object') { obj.stoynost = v.stoynost; obj.sverka = 'потвърдено от оператора'; }
         }
@@ -6712,6 +6727,12 @@ function renderDokumentiPage() {
             </p>
             <input type="file" id="s2-fajlove" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.docx"
                    class="form-input" style="margin-bottom:10px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                <label for="s2-stranici" style="font-size:13px;color:var(--muted)">Страници (по избор):</label>
+                <input type="text" id="s2-stranici" class="form-input" style="width:160px" placeholder="напр. 1-4, 20">
+                <span style="font-size:12px;color:var(--muted)">само за дълъг PDF (нотариални актове) — чете се
+                    само това, по-малко токени; празно = целият файл. Важи за всички избрани PDF.</span>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
                 <label for="s2-chetec" style="font-size:13px;color:var(--muted)">Четец:</label>
                 <select id="s2-chetec" class="form-input" style="width:auto"
