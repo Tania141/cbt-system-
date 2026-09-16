@@ -4094,7 +4094,7 @@ function _sloy2Izvor(i) {
     const sv = i.sverka === 'потвърдено от оператора' ? '<strong style="color:var(--green)">✔ сверено с хартията</strong>'
              : i.sverka === 'сверено с текста' ? '<span style="color:var(--green)">сверено</span>'
              : `<span style="color:var(--muted)">${_s2esc(i.sverka)}</span>`;
-    return `<div style="font-size:12px;padding-left:14px">${_s2esc(kade)}${i.rol === 'позоваване' ? ' · позоваване' : ''}
+    return `<div style="font-size:12px;padding-left:14px">${_s2esc(kade)}${i.broy > 1 ? ` <strong>(${i.broy} документа)</strong>` : ''}${i.rol === 'позоваване' ? ' · позоваване' : ''}
             ${i.citat ? ` — „${_s2esc(i.citat)}“` : ''}${i.rakopisno ? ' · на ръка' : ''} · ${sv}</div>`;
 }
 
