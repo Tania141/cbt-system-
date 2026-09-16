@@ -1412,6 +1412,7 @@
                     <p class="page-subtitle">Генериране с верификация срещу РС и одобрен проект</p>
                 </div>
             </div>
+            <div id="od-ai-karta"></div>
             <div id="ai-protocols-content"></div>
         </div>
 
@@ -2755,6 +2756,7 @@ function smeniObekt(id, stranica) {
 }
 
 function renderAiProtocols() {
+    renderOdAiKarta();
     const content = document.getElementById('ai-protocols-content');
     const project = appData.currentProject;
     const consultant = project ? appData.consultants.find(c => c.id === project.consultant?.id) : null;
@@ -4251,6 +4253,92 @@ function s2Otmeni(k64) {
     if (!p?.sloy2?.od?.potvardeni?.[kl]) return;
     delete p.sloy2.od.potvardeni[kl];
     _s2ZapishiTiho(p, `Слой 2: отменено потвърждение — ${fakt ? fakt.etiket : kl}`);
+}
+
+// ── Окончателен доклад с АИ (слой 2) ─────────────────────────────────────────
+// ОТДЕЛНА опция (операторът, 16.09.2026). Обикновеният доклад в „Актове и
+// протоколи“ — само паспорт и {{…}} — не се пипа. Тук същият шаблон, а отгоре
+// потвърденото с хартията; при разлика с паспорта редът остава с точки.
+function renderOdAiKarta() {
+    const box = document.getElementById('od-ai-karta');
+    if (!box) return;
+    const p = _zhivObekt();
+    if (!p) { box.innerHTML = ''; return; }
+    const docs = p.sloy2?.od?.dokumenti || [];
+    const potv = p.sloy2?.od?.potvardeni || {};
+    const vsichki = docs.reduce((s, d) => s + _s2Fakti(d).length, 0);
+    const gotovi = Object.keys(potv).length;
+    box.innerHTML = `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:8px">📄 Окончателен доклад с АИ</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                Същият доклад като в „Актове и протоколи“, а отгоре — <strong>само потвърденото с хартията</strong>
+                от прочетените документи: Г 1.1 (Протокол 2, обр. 3, ЗК, актове обр. 7, Акт 14, Акт 15),
+                т. 3 (лаборатории, декларации) и раздел В (становища и документи от дружествата).
+                Непотвърденото остава с точки. Ако паспортът и документите дават различни стойности,
+                редът остава празен, докато не ги изравниш.
+            </p>
+            <div style="font-size:13px;margin-bottom:10px">
+                ${docs.length
+                    ? `Прочетени документи: <strong>${docs.length}</strong> · сверени с хартията:
+                       <strong>${gotovi}</strong> от ${vsichki} стойности`
+                    : `<span style="color:var(--muted)">Още няма прочетени документи — чети ги в
+                       „Изходни данни, съгласувания и РС“. Докладът ще излезе само с паспорта.</span>`}
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-od-ai" onclick="generiraiOdAi()">📥 Генерирай ОД с АИ</button>
+            <div id="od-ai-belezhki" style="margin-top:12px"></div>
+        </div>`;
+}
+
+async function generiraiOdAi() {
+    const p = _zhivObekt();
+    if (!p) return;
+    const btn = document.getElementById('btn-od-ai');
+    const kutiya = document.getElementById('od-ai-belezhki');
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Генериране…'; }
+    kutiya.innerHTML = '';
+    try {
+        const consultant = appData.consultants.find(c => c.id == p.consultant?.id);
+        const body = {
+            passport: buildPassportRows(p, consultant, {}), pi: p.pi,
+            sloy2: { dokumenti: _s2Prilozhi(p.sloy2?.od?.dokumenti || [], p.sloy2?.od?.potvardeni || {}),
+                     docDates: p.docDates || {}, zk: p.zk || {} },
+        };
+        const token = getToken();
+        const r = await fetch(`${(appData.apiUrl || '').replace(/\/$/, '')}/api/generate-od-ai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({ error: r.statusText }));
+            throw new Error(err.error || `HTTP ${r.status}`);
+        }
+        let bel = { prichini: [], popalneni: [], spisatsi: {} };
+        try { bel = JSON.parse(decodeURIComponent(r.headers.get('X-Doklad-Belezhki') || '')) || bel; } catch (e) {}
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `doklad_AI_${p.pi}.docx`; a.click();
+        URL.revokeObjectURL(url);
+        addHistory('generate', p.pi, 'Генериран .docx: Окончателен доклад с АИ');
+        try { saveData(); } catch (e) { console.warn(e); }
+        const sp = bel.spisatsi || {};
+        kutiya.innerHTML = `
+            <div class="alert ${bel.prichini?.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 8px">
+                ✅ Докладът е генериран. Попълнено от проверени данни в Г 1.1:
+                ${(bel.popalneni || []).length ? bel.popalneni.map(_s2esc).join(', ') : 'нищо'}.
+                Списъци: лаборатории ${sp.laboratorii || 0}, декларации ${sp.deklaracii || 0},
+                актове ${sp.aktove || 0}, становища ${sp.stanovishta || 0}.
+            </div>
+            ${(bel.prichini || []).length ? `<div style="font-size:13px;font-weight:600;margin:8px 0 4px">
+                Празно остана — не влиза в доклада, само за теб:</div>
+                ${bel.prichini.map(x => `<div style="font-size:13px;padding:2px 0">⚠️ ${_s2esc(x)}</div>`).join('')}` : ''}`;
+    } catch (e) {
+        kutiya.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${_s2esc(e.message)}</div>`;
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '📥 Генерирай ОД с АИ'; }
+    }
 }
 
 function sloy2Vpishi(ime64, nomer64) {
