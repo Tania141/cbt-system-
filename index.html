@@ -3935,6 +3935,26 @@ function _cheklistRows(p, dok) {
 const _s2esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// „1-4, 20“ → множество от страници; празно → null (целият файл).
+function _s2Obhvat(txt) {
+    txt = String(txt || '').trim();
+    if (!txt) return null;
+    const s = new Set();
+    for (const ch of txt.split(/[,;\s]+/)) {
+        const m = ch.match(/^(\d+)(?:\s*[-–]\s*(\d+))?$/);
+        if (!m) continue;
+        const a = +m[1], b = +(m[2] || m[1]);
+        for (let k = Math.min(a, b); k <= Math.max(a, b); k++) s.add(k);
+    }
+    return s.size ? s : null;
+}
+
+// Първата страница на документ от файл: „файл#стр.7“ → 7; цял файл → 1.
+function _s2PurvaStr(d) {
+    const m = String(d.id || '').match(/#стр\.(\d+)/);
+    return m ? +m[1] : (d.stranica_ot || 1);
+}
+
 async function sloy2Cheti() {
     const p = _zhivObekt();
     if (!p) { showAlert('error', 'Първо избери обект.'); return; }
@@ -3959,21 +3979,53 @@ async function sloy2Cheti() {
         znak(i, `⏳ ${ime} — чета…`);
         try {
             const data = await fileToBase64(f);
-            const r = await apiCall('/api/sloy2/chete', 'POST',
-                { agenda: 'od', pi: p.pi, chetec: document.getElementById('s2-chetec')?.value || 'auto',
-                  stranici: document.getElementById('s2-stranici')?.value || '',
-                  fajl: { ime: f.name, media_type: f.type, data } });
-            if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
-            // Един файл може да е няколко документа (серия актове обр. 7).
-            const novi = r.dokumenti || [r.dokument];
-            s2.dokumenti = s2.dokumenti.filter(d => d.fajl !== f.name);
+            const osnova = { agenda: 'od', pi: p.pi, chetec: document.getElementById('s2-chetec')?.value || 'auto',
+                             fajl: { ime: f.name, media_type: f.type, data } };
+            // PDF: първо само разделяне на документи, после всеки с отделна заявка —
+            // иначе дълъг файл е една заявка над 5 мин. и връзката пада (16.09.2026).
+            let chasti = null;
+            if (/\.pdf$/i.test(f.name)) {
+                znak(i, `⏳ ${ime} — разделям на документи…`);
+                const rz = await apiCall('/api/sloy2/razdeli', 'POST', { ...osnova, stranici: izbrani });
+                if (rz.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(rz.greshka)}`); continue; }
+                if ((rz.chasti || []).length > 1) chasti = rz.chasti;
+            }
+            let novi = [];
+            const problemi = [];
+            if (!chasti) {
+                znak(i, `⏳ ${ime} — чета…`);
+                // с избрани страници — като част, за да има ключ по страница
+                const r = await apiCall('/api/sloy2/chete', 'POST', { ...osnova, stranici: izbrani, edin: !!izbrani });
+                if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
+                novi = r.dokumenti || [r.dokument];
+            } else {
+                for (let k = 0; k < chasti.length; k++) {
+                    znak(i, `⏳ ${ime} — чета документ ${k + 1} от ${chasti.length} (стр. ${_s2esc(chasti[k].stranici)})…`);
+                    try {
+                        const r = await apiCall('/api/sloy2/chete', 'POST',
+                            { ...osnova, stranici: chasti[k].stranici, edin: true });
+                        if (r.greshka) problemi.push(`стр. ${chasti[k].stranici}: ${r.greshka}`);
+                        else novi.push(...(r.dokumenti || [r.dokument]));
+                    } catch (e) {
+                        problemi.push(`стр. ${chasti[k].stranici}: ${e.message}`);
+                    }
+                }
+                if (!novi.length) { znak(i, `❌ ${ime} — ${_s2esc(problemi.join('; '))}`); continue; }
+            }
+            // Заменя се прочетеното от ТЕЗИ страници — четене на части (1-15, после
+            // 16-30) трупа документите, вместо да изтрие предишните.
+            const obhvat = _s2Obhvat(izbrani);
+            const zamenen = d => d.fajl === f.name && (!obhvat || obhvat.has(_s2PurvaStr(d)));
+            const stari = new Set(s2.dokumenti.filter(zamenen).map(_s2Id));
+            s2.dokumenti = s2.dokumenti.filter(d => !zamenen(d));
             s2.dokumenti.push(...novi);
             // Ново четене — старите потвърждения са за друго прочетено и не важат.
             for (const kl of Object.keys(s2.potvardeni || {}))
-                if (kl.startsWith(f.name + '::') || kl.startsWith(f.name + '#')) delete s2.potvardeni[kl];
+                if (stari.has(kl.split('::')[0])) delete s2.potvardeni[kl];
             procheteni++;
             const d = novi[0];
             znak(i, `✓ ${ime} — ${novi.length > 1 ? `<strong>${novi.length} документа</strong> (${_s2esc(d.vid || '?')}…)` : _s2esc(d.vid || '?')}${d.sken ? ' <span style="color:var(--muted)">(скан)</span>' : ''}`
+                    + (problemi.length ? ` <strong style="color:#d97706">· не прочетени: ${_s2esc(problemi.join('; '))}</strong>` : '')
                     + ` <span style="color:var(--muted)">· ${_s2esc(d.chetec || '')}</span>`
                     + (d.rakopis_nenadezhden ? ` <strong style="color:#d97706">· резервен четец — не отбелязва ръкопис, провери всяка стойност</strong>` : '')
                     + (d.belezhka ? ` <span style="color:var(--muted)">· ${_s2esc(d.belezhka)}</span>` : ''));
