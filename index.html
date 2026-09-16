@@ -4044,7 +4044,9 @@ function _sloy2Html(r, dokumenti, potvardeni) {
             ${dokumenti.filter(d => d.rakopis_nenadezhden).length} прочетени от резервния четец — той не отбелязва ръкопис;
             провери всяка стойност в тях.</strong>` : ''}
         ${tvardi.length ? `⚠️ ${tvardi.length} разминавания между документите.` : '✅ Не намирам разминавания между документите.'}
-        ${razm.length - tvardi.length ? ` · ❔ ${razm.length - tvardi.length} за проверка.` : ''}</div>`;
+        ${razm.length - tvardi.length ? ` · ❔ ${razm.length - tvardi.length} за проверка.` : ''}
+        ${(r.drug_stroezh || []).length ? `<br><span style="color:var(--muted)">Не се сравняват със сградата — за друг
+            строеж: ${r.drug_stroezh.map(_s2esc).join(' · ')}</span>` : ''}</div>`;
 
     if (razm.length) {
         h += zagl('Разминавания между документите');
