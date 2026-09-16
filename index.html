@@ -4014,6 +4014,8 @@ async function sloy2Sravni() {
         rs_nomer: p.permit?.number || '', rs_data: p.permit?.date || '',
         rs_v_sila: p.permit?.effective || '',
         zk_nomer: p.zk?.number || '',
+        // датите на съставяне — Протокол 2, ЗК, Акт 14, Акт 15 участват в хронологията
+        docDates: p.docDates || {},
         vazlozhiteli: cl.filter(c => c.name).map(c => ({ ime: c.name, eik: c.eik || '', predstavlyavan_ot: c.rep || '' })),
         stroitel: { ime: p.builder?.company || '', eik: p.builder?.eik || '', predstavlyavan_ot: p.builder?.manager || '' },
     };
