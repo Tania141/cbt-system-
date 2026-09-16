@@ -4285,9 +4285,72 @@ function renderOdAiKarta() {
                     : `<span style="color:var(--muted)">Още няма прочетени документи — чети ги в
                        „Изходни данни, съгласувания и РС“. Докладът ще излезе само с паспорта.</span>`}
             </div>
+            <div style="border-top:1px solid var(--border,#eee);padding-top:12px;margin:12px 0">
+                <div style="font-size:13px;font-weight:700;margin-bottom:4px">Техническо описание на строежа</div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:8px">
+                    Едно за обекта — от „По изпълнението на строежа“ до състоянието на околното пространство.
+                    Акт 15 се мени, докато пишеш ОД, но описанието не — затова се пази тук и докладът го взима
+                    оттук, а не се копира. Документите не са тук: те идват от прочетеното и сверено.
+                </p>
+                <textarea id="od-ai-tehn" class="form-input" rows="8" style="width:100%;font-size:13px"
+                          placeholder="Постави описанието или го вземи от Акт 15 с бутоните отдолу">${_s2esc(p.tehnichesko_opisanie?.tekst || '')}</textarea>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px">
+                    <button type="button" class="btn btn-success btn-sm" onclick="zapishiTehnichesko()">💾 Запази описанието</button>
+                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">
+                        📄 Вземи от Акт 15 (.docx / PDF с текст)
+                        <input type="file" accept=".docx,.pdf" style="display:none" onchange="tehnOtAkt15Fajl(this)">
+                    </label>
+                    ${window._akt15LastData?.result ? `<button type="button" class="btn btn-secondary btn-sm"
+                        onclick="tehnOtAiAkt15()">🤖 Вземи от генерирания с АИ Акт 15</button>` : ''}
+                    <span id="od-ai-tehn-status" style="font-size:12px;color:var(--muted)">
+                        ${p.tehnichesko_opisanie?.koga ? `записано — ${_s2esc(p.tehnichesko_opisanie.koy || '')},
+                          ${_s2esc(new Date(p.tehnichesko_opisanie.koga).toLocaleString('bg-BG'))}` : 'не е записано'}</span>
+                </div>
+            </div>
             <button type="button" class="btn btn-primary" id="btn-od-ai" onclick="generiraiOdAi()">📥 Генерирай ОД с АИ</button>
             <div id="od-ai-belezhki" style="margin-top:12px"></div>
         </div>`;
+}
+
+function zapishiTehnichesko() {
+    const p = _zhivObekt();
+    const el = document.getElementById('od-ai-tehn');
+    if (!p || !el) return;
+    const tekst = el.value.replace(/\s+$/, '');
+    if ((p.tehnichesko_opisanie?.tekst || '') === tekst) { showAlert('info', 'Описанието не е променено.'); return; }
+    p.tehnichesko_opisanie = { tekst, koy: _s2Koy(), koga: new Date().toISOString() };
+    _zapishiObekt(p, 'Техническото описание на строежа е записано');
+    renderOdAiKarta();
+}
+
+// Изрязването е на сървъра — едно място за файла и за генерирания текст.
+async function _tehnIzrezhi(body) {
+    const st = document.getElementById('od-ai-tehn-status');
+    if (st) st.textContent = 'Изрязвам…';
+    try {
+        const r = await apiCall('/api/tehnichesko-ot-akt15', 'POST', body);
+        if (r.greshka) { if (st) st.textContent = '⚠️ ' + r.greshka; return; }
+        const el = document.getElementById('od-ai-tehn');
+        if (el.value.trim() && !confirm('В полето вече има текст. Да го заменя с изрязаното от Акт 15?')) {
+            if (st) st.textContent = 'не е заменено'; return;
+        }
+        el.value = r.tekst;
+        if (st) st.textContent = 'изрязано — прегледай и натисни „Запази описанието“';
+    } catch (e) {
+        if (st) st.textContent = '❌ ' + e.message;
+    }
+}
+
+async function tehnOtAkt15Fajl(input) {
+    const f = input.files?.[0];
+    if (!f) return;
+    await _tehnIzrezhi({ fajl: { ime: f.name, data: await fileToBase64(f) } });
+    input.value = '';
+}
+
+function tehnOtAiAkt15() {
+    const t = window._akt15LastData?.result;
+    if (t) _tehnIzrezhi({ tekst: t });
 }
 
 async function generiraiOdAi() {
@@ -4303,7 +4366,14 @@ async function generiraiOdAi() {
             passport: buildPassportRows(p, consultant, {}), pi: p.pi,
             sloy2: { dokumenti: _s2Prilozhi(p.sloy2?.od?.dokumenti || [], p.sloy2?.od?.potvardeni || {}),
                      docDates: p.docDates || {}, zk: p.zk || {} },
+            tehnichesko: p.tehnichesko_opisanie?.tekst || '',
         };
+        // Незаписан текст в полето не влиза — докладът е от записаното.
+        const pole = document.getElementById('od-ai-tehn');
+        if (pole && pole.value.replace(/\s+$/, '') !== (p.tehnichesko_opisanie?.tekst || '')
+            && !confirm('Техническото описание в полето не е записано. Да генерирам с последното записано?')) {
+            return;
+        }
         const token = getToken();
         const r = await fetch(`${(appData.apiUrl || '').replace(/\/$/, '')}/api/generate-od-ai`, {
             method: 'POST',
