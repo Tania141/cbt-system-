@@ -4113,6 +4113,9 @@ function _sloy2Html(r, dokumenti, potvardeni) {
         ${(r.drug_stroezh || []).length ? `<br><span style="color:var(--muted)">Не се сравняват със сградата — за друг
             строеж: ${r.drug_stroezh.map(_s2esc).join(' · ')}</span>` : ''}</div>`;
 
+    // Сверяването — по вид документ, в таблици, само нужното (16.09.2026).
+    h += _s2SverkaHtml(r, dokumenti, potvardeni || {});
+
     if (razm.length) {
         h += zagl('Разминавания между документите');
         h += razm.map(x => `
@@ -4158,7 +4161,9 @@ function _sloy2Html(r, dokumenti, potvardeni) {
         h += `<div style="font-size:13px">${r.bez_red.map(_s2esc).join(' · ')}</div>`;
     }
 
-    h += _s2PotvardiHtml(dokumenti, potvardeni || {});
+    h += `<details style="margin-top:16px"><summary style="font-size:13px;cursor:pointer;color:var(--muted)">
+            Подробно — всички прочетени полета по документ</summary>
+            ${_s2PotvardiHtml(dokumenti, potvardeni || {})}</details>`;
     return h;
 }
 
@@ -4179,6 +4184,7 @@ function _s2Fakti(d) {
     const f = (k, etiket, obj) => { if (obj && String(obj.stoynost ?? '').trim()) out.push({ k, etiket, obj }); };
     f('nomer', 'номер', d.nomer); f('data', 'дата', d.data); f('izdatel', 'издател', d.izdatel);
     f('material', 'материал/изделие', d.material); f('proizvoditel', 'производител/доставчик', d.proizvoditel);
+    f('sadarzhanie', 'какво е прието', d.sadarzhanie);
     // нотариален акт — за таблицата на собствениците
     [['nt_tom', 'нот. акт — том'], ['nt_reg', 'нот. акт — рег. №'], ['nt_delo', 'нот. акт — дело'],
      ['nt_notarius', 'нотариус'], ['nt_nk', 'нотариус — № в регистъра на НК'], ['vp_vh_reg', 'вписване — вх. рег. №'], ['vp_akt', 'вписване — акт №'],
@@ -4265,6 +4271,175 @@ function _s2PotvardiHtml(dokumenti, potv) {
         четец — там грешките са най-чести. „✔ Сверено“ записва, че си я видяла на хартията; „✎ Поправи“ — вярната
         стойност, която влиза в сравнението вместо прочетената.</p>`;
     return zagl + blokove.join('');
+}
+
+// ── Сверяване в таблици ───────────────────────────────────────────────────────
+// Решение на оператора (16.09.2026): „за да чекна акт 7 трябва да отворя всеки
+// акт да прочета 50 неща и не разбирам кое да верифицирам — операторът ще
+// полудее“. Общото (УПИ, идентификатор) — веднъж за обекта; по вид документ —
+// таблица само с колоните за ОД; брояч с ред ⚠️ → ✍ → други; клик поправя;
+// „✔ Свери всички редове“ — с изрично потвърждение.
+
+const _S2_TABLICI = [
+    { kodove: ['AKT7', 'AKT12'], ime: 'Актове обр. 7 и обр. 12',
+      koloni: [['стр.', '#str'], ['вид', '#vid'], ['дата', 'data'], ['какво е прието', 'sadarzhanie']] },
+    { kodove: ['NOT_AKT'], ime: 'Нотариални актове',
+      koloni: [['стр.', '#str'], ['№ · том · рег. · дело', ['nomer', 'nt_tom', 'nt_reg', 'nt_delo']], ['дата', 'data'],
+               ['нотариус · № в НК', ['nt_notarius', 'nt_nk']], ['обекти → собственици', '#razpr']] },
+    { kodove: ['DEKLARACIA'], ime: 'Декларации за материали',
+      koloni: [['материал/изделие', 'material'], ['производител', 'proizvoditel'], ['№', 'nomer'], ['дата', 'data']] },
+    { kodove: ['STANOVISHTE', 'PRISAEDINYAVANE', 'ENERGIEN', 'IZMERVANE'], ime: 'Становища, договори с дружества, измервания',
+      koloni: [['вид', '#vid'], ['№', 'nomer'], ['дата', 'data'], ['издател', 'izdatel']] },
+    { kodove: null, ime: 'Протоколи, актове, разрешения и други',
+      koloni: [['вид', '#vid'], ['№', 'nomer'], ['дата', 'data']] },
+];
+
+function _s2SverkaHtml(r, dokumenti, potv) {
+    if (!dokumenti.length) return '';
+    const fakti = new Map(dokumenti.map(d => [_s2Id(d), new Map(_s2Fakti(d).map(x => [x.k, x]))]));
+    // Спорните стойности — от разминаванията (по файл и цитат) и от хронологията.
+    const sporni = new Set();
+    // Спорно е малцинството — сървърът подрежда стойностите по брой, първата е мнозинството.
+    for (const x of (r.razminavania || [])) for (const s of x.stoynosti.slice(1)) for (const i of s.izvori) {
+        for (const d of dokumenti) {
+            if (!(_s2Id(d) === i.fajl || _s2Id(d).startsWith(i.fajl + '#') || d.fajl === i.fajl)) continue;
+            for (const [k, f] of fakti.get(_s2Id(d))) if (i.citat && f.obj.citat === i.citat) sporni.add(`${_s2Id(d)}::${k}`);
+        }
+    }
+    for (const hx of (r.hronologia || [])) if (hx.status === 'warn') {
+        for (const d of dokumenti) if (hx.tekst.includes(_s2Id(d) + ':') || hx.tekst.includes(_s2Id(d) + ' '))
+            sporni.add(`${_s2Id(d)}::data`);
+    }
+    const vsichkiKl = new Set();
+    const kletka = (d, k) => {
+        const f = fakti.get(_s2Id(d)).get(k);
+        if (!f) return '<span style="color:var(--muted)">—</span>';
+        const kl = `${_s2Id(d)}::${k}`, v = potv[kl];
+        vsichkiKl.add(kl);
+        const spor = sporni.has(kl), rak = !v && (f.obj.rakopisno || d.rakopis_nenadezhden);
+        const fon = v ? '#e8f5e9' : spor ? '#fdecea' : rak ? '#fff4e0' : 'transparent';
+        const znak = v ? '✔ ' : spor ? '⚠️ ' : rak ? '✍ ' : '';
+        const podskazka = `стр. ${f.obj.stranica || '?'}${f.obj.citat ? ' — „' + f.obj.citat + '“' : ''}`
+            + (v ? ` · сверено: ${v.koy}` + (v.stoynost !== v.prochetena ? ` · прочетено: ${v.prochetena}` : '') : '')
+            + ' · клик — поправи';
+        return `<span title="${_s2esc(podskazka)}" onclick="s2Popravi('${encodeURIComponent(kl)}')"
+                      style="cursor:pointer;background:${fon};border-radius:3px;padding:0 3px">${znak}${_s2esc(v ? v.stoynost : f.obj.stoynost)}</span>`;
+    };
+    const redKl = (d, koloni) => {
+        const kl = [];
+        for (const [, pole] of koloni) {
+            const poleta = pole === '#razpr' ? [...fakti.get(_s2Id(d)).keys()].filter(k => /^r\d+\./.test(k))
+                         : Array.isArray(pole) ? pole : (String(pole).startsWith('#') ? [] : [pole]);
+            for (const k of poleta) if (fakti.get(_s2Id(d)).has(k)) kl.push(`${_s2Id(d)}::${k}`);
+        }
+        return kl;
+    };
+    const bKl = (kl, pitai, tekst) => `<button type="button" class="btn btn-ghost btn-sm"
+        onclick="s2PotvardiMnogo('${encodeURIComponent(JSON.stringify(kl))}', ${pitai})">${tekst}</button>`;
+
+    // ── Общо за обекта ──
+    const normUpi = s => String(s || '').toUpperCase().replace(/Х/g, 'X').replace(/І/g, 'I').replace(/С/g, 'C')
+        .replace(/М/g, 'M').replace(/УПИ|\s|„|“|"/g, '').replace(/[–—]/g, '-').match(/[IVXLCM]+-?\d+/)?.[0]?.replace(/([IVXLCM]+)-?/, '$1-') || '';
+    const normId = s => (String(s || '').match(/\d{5}\.\d{1,5}\.\d{1,5}/) || [''])[0];
+    const drugi = new Set((r.drug_stroezh || []).map(x => String(x).split(' — ')[0]));
+    let obshto = '';
+    for (const [pole, ime, norm] of [['obekt.upi', 'УПИ', normUpi], ['obekt.identifikator', 'Идентификатор', normId]]) {
+        const grupi = new Map();
+        for (const d of dokumenti) {
+            if (drugi.has(d.fajl)) continue;
+            const f = fakti.get(_s2Id(d)).get(pole);
+            if (!f) continue;
+            const kl = `${_s2Id(d)}::${pole}`, st = potv[kl]?.stoynost ?? f.obj.stoynost, n = norm(st);
+            if (!n) continue;
+            if (!grupi.has(n)) grupi.set(n, { st, kl: [], dok: [] });
+            grupi.get(n).kl.push(kl); grupi.get(n).dok.push(d.fajl);
+        }
+        const mnogo = grupi.size > 1;
+        // спорна е малцинствената стойност — мнозинството е съгласно помежду си
+        const podredeni = [...grupi].sort((a, b) => b[1].kl.length - a[1].kl.length);
+        for (const [n, g] of podredeni) {
+            g.kl.forEach(k => vsichkiKl.add(k));
+            if (mnogo && n !== podredeni[0][0]) g.kl.forEach(k => sporni.add(k));
+            const nesv = g.kl.filter(k => !potv[k]);
+            const dok = [...new Set(g.dok)];
+            obshto += `<div style="font-size:13px;padding:4px 0;display:flex;gap:8px;align-items:baseline;border-bottom:1px dotted var(--border,#e5e5e5)">
+                <span style="flex:1">${!nesv.length ? '✔' : mnogo && n !== podredeni[0][0] ? '⚠️' : '·'} <span style="color:var(--muted)">${ime}:</span>
+                    <strong>${_s2esc(g.st)}</strong>
+                    <span style="color:var(--muted)"> — ${mnogo && g.kl.length < 3 ? _s2esc(dok.join(', ')) : `еднакво в ${g.kl.length} документа`}</span></span>
+                ${nesv.length ? bKl(nesv, false, '✔ Сверено') : ''}
+            </div>`;
+        }
+    }
+
+    // ── Таблиците ──
+    let tablici = '';
+    const vzeti = new Set();
+    for (const t of _S2_TABLICI) {
+        const docs = dokumenti.filter(d => t.kodove ? t.kodove.includes(d.vid_kod) : !vzeti.has(_s2Id(d)));
+        docs.forEach(d => vzeti.add(_s2Id(d)));
+        if (!docs.length) continue;
+        docs.sort((a, b) => (a.fajl || '').localeCompare(b.fajl || '') || _s2PurvaStr(a) - _s2PurvaStr(b));
+        const redove = docs.map(d => {
+            const kl = redKl(d, t.koloni), nesv = kl.filter(k => !potv[k]);
+            const kletki = t.koloni.map(([, pole]) => {
+                if (pole === '#str') return `${_s2esc(d.fajl)}${_s2PurvaStr(d) > 1 || /#/.test(_s2Id(d)) ? ' · ' + _s2PurvaStr(d) : ''}`;
+                if (pole === '#vid') return _s2esc(d.vid || '?');
+                if (pole === '#razpr') return (d.razpredelenie || []).map((x, i) =>
+                    `<div>${kletka(d, `r${i}.obekti`)} → ${kletka(d, `r${i}.sobstvenici`)}</div>`).join('') || '<span style="color:var(--muted)">—</span>';
+                if (Array.isArray(pole)) return pole.map(k => kletka(d, k)).join(' · ');
+                return kletka(d, pole);
+            });
+            return `<tr>${kletki.map(c => `<td style="padding:4px 6px;border-bottom:1px solid var(--border,#eee);vertical-align:top">${c}</td>`).join('')}
+                <td style="padding:4px 6px;border-bottom:1px solid var(--border,#eee);white-space:nowrap">${nesv.length ? bKl(nesv, false, '✔') : '<span style="color:var(--green)">✔</span>'}</td></tr>`;
+        });
+        const vsKl = docs.flatMap(d => redKl(d, t.koloni)).filter(k => !potv[k]);
+        tablici += `<div style="margin:14px 0 4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <strong style="font-size:13px">${_s2esc(t.ime)}</strong>
+                <span style="font-size:12px;color:var(--muted)">${docs.length} документа</span>
+                ${vsKl.length ? bKl(vsKl, true, `✔ Свери всички редове (${vsKl.length})`) : '<span style="font-size:12px;color:var(--green)">✔ всичко сверено</span>'}
+            </div>
+            <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+                <tr>${t.koloni.map(([ime]) => `<th style="text-align:left;padding:4px 6px;border-bottom:2px solid var(--border,#ddd);color:var(--muted)">${_s2esc(ime)}</th>`).join('')}<th></th></tr>
+                ${redove.join('')}
+            </table></div>`;
+    }
+
+    // ── Броячът ──
+    const ostavat = [...vsichkiKl].filter(k => !potv[k]);
+    const nSpor = ostavat.filter(k => sporni.has(k)).length;
+    const nRak = ostavat.filter(k => {
+        const [id, pole] = [k.slice(0, k.indexOf('::')), k.slice(k.indexOf('::') + 2)];
+        const d = dokumenti.find(x => _s2Id(x) === id), f = fakti.get(id)?.get(pole);
+        return !sporni.has(k) && f && (f.obj.rakopisno || d?.rakopis_nenadezhden);
+    }).length;
+    return `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px">Свери с хартията</div>
+        <div class="alert ${ostavat.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 8px">
+            ${ostavat.length ? `Остават <strong>${ostavat.length}</strong> за сверяване:
+                ⚠️ ${nSpor} разминавания · ✍ ${nRak} ръкописни · ${ostavat.length - nSpor - nRak} други.
+                Започни от ⚠️, после ✍.` : '✅ Всичко е сверено с хартията.'}
+            <div style="font-size:12px;margin-top:4px;color:var(--muted)">Зелено — сверено · червено — разминаване ·
+                оранжево — на ръка или от резервния четец. Посочи клетка — страница и цитат; клик — поправи.</div>
+        </div>
+        ${obshto ? `<div style="margin:8px 0"><strong style="font-size:13px">Общо за обекта</strong>${obshto}</div>` : ''}
+        ${tablici}`;
+}
+
+async function s2PotvardiMnogo(kl64, pitai) {
+    const p = _zhivObekt();
+    if (!p?.sloy2?.od) return;
+    const kluchove = JSON.parse(decodeURIComponent(kl64));
+    if (pitai && !confirm(`Сверяваш ${kluchove.length} стойности наведнъж.\n\nВсички ли си проверила на хартия?`)) return;
+    const potv = (p.sloy2.od.potvardeni = p.sloy2.od.potvardeni || {});
+    let n = 0;
+    for (const kl of kluchove) {
+        if (potv[kl]) continue;
+        const { fakt } = _s2Namer(encodeURIComponent(kl));
+        if (!fakt) continue;
+        const st = String(fakt.obj.stoynost);
+        potv[kl] = { stoynost: st, prochetena: st, koy: _s2Koy(), koga: new Date().toISOString() };
+        n++;
+    }
+    if (n) _s2ZapishiTiho(p, `Слой 2: сверени с хартията наведнъж — ${n} стойности`);
 }
 
 function _s2Tog(el) {
