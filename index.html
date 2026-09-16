@@ -4119,6 +4119,7 @@ function _s2Fakti(d) {
     const out = [];
     const f = (k, etiket, obj) => { if (obj && String(obj.stoynost ?? '').trim()) out.push({ k, etiket, obj }); };
     f('nomer', 'номер', d.nomer); f('data', 'дата', d.data); f('izdatel', 'издател', d.izdatel);
+    f('material', 'материал/изделие', d.material); f('proizvoditel', 'производител/доставчик', d.proizvoditel);
     const o = d.obekt || {};
     f('obekt.upi', 'УПИ', o.upi); f('obekt.identifikator', 'идентификатор', o.identifikator); f('obekt.adres', 'адрес', o.adres);
     (d.uchastnici || []).forEach((u, i) => {
