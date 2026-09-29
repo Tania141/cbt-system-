@@ -2266,9 +2266,55 @@ function loadData() {
 
 }
 
+// Записът в браузъра може да откаже — мястото не е безкрайно (около 5 MB за
+// целия браузър), а в `akt_v5` влиза всичко: обекти, консултанти, история и
+// прочетеното от слой 2. Досега грешката се гълташе тихо и въпреки това се
+// показваше „✅ запазено“ — тоест работата изчезваше, без да се разбере.
+// Затова: връща true/false и при отказ казва високо, че записът НЕ е станал.
+// (29.09.2026)
 function saveData() {
+    const predi = appData.savedAt;
     appData.savedAt = new Date().toISOString();
-    localStorage.setItem('akt_v5', JSON.stringify(appData));
+    try {
+        const tekst = JSON.stringify(appData);
+        localStorage.setItem('akt_v5', tekst);
+        // Предупреждение ПРЕДИ да свърши мястото — след като е свършило е късно.
+        if (tekst.length > 4 * 1024 * 1024) _predupredizaMyasto(tekst.length);
+        return true;
+    } catch (e) {
+        appData.savedAt = predi;   // не се прави на записано
+        console.error('saveData:', e);
+        _kazhiCheNeEZapisano(e);
+        return false;
+    }
+}
+
+// Показва се веднъж и стои, докато не се оправи — това не е бележка, която
+// да мине покрай окото.
+let _neZapisanoKazano = false;
+function _kazhiCheNeEZapisano(e) {
+    const mnogo = /quota|exceed|full|QUOTA/i.test(String(e && (e.name || e.message)));
+    if (_neZapisanoKazano) return;
+    _neZapisanoKazano = true;
+    setTimeout(() => { _neZapisanoKazano = false; }, 60000);
+    // Дълго: това не бива да се изпусне, докато си вдигнала очи от екрана.
+    showAlert('error', mnogo
+        ? '⛔ НЕ Е ЗАПИСАНО в браузъра — мястото свърши. Обектите отиват в базата '
+          + 'данни, но консултантите и историята се пазят само тук. Изчисти прочетеното '
+          + 'от слой 2 на стари обекти („Изчисти прочетеното“) и запази пак.'
+        : `⛔ НЕ Е ЗАПИСАНО в браузъра: ${e && e.message ? e.message : e}. Не затваряй раздела, преди да е записано.`,
+        120000);
+}
+
+// Мястото в браузъра е около 5 MB. Като се прехвърли 4, казваме веднъж на час —
+// докато има какво да се направи, а не след като записът вече е отказал.
+let _myastoKazano = 0;
+function _predupredizaMyasto(dalzhina) {
+    if (Date.now() - _myastoKazano < 3600000) return;
+    _myastoKazano = Date.now();
+    showAlert('warning', `⚠️ Записът в браузъра стигна ${(dalzhina / 1048576).toFixed(1)} MB от около 5 MB. `
+        + 'Най-тежко е прочетеното от слой 2. На приключен обект натисни „Изчисти прочетеното“ — '
+        + 'обектът и документите му остават в базата данни.');
 }
 
 
@@ -2418,7 +2464,7 @@ async function anulirajZK(r) {
         const p = appData.projects.find(x => x.pi && x.pi === r.pi && String((x.zk || {}).number) === String(r.nomer));
         if (p) {
             p.zk = { ...(p.zk || {}), number: '' };
-            try { saveData(); } catch (e) { console.warn(e); }
+            saveData();
         }
         showAlert('success', `Заповедна книга № ${r.nomer} е анулирана`);
         renderZK();
@@ -2752,7 +2798,7 @@ function smeniObekt(id, stranica) {
     // запомнянето му в браузъра не мине.
     ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage, zk: renderZkGen }[stranica]
         || renderGenerateSection)();
-    try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
+    saveData();
 }
 
 function renderAiProtocols() {
@@ -4464,7 +4510,7 @@ function _s2Koy() {
 function _s2ZapishiTiho(p, opis) {
     p.updatedAt = new Date().toISOString();
     appData.currentProject = p;
-    try { saveData(); } catch (e) { console.warn('не е записано в браузъра:', e); }
+    saveData();
     addHistory('edit', p.pi, opis);
     if (appData.apiUrl) {
         const { id: _bezId, ...zaSarvara } = p;
@@ -4638,7 +4684,7 @@ async function generiraiOdAi() {
         a.href = url; a.download = `doklad_AI_${p.pi}.docx`; a.click();
         URL.revokeObjectURL(url);
         addHistory('generate', p.pi, 'Генериран .docx: Окончателен доклад с АИ');
-        try { saveData(); } catch (e) { console.warn(e); }
+        saveData();
         const sp = bel.spisatsi || {};
         kutiya.innerHTML = `
             <div class="alert ${bel.prichini?.length ? 'alert-warning' : 'alert-success'}" style="margin:0 0 8px">
@@ -6569,7 +6615,7 @@ function kamStranica(id, stranica) {
     appData.currentProject = project;
     closeModal('passport-modal');
     navigateTo(stranica);
-    try { saveData(); } catch (e) { console.warn('изборът не е запомнен:', e); }
+    saveData();
 }
 
 function kamGenerirane(id) { kamStranica(id, 'generate'); }
@@ -6616,14 +6662,23 @@ function _lentaObekt(p, stranica) {
 function _zapishiObekt(p, saobshtenie) {
     p.updatedAt = new Date().toISOString();
     appData.currentProject = p;
-    try { saveData(); } catch (e) { console.warn('не е записано в браузъра:', e); }
+    // „✅ запазено“ се казва само ако НАИСТИНА е запазено — поне на едното
+    // място. Ако браузърът откаже, saveData вече е казала защо. (29.09.2026)
+    const vBrauzara = saveData();
     addHistory('edit', p.pi, saobshtenie);
-    showAlert('success', `✅ ${saobshtenie}.`);
-    if (!appData.apiUrl) return;
+    if (!appData.apiUrl) {
+        if (vBrauzara) showAlert('success', `✅ ${saobshtenie}.`);
+        else showAlert('error', `⛔ „${saobshtenie}“ НЕ е запазено — нито в браузъра, нито в базата (няма връзка със сървъра).`);
+        return;
+    }
     const { id: _bezId, ...zaSarvara } = p;
     apiCall(`/api/passports/${p.pi}`, 'POST', { passport: zaSarvara, pi: p.pi })
-        .then(() => showAlert('success', `☁️ ПИ-${p.pi} запазен в базата данни.`))
-        .catch(e => showAlert('error', `⚠️ Локално запазен, но API грешка: ${e.message}`));
+        .then(() => showAlert('success', vBrauzara
+            ? `✅ ${saobshtenie} · ☁️ ПИ-${p.pi} запазен в базата данни.`
+            : `☁️ ПИ-${p.pi} запазен в базата данни (в браузъра НЕ можа — виж горното съобщение).`))
+        .catch(e => showAlert('error', vBrauzara
+            ? `⚠️ Локално запазен, но API грешка: ${e.message}`
+            : `⛔ „${saobshtenie}“ НЕ Е ЗАПАЗЕНО НИКЪДЕ — браузърът отказа и базата данни също: ${e.message}`));
 }
 
 function renderOsipPage() {
@@ -7046,7 +7101,7 @@ async function _generirai(p, apiType, dopalnitelno, etiket, ime) {
     const i = p.generatedDocs.findIndex(d => d.type === etiket);
     if (i >= 0) p.generatedDocs[i] = nd; else p.generatedDocs.push(nd);
     addHistory('generate', p.pi, `Генериран .docx: ${etiket}`);
-    try { saveData(); } catch (e) { console.warn(e); }
+    saveData();
 }
 
 // ОСИП — само оттук. Първо се записва оценката: докладът трябва да излезе
