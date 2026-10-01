@@ -1308,6 +1308,9 @@
             <span class="nav-icon">📋</span> Обекти
             <span class="nav-badge" id="nav-passports-count">0</span>
         </button>
+        <button class="nav-item" onclick="navigateTo('kakav')" id="nav-kakav">
+            <span class="nav-icon">🔑</span> Какъв е строежът
+        </button>
         <button class="nav-item" onclick="navigateTo('dokumenti')" id="nav-dokumenti">
             <span class="nav-icon">📎</span> Изходни данни, съгласувания и РС
         </button>
@@ -1619,6 +1622,19 @@
                 </div>
             </div>
             <div id="dokumenti-content" style="max-width:900px"></div>
+        </div>
+
+        <!-- ═══════════ КАКЪВ Е СТРОЕЖЪТ ═══════════ -->
+        <!-- Новата визия, етап 1 (01.10.2026). Проектът предлага, операторът
+             потвърждава, и само потвърденото влиза в документ. -->
+        <div class="page" id="page-kakav">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Какъв е строежът</h1>
+                    <p class="page-subtitle">Прочетено от записките. Нищо не влиза в документ, преди ти да го потвърдиш.</p>
+                </div>
+            </div>
+            <div id="kakav-content" style="max-width:1100px"></div>
         </div>
 
         <!-- ═══════════ НОРМАТИВНА УРЕДБА ═══════════ -->
@@ -2470,6 +2486,7 @@ function navigateTo(page) {
     else if (page === 'new-passport') renderPassportForm(null);
     else if (page === 'generate') renderGenerateSection();
     else if (page === 'osip') renderOsipPage();
+    else if (page === 'kakav') renderKakavPage();
     else if (page === 'dokumenti') renderDokumentiPage();
     else if (page === 'ai-protocols') renderAiProtocols();
     else if (page === 'history') renderHistory();
@@ -2917,7 +2934,8 @@ function smeniObekt(id, stranica) {
     appData.currentProject = appData.projects.find(p => String(p.id) === String(id)) || null;
     // Първо екранът, после записът: изборът трябва да се види, дори ако
     // запомнянето му в браузъра не мине.
-    ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage, zk: renderZkGen }[stranica]
+    ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage,
+       kakav: renderKakavPage, zk: renderZkGen }[stranica]
         || renderGenerateSection)();
     saveData();
 }
@@ -4692,6 +4710,330 @@ const _ZP_RAZDELI = [
     ['instalacii',  '⚙️ Инсталации и системи'],
     ['normi',       '📖 Наредби, на които проектът стъпва'],
 ];
+
+// ═══════════════════════════════════════════════════════════
+//  КАКЪВ Е СТРОЕЖЪТ — новата визия, етап 1 (01.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Правилото: ИЗТОЧНИКЪТ ПРЕДЛАГА, ОПЕРАТОРЪТ ПОТВЪРЖДАВА, и само потвърденото
+// влиза в документ. Разширение на механизма, който вече работи при ОД.
+//
+// Всяко поле в `p.fakti` е:
+//   { stoynost, sastoyanie, prochetena, predishna, iztochnik:{chast,stranica,citat},
+//     varianti, koy, koga }
+// Състояния: predlozheno · potvardeno · popraveno · sporno (липсващо = празно).
+//
+// Спорното ОСТАВА ПРАЗНО и казва защо — решението на оператора от 16.09.2026
+// (вариант в)). Поправката бие всичко, а прочетеното се помни.
+
+const _KES_POLETA = [
+    // [ключ, име, група]  — група „proekt“ идва от записките
+    ['identifikator',       'Идентификатор по КККР',          'proekt'],
+    ['obekt',               'Наименование на строежа',        'proekt'],
+    ['zahranvan_obekt',     'Захранван обект',                'proekt'],
+    ['upi',                 'УПИ / поземлен имот',            'proekt'],
+    ['faza',                'Фаза на проекта',                'proekt'],
+    ['etaji',               'Етажи',                          'proekt'],
+    ['podzemen_etaj',       'Сутерен / подземен етаж',        'proekt'],
+    ['garaj',               'Гараж',                          'proekt'],
+    ['visochina',           'Височина',                       'proekt'],
+    ['otoplenie',           'Отопление',                      'proekt'],
+    ['toplosnabdyavane',    'Топлоснабдяване',                'proekt'],
+    ['gaz',                 'Газ',                            'proekt'],
+    ['ovk',                 'ОВК',                            'proekt'],
+    ['ventilaciya',         'Вентилация',                     'proekt'],
+    ['asansior',            'Асансьор',                       'proekt'],
+    ['drenaj',              'Дренаж и помпи',                 'proekt'],
+    ['pozharogasene',       'Пожарогасене',                   'proekt'],
+    ['pozharoizvestyavane', 'Пожароизвестяване',              'proekt'],
+    ['el_saobshteniya',     'Електронни съобщения',           'proekt'],
+    ['vik',                 'ВиК присъединяване',             'proekt'],
+    ['elektro',             'Електро присъединяване',         'proekt'],
+    // Групата „drugo“ не идва от проекта — пълни се от документите или на ръка.
+    ['sobstvenik',          'Собственик на земята (възложител по ЗУТ)', 'drugo'],
+    ['investitor',          'Възложител по договор',          'drugo'],
+    ['kategoria',           'Категория',                      'drugo'],
+    ['povod',               'Повод',                          'drugo'],
+];
+const _KES_IME = Object.fromEntries(_KES_POLETA.map(([k, i]) => [k, i]));
+const _KES_PODSKAZKA = {
+    kategoria: 'Преписва се от разрешението за строеж — то е легалната верификация.',
+    povod: 'Ново строителство, или реконструкция / основен ремонт / преустройство.',
+    sobstvenik: 'По ЗУТ възложителят е собственикът на земята. Няколко лица значи съсобственост.',
+    identifikator: 'Най-сигурната опора: цифрите преживяват разчитането на скан.',
+};
+
+const _kesZn = v => String(v ?? '').toLowerCase().replace(/[^0-9a-zа-я]+/g, '');
+
+// Резюмето на записките → какво се предлага за всяко поле.
+function _kesPredlozheni(r) {
+    const out = {};
+    for (const s of r.shapka || []) {
+        if (!s.klyuch) continue;
+        out[s.klyuch] = { stoynost: s.stoynost, edinno: s.edinno, varianti: s.varianti || [], iztochnik: null };
+    }
+    for (const v of r.priznaci || []) {
+        const t = (v.tvardenia || [])[0] || {};
+        out[v.priznak] = {
+            stoynost: v.stoynost, edinno: v.edinno,
+            varianti: (v.tvardenia || []).map(x => ({ stoynost: x.stoynost, chasti: [x.chast] })),
+            iztochnik: { chast: t.chast || '', stranica: t.stranica, citat: t.citat || '' },
+        };
+    }
+    // Възложителите от челния лист стават „собственик на земята“.
+    const sobstv = (r.sobstvenici_ot_zapiski || []).filter(Boolean);
+    if (sobstv.length) out.sobstvenik = { stoynost: sobstv.join(' · '), edinno: true, varianti: [], iztochnik: null };
+    return out;
+}
+
+// Слива предложеното със склада, без да трие свереното.
+function _kesSleej(p, predl) {
+    const f = (p.fakti = p.fakti || {});
+    let novi = 0;
+    for (const [k, pr] of Object.entries(predl)) {
+        if (!_KES_IME[k]) continue;
+        const star = f[k];
+        if (!pr.edinno) {                       // частите не се връзват → спорно
+            f[k] = { ...(star || {}), sastoyanie: 'sporno', stoynost: '', prochetena: '',
+                     varianti: pr.varianti, iztochnik: pr.iztochnik };
+            continue;
+        }
+        const svereno = star && (star.sastoyanie === 'potvardeno' || star.sastoyanie === 'popraveno');
+        if (svereno && _kesZn(star.prochetena) === _kesZn(pr.stoynost)) {
+            f[k] = { ...star, iztochnik: pr.iztochnik, varianti: null };   // същото е — не го пипаме
+            continue;
+        }
+        if (svereno) {                          // ново четене дава друго → пак за потвърждение
+            f[k] = { sastoyanie: 'predlozheno', stoynost: pr.stoynost, prochetena: pr.stoynost,
+                     predishna: star.stoynost, iztochnik: pr.iztochnik, varianti: null };
+            novi++;
+            continue;
+        }
+        if (!star || _kesZn(star.prochetena) !== _kesZn(pr.stoynost)) novi++;
+        f[k] = { sastoyanie: 'predlozheno', stoynost: pr.stoynost, prochetena: pr.stoynost,
+                 iztochnik: pr.iztochnik, varianti: null };
+    }
+    return novi;
+}
+
+async function renderKakavPage() {
+    const p = _obektIliIzbor('kakav-content', 'kakav',
+        'Изберете обекта, чиито данни се четат от проекта');
+    if (!p) return;
+    const kutiya = document.getElementById('kakav-content');
+    const chasti = p.zapiski?.chasti || [];
+    if (!chasti.length) {
+        kutiya.innerHTML = _lentaObekt(p, 'kakav') + `
+            <div class="card">
+                <div class="card-title" style="margin-bottom:8px">🔑 Какъв е строежът</div>
+                <p style="font-size:13px;color:var(--muted);line-height:1.6">
+                    Полетата тук се пълнят от <strong>обяснителните записки по частите на проекта</strong>.
+                    Още няма прочетени записки за този обект.
+                </p>
+                <button class="btn btn-primary btn-sm" style="margin-top:10px"
+                        onclick="navigateTo('ai-protocols')">📐 Към четенето на записките</button>
+            </div>`;
+        return;
+    }
+    kutiya.innerHTML = _lentaObekt(p, 'kakav')
+        + '<div class="card"><div style="color:var(--muted);font-size:13px">Сглобявам от записките…</div></div>';
+    try {
+        const r = await apiCall('/api/zapiski/rezyume', 'POST',
+            { zapiski: chasti, vid: p.vid === 'lineen' ? 'lineen' : 'sgrada' });
+        if (r.greshka) throw new Error(r.greshka);
+        const novi = _kesSleej(p, _kesPredlozheni(r));
+        if (novi) _s2ZapishiTiho(p, `Какъв е строежът: ${novi} нови предложения от проекта`);
+        kutiya.innerHTML = _lentaObekt(p, 'kakav') + _kesHtml(p, r);
+    } catch (e) {
+        kutiya.innerHTML = _lentaObekt(p, 'kakav')
+            + `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
+    }
+}
+
+function _kesIztochnik(f) {
+    const i = f.iztochnik || {};
+    const kade = [i.chast, i.stranica ? `стр. ${i.stranica}` : ''].filter(Boolean).join(', ');
+    if (!i.citat && !kade) return '';
+    return `<div style="margin-top:3px;font-size:11.5px;color:var(--muted);line-height:1.45">`
+        + (i.citat ? `„${_s2esc(i.citat)}“` : '')
+        + (kade ? ` <span style="white-space:nowrap">— ${_s2esc(kade)}</span>` : '') + '</div>';
+}
+
+function _kesPoleHtml(klyuch, f) {
+    const esc = _s2esc, ime = esc(_KES_IME[klyuch] || klyuch);
+    const podsk = _KES_PODSKAZKA[klyuch]
+        ? `<div style="margin-top:3px;font-size:11.5px;color:var(--muted)">${esc(_KES_PODSKAZKA[klyuch])}</div>` : '';
+    const k64 = encodeURIComponent(klyuch);
+
+    if (!f || !f.sastoyanie) {
+        return `<div style="border-left:3px solid var(--border);padding:3px 0 3px 12px;margin-bottom:11px">
+            <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
+            <div style="font-size:14.5px;color:var(--muted)">[ празно ]</div>${podsk}
+            <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="kesPoprav('${k64}')">Впиши на ръка</button>
+        </div>`;
+    }
+
+    if (f.sastoyanie === 'sporno') {
+        const butoni = (f.varianti || []).map((v, i) => `
+            <button class="btn btn-secondary btn-sm" style="margin:3px 5px 0 0"
+                    onclick="kesIzberiVariant('${k64}', ${i})">
+                ${esc(v.stoynost) || '(празно)'} <span style="opacity:.7">· ${(v.chasti || []).map(esc).join(', ')}</span>
+            </button>`).join('');
+        return `<div style="border-left:3px solid var(--red,#b33030);background:#fdf4f4;border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:11px">
+            <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
+            <div style="font-size:14px;font-weight:700;color:#a02828">остава празно — частите не се връзват</div>
+            <div style="margin-top:4px;font-size:12px;color:var(--slate);line-height:1.55">
+                ${(f.varianti || []).map(v => `<div><strong>${(v.chasti || []).map(esc).join(', ')}:</strong> ${esc(v.stoynost) || '(няма стойност)'}</div>`).join('')}
+            </div>
+            <div style="margin-top:6px">${butoni}
+                <button class="btn btn-ghost btn-sm" style="margin-top:3px" onclick="kesPoprav('${k64}')">Друга стойност…</button>
+            </div>
+        </div>`;
+    }
+
+    if (f.sastoyanie === 'predlozheno') {
+        const predishna = f.predishna
+            ? `<div style="margin-top:3px;font-size:11.5px;color:#b45309">Ново четене дава друго. Преди беше: ${esc(f.predishna)}</div>` : '';
+        return `<div style="border-left:3px solid #d8cfb8;background:var(--surface);border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:11px">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
+                    <div style="font-size:14.5px;font-weight:600;color:var(--slate)">${esc(f.stoynost) || '—'}</div>
+                    ${_kesIztochnik(f)}${predishna}${podsk}
+                </div>
+                <button class="btn btn-primary btn-sm" style="flex-shrink:0;min-width:44px"
+                        title="Потвърди" onclick="kesPotvardi('${k64}')">✔</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="kesPoprav('${k64}')">Поправи</button>
+        </div>`;
+    }
+
+    // потвърдено или поправено
+    const znak = f.sastoyanie === 'popraveno' ? '✍ поправено' : '✓ потвърдено';
+    const koga = f.koga ? new Date(f.koga).toLocaleDateString('bg-BG') : '';
+    const bilo = (f.sastoyanie === 'popraveno' && f.prochetena && _kesZn(f.prochetena) !== _kesZn(f.stoynost))
+        ? ` <span style="color:var(--muted)">· прочетено беше: ${esc(f.prochetena)}</span>` : '';
+    return `<div style="border-left:3px solid var(--green,#2e7d32);padding:3px 0 3px 12px;margin-bottom:11px">
+        <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
+        <div style="font-size:14.5px;font-weight:600">${esc(f.stoynost) || '—'}</div>
+        <div style="margin-top:2px;font-size:11.5px;color:#2e6b32">${znak}${koga ? ' · ' + esc(koga) : ''}${esc(f.koy ? ' · ' + f.koy : '')}${bilo}</div>
+        <div style="margin-top:4px">
+            <button class="btn btn-ghost btn-sm" onclick="kesPoprav('${k64}')">Поправи</button>
+            <button class="btn btn-ghost btn-sm" onclick="kesOtmeni('${k64}')">Отмени</button>
+        </div>
+    </div>`;
+}
+
+function _kesHtml(p, r) {
+    const f = p.fakti || {};
+    const broi = v => _KES_POLETA.filter(([k]) => (f[k]?.sastoyanie || 'prazno') === v).length;
+    const potv = broi('potvardeno') + broi('popraveno');
+    const predl = broi('predlozheno'), sporni = broi('sporno');
+    const vsichki = _KES_POLETA.filter(([k]) => k !== 'zahranvan_obekt' || f[k]).length;
+    const prazni = vsichki - potv - predl - sporni;
+    const zaPotvarzhdavane = _KES_POLETA.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').map(([k]) => k);
+
+    const kolona = (grupa, zaglavie, poyasnenie) => `
+        <div class="card" style="margin:0">
+            <div class="card-title" style="margin-bottom:4px;font-size:13px">${zaglavie}</div>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:12px">${poyasnenie}</p>
+            ${_KES_POLETA.filter(([, , g]) => g === grupa)
+                 .filter(([k]) => k !== 'zahranvan_obekt' || f[k])
+                 .map(([k]) => _kesPoleHtml(k, f[k])).join('')}
+        </div>`;
+
+    return `
+        <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div style="font-size:13px;color:var(--slate)">
+                <strong style="color:#2e6b32">${potv}</strong> потвърдени ·
+                <strong style="color:#8a6522">${predl}</strong> чакат твоето ✔ ·
+                <strong style="color:#b33030">${sporni}</strong> спорни ·
+                <strong>${prazni}</strong> празни
+            </div>
+            ${predl ? `<button class="btn btn-primary btn-sm" style="margin-left:auto"
+                onclick="kesPotvardiVsichki('${encodeURIComponent(JSON.stringify(zaPotvarzhdavane))}')">
+                ✔ Потвърди всички ${predl}</button>` : ''}
+        </div>
+        ${(r.razminavania || []).length ? `<div class="alert alert-warning">
+            Записките не се връзват на ${r.razminavania.length}
+            ${r.razminavania.length === 1 ? 'място' : 'места'} — спорните полета по-долу остават празни,
+            докато не избереш коя част е права.</div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+            ${kolona('proekt', '📐 От проекта', 'Прочетено от записките по частите. Всяка стойност носи цитата си.')}
+            ${kolona('drugo', '📄 От документите и на ръка', 'Проектът не ги казва — идват от разрешението, от нотариалния акт или от теб.')}
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:12px">
+            Сивото чака теб: клик на ✔ го прави твое и то влиза в документите.
+            Поправката бие всичко, а прочетеното се помни.
+        </p>`;
+}
+
+// ── Действията ──────────────────────────────────────────────
+function _kesFakt(k64) {
+    const p = _zhivObekt();
+    const k = decodeURIComponent(k64);
+    if (!p) return {};
+    p.fakti = p.fakti || {};
+    return { p, k, f: p.fakti[k] };
+}
+
+function _kesZapishi(p, opis) {
+    _s2ZapishiTiho(p, opis);
+    renderKakavPage();
+}
+
+function kesPotvardi(k64) {
+    const { p, k, f } = _kesFakt(k64);
+    if (!p || !f) return;
+    p.fakti[k] = { ...f, sastoyanie: 'potvardeno', koy: _s2Koy(), koga: new Date().toISOString() };
+    _kesZapishi(p, `Какъв е строежът: потвърдено „${_KES_IME[k] || k}“`);
+}
+
+function kesPoprav(k64) {
+    const { p, k, f } = _kesFakt(k64);
+    if (!p) return;
+    const nova = prompt(`${_KES_IME[k] || k}:`, (f && f.stoynost) || '');
+    if (nova === null) return;
+    p.fakti[k] = { ...(f || {}), sastoyanie: 'popraveno', stoynost: nova.trim(),
+                   prochetena: (f && f.prochetena) || '', varianti: null,
+                   koy: _s2Koy(), koga: new Date().toISOString() };
+    _kesZapishi(p, `Какъв е строежът: поправено „${_KES_IME[k] || k}“`);
+}
+
+function kesIzberiVariant(k64, i) {
+    const { p, k, f } = _kesFakt(k64);
+    if (!p || !f) return;
+    const v = (f.varianti || [])[i];
+    if (!v) return;
+    p.fakti[k] = { ...f, sastoyanie: 'popraveno', stoynost: v.stoynost, prochetena: '',
+                   iztochnik: { chast: (v.chasti || []).join(', '), citat: '' },
+                   varianti: f.varianti, koy: _s2Koy(), koga: new Date().toISOString() };
+    _kesZapishi(p, `Какъв е строежът: избрано „${_KES_IME[k] || k}“ по ${(v.chasti || []).join(', ')}`);
+}
+
+function kesOtmeni(k64) {
+    const { p, k, f } = _kesFakt(k64);
+    if (!p || !f) return;
+    // Връща се към прочетеното; ако няма такова — полето изчезва.
+    if (f.prochetena) p.fakti[k] = { ...f, sastoyanie: 'predlozheno', stoynost: f.prochetena, koy: '', koga: '' };
+    else delete p.fakti[k];
+    _kesZapishi(p, `Какъв е строежът: отменено „${_KES_IME[k] || k}“`);
+}
+
+function kesPotvardiVsichki(spisak64) {
+    const p = _zhivObekt();
+    if (!p) return;
+    const kluchove = JSON.parse(decodeURIComponent(spisak64));
+    if (!confirm(`Потвърждаваш ${kluchove.length} стойности наведнъж.\n\nВсички ли си проверила?`)) return;
+    const koy = _s2Koy(), koga = new Date().toISOString();
+    let n = 0;
+    for (const k of kluchove) {
+        const f = (p.fakti || {})[k];
+        if (!f || f.sastoyanie !== 'predlozheno') continue;
+        p.fakti[k] = { ...f, sastoyanie: 'potvardeno', koy, koga };
+        n++;
+    }
+    _kesZapishi(p, `Какъв е строежът: потвърдени ${n} стойности`);
+}
 
 function renderZapiskiKarta() {
     const box = document.getElementById('zapiski-karta');
