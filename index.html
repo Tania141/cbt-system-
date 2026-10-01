@@ -4932,6 +4932,11 @@ function _zapiskiHtml(r) {
                     ${s.edinno ? esc(s.stoynost) : ''}
                     ${s.edinno ? '' : _zpVariantiHtml(s)}
                 </div>`).join('')}</div>` : ''}
+            ${r.mahnati_chuzhdi ? `<div style="font-size:11px;color:var(--muted);margin:6px 0">
+                ℹ️ ${r.mahnati_chuzhdi} признака са отхвърлени — прочетени са от името на
+                <strong>захранвания</strong> обект, а не от самия строеж.
+                (Кабелната линия няма гаражи и етажи — те са на сградата, която захранва.)
+            </div>` : ''}
             ${razmin ? `<div class="alert alert-warning" style="margin:10px 0">
                 <div><strong>⚠️ Частите не се връзват (${(r.razminavania || []).length})</strong>
                 <div style="font-size:12px;margin-top:4px">${razmin}</div></div>
