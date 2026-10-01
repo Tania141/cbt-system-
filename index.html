@@ -4844,9 +4844,18 @@ function _zpRazliki(varianti) {
 // (ABBYY), не от проекта: „VНI-503“ е „VIII-503“ с кирилско Н. Казва се, не се
 // поправя — поправката е на човека. (01.10.2026, казано от оператора)
 function _zpOcr(v) {
-    if (!(v.smesena || []).length) return '';
-    return ` <span style="color:#b45309;font-size:11px" title="В тази дума има и латиница, и кирилица">`
-        + `⌨ прилича на грешка от разчитането: ${v.smesena.map(_s2esc).join(', ')}</span>`;
+    const belezhki = [];
+    if ((v.smesena || []).length)
+        belezhki.push(['в думата има и латиница, и кирилица', v.smesena]);
+    // Номерът на УПИ е римско число. „VHI“ не е — ABBYY е прочел двете „II“
+    // като едно „H“, при това латинско, тоест нищо не се смесва.
+    if ((v.nevalidno || []).length)
+        belezhki.push(['не е валидно римско число', v.nevalidno]);
+    if (!belezhki.length) return '';
+    return belezhki.map(([zashto, dumi]) =>
+        ` <span style="color:#b45309;font-size:11px" title="${_s2esc(zashto)}">`
+        + `⌨ прилича на грешка от разчитането (${_s2esc(zashto)}): `
+        + `${dumi.map(_s2esc).join(', ')}</span>`).join('');
 }
 
 function _zpVariantiHtml(x) {
