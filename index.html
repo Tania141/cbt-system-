@@ -4805,6 +4805,56 @@ async function zapiskiRezyume() {
     }
 }
 
+// Три почти еднакви изречения по 200 знака са нечетими — не се вижда КЪДЕ се
+// различават. Реже се общото начало и общият край, показва се само разликата,
+// с малко контекст. (01.10.2026, след първото четене на истински записки)
+function _zpRazliki(varianti) {
+    const tekst = varianti.map(v => String(v.stoynost ?? ''));
+    if (tekst.length < 2 || tekst.some(t => t.length < 40)) return null;
+
+    // Първо по ДУМИ: дългите наименования се различават на две-три места
+    // наведнъж („VIII“ срещу „VНI“ И „Sofia“ срещу „София“), а рязането на общо
+    // начало и край тогава връща почти целия текст.
+    const dumi = tekst.map(t => t.split(/\s+/));
+    if (dumi.every(d => d.length === dumi[0].length) && dumi[0].length > 6) {
+        const razlichni = [];
+        for (let i = 0; i < dumi[0].length; i++)
+            if (dumi.some(d => d[i] !== dumi[0][i])) razlichni.push(i);
+        if (razlichni.length && razlichni.length <= dumi[0].length / 3)
+            return dumi.map(d => ({ samo_dumi: razlichni.map(i => d[i]) }));
+    }
+
+    // Иначе: общото начало и краят се режат, показва се средата с малко контекст.
+    let nach = 0;
+    const naiKratak = Math.min(...tekst.map(t => t.length));
+    while (nach < naiKratak && tekst.every(t => t[nach] === tekst[0][nach])) nach++;
+    let kraj = 0;
+    while (kraj < naiKratak - nach
+           && tekst.every(t => t[t.length - 1 - kraj] === tekst[0][tekst[0].length - 1 - kraj])) kraj++;
+    if (nach + kraj < 30) return null;
+    const K = 22;
+    return tekst.map(t => ({
+        predi: (nach > K ? '…' : '') + t.slice(Math.max(0, nach - K), nach),
+        razlika: t.slice(nach, t.length - kraj),
+        sled: t.slice(t.length - kraj, t.length - kraj + K) + (kraj > K ? '…' : ''),
+    }));
+}
+
+function _zpVariantiHtml(x) {
+    const esc = _s2esc;
+    const chasti = v => (v.chasti || []).map(esc).join(', ');
+    const razliki = _zpRazliki(x.varianti || []);
+    if (!razliki) {
+        return (x.varianti || []).map(v => `<div style="margin-left:14px">
+            ${esc(v.stoynost)} <span style="color:var(--muted)">— ${chasti(v)}</span></div>`).join('');
+    }
+    return razliki.map((r, i) => `<div style="margin-left:14px">
+        ${r.samo_dumi
+            ? r.samo_dumi.map(d => `<mark style="background:#fde68a;padding:0 2px">${esc(d)}</mark>`).join(' <span style="color:var(--muted)">…</span> ')
+            : `<span style="color:var(--muted)">${esc(r.predi)}</span><mark style="background:#fde68a;padding:0 2px">${esc(r.razlika) || '(нищо)'}</mark><span style="color:var(--muted)">${esc(r.sled)}</span>`}
+        <span style="color:var(--muted)">— ${chasti(x.varianti[i])}</span></div>`).join('');
+}
+
 function _zpRed(x) {
     const str = x.stranica ? ` <span style="color:var(--muted)">стр. ${x.stranica}</span>` : '';
     const chast = x.chast ? ` <span style="color:var(--muted)">· ${_s2esc(x.chast)}</span>` : '';
@@ -4825,9 +4875,7 @@ function _zapiskiHtml(r) {
     const razmin = (r.razminavania || []).map(x => `
         <div style="padding:6px 0;border-bottom:1px solid var(--border-light)">
             <strong>${esc(x.kakvo)}</strong>
-            ${(x.varianti || []).map(v => `<div style="margin-left:14px">
-                ${esc(v.stoynost)} <span style="color:var(--muted)">— ${(v.chasti || []).map(esc).join(', ')}</span>
-            </div>`).join('')}
+            ${_zpVariantiHtml(x)}
         </div>`).join('');
 
     const priznaci = (r.priznaci || []).map(v => {
@@ -4861,8 +4909,8 @@ function _zapiskiHtml(r) {
             </div>
             ${(r.shapka || []).length ? `<div style="margin-bottom:10px">${
                 r.shapka.map(s => `<div style="padding:2px 0">${s.edinno ? '✅' : '⚠️'} ${esc(s.kakvo)}:
-                    ${s.edinno ? esc(s.stoynost)
-                               : s.varianti.map(v => `${esc(v.stoynost)} <span style="color:var(--muted)">(${(v.chasti || []).map(esc).join(', ')})</span>`).join(' срещу ')}
+                    ${s.edinno ? esc(s.stoynost) : ''}
+                    ${s.edinno ? '' : _zpVariantiHtml(s)}
                 </div>`).join('')}</div>` : ''}
             ${razmin ? `<div class="alert alert-warning" style="margin:10px 0">
                 <div><strong>⚠️ Частите не се връзват (${(r.razminavania || []).length})</strong>
