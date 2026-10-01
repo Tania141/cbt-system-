@@ -4849,13 +4849,15 @@ function _zpOcr(v) {
         belezhki.push(['в думата има и латиница, и кирилица', v.smesena]);
     // Номерът на УПИ е римско число. „VHI“ не е — ABBYY е прочел двете „II“
     // като едно „H“, при това латинско, тоест нищо не се смесва.
+    // Операторът, 01.10.2026: „ако не е римско число, не е УПИ“ — това е
+    // правило, не предположение. Затова се казва направо.
     if ((v.nevalidno || []).length)
-        belezhki.push(['не е валидно римско число', v.nevalidno]);
+        belezhki.push(['номерът на УПИ е римско число — това не е', v.nevalidno]);
     if (!belezhki.length) return '';
     return belezhki.map(([zashto, dumi]) =>
-        ` <span style="color:#b45309;font-size:11px" title="${_s2esc(zashto)}">`
-        + `⌨ прилича на грешка от разчитането (${_s2esc(zashto)}): `
-        + `${dumi.map(_s2esc).join(', ')}</span>`).join('');
+        ` <span style="color:#b45309;font-size:11px" title="Най-често идва от разчитането на скан">`
+        + `⚠️ ${_s2esc(zashto)}: ${dumi.map(_s2esc).join(', ')}`
+        + ` <span style="color:var(--muted)">(най-често от разчитането на скан)</span></span>`).join('');
 }
 
 function _zpVariantiHtml(x) {
