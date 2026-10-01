@@ -4840,19 +4840,28 @@ function _zpRazliki(varianti) {
     }));
 }
 
+// Дума с латиница И кирилица наведнъж почти винаги идва от разчитането на скан
+// (ABBYY), не от проекта: „VНI-503“ е „VIII-503“ с кирилско Н. Казва се, не се
+// поправя — поправката е на човека. (01.10.2026, казано от оператора)
+function _zpOcr(v) {
+    if (!(v.smesena || []).length) return '';
+    return ` <span style="color:#b45309;font-size:11px" title="В тази дума има и латиница, и кирилица">`
+        + `⌨ прилича на грешка от разчитането: ${v.smesena.map(_s2esc).join(', ')}</span>`;
+}
+
 function _zpVariantiHtml(x) {
     const esc = _s2esc;
     const chasti = v => (v.chasti || []).map(esc).join(', ');
     const razliki = _zpRazliki(x.varianti || []);
     if (!razliki) {
         return (x.varianti || []).map(v => `<div style="margin-left:14px">
-            ${esc(v.stoynost)} <span style="color:var(--muted)">— ${chasti(v)}</span></div>`).join('');
+            ${esc(v.stoynost)} <span style="color:var(--muted)">— ${chasti(v)}</span>${_zpOcr(v)}</div>`).join('');
     }
     return razliki.map((r, i) => `<div style="margin-left:14px">
         ${r.samo_dumi
             ? r.samo_dumi.map(d => `<mark style="background:#fde68a;padding:0 2px">${esc(d)}</mark>`).join(' <span style="color:var(--muted)">…</span> ')
             : `<span style="color:var(--muted)">${esc(r.predi)}</span><mark style="background:#fde68a;padding:0 2px">${esc(r.razlika) || '(нищо)'}</mark><span style="color:var(--muted)">${esc(r.sled)}</span>`}
-        <span style="color:var(--muted)">— ${chasti(x.varianti[i])}</span></div>`).join('');
+        <span style="color:var(--muted)">— ${chasti(x.varianti[i])}</span>${_zpOcr(x.varianti[i])}</div>`).join('');
 }
 
 function _zpRed(x) {
