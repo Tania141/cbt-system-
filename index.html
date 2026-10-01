@@ -1412,6 +1412,7 @@
                     <p class="page-subtitle">Генериране с верификация срещу РС и одобрен проект</p>
                 </div>
             </div>
+            <div id="zapiski-karta"></div>
             <div id="od-ai-karta"></div>
             <div id="ai-protocols-content"></div>
         </div>
@@ -2922,6 +2923,7 @@ function smeniObekt(id, stranica) {
 }
 
 function renderAiProtocols() {
+    renderZapiskiKarta();
     renderOdAiKarta();
     const content = document.getElementById('ai-protocols-content');
     const project = appData.currentProject;
@@ -4671,6 +4673,215 @@ function s2Otmeni(k64) {
 // ОТДЕЛНА опция (операторът, 16.09.2026). Обикновеният доклад в „Актове и
 // протоколи“ — само паспорт и {{…}} — не се пипа. Тук същият шаблон, а отгоре
 // потвърденото с хартията; при разлика с паспорта редът остава с точки.
+// ═══════════════════════════════════════════════════════════
+//  ЗАПИСКИТЕ ПО ЧАСТИТЕ НА ПРОЕКТА (01.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Операторът: „всеки строеж си има проекти по всички части, в тях са описани
+// какви материали трябва да бъдат вложени… от всяка записка може да се извлече
+// чек лист за конкретен обект“. Дотук системата питаше оператора за всичко,
+// което чеклистът не може да знае (26 от 86 реда „ако е приложимо“). Записката
+// го знае — пробата с ДЖИХАТ извади пет признака без нито един въпрос.
+// Отделна карта, нищо работещо не се пипа.
+
+const _ZP_RAZDELI = [
+    ['priznaci',    '🔑 Признаци — отговорени от проекта'],
+    ['drug_proekt', '🔗 По друг проект — другите строежи на площадката'],
+    ['materiali',   '🧱 Материали — за тях ще трябват декларации'],
+    ['iziskvania',  '🧪 Какво изисква проектът да се докаже'],
+    ['chisla',      '📐 Числа за сверяване'],
+    ['instalacii',  '⚙️ Инсталации и системи'],
+    ['normi',       '📖 Наредби, на които проектът стъпва'],
+];
+
+function renderZapiskiKarta() {
+    const box = document.getElementById('zapiski-karta');
+    if (!box) return;
+    const p = _zhivObekt();
+    if (!p) { box.innerHTML = ''; return; }
+    const z = p.zapiski || {};
+    const chasti = z.chasti || [];
+    box.innerHTML = `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:8px">📐 Прочети записките по частите на проекта</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                Проектът знае това, което системата иначе пита теб: има ли газ, гараж, асансьор,
+                колко етажа, какви материали се влагат. Качи обяснителните записки —
+                кодът вади признаците, материалите и числата, и показва къде частите
+                <strong>не се връзват помежду си</strong>.
+                <br><strong>Записка на .docx или текстов PDF се чете безплатно</strong> — само сканите минават през АИ.
+                Стар <code>.doc</code> не се чете: запиши го като .docx.
+            </p>
+            <div class="form-grid" style="margin-bottom:10px">
+                <div class="form-group">
+                    <label class="form-label">Файлове с записките</label>
+                    <input type="file" id="zp-fajlove" class="form-input" multiple
+                           accept=".pdf,.docx,.md,.txt,.jpg,.jpeg,.png,.webp,.tif,.tiff">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Четец</label>
+                    <select id="zp-chetec" class="form-input">
+                        <option value="auto">Автоматично (основен, с резервен)</option>
+                        <option value="claude">Само Claude</option>
+                        <option value="mistral">Само Mistral</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-primary btn-sm" onclick="zapiskiCheti()">📖 Прочети записките</button>
+                ${chasti.length ? `<button type="button" class="btn btn-secondary btn-sm" onclick="zapiskiRezyume()">🔁 Сглоби пак</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="zapiskiIzchisti()">Изчисти</button>` : ''}
+            </div>
+            <div id="zp-hod" style="font-size:12px;color:var(--muted);margin-top:10px"></div>
+            <div id="zp-rezultat" style="margin-top:12px"></div>
+        </div>`;
+    if (chasti.length) zapiskiRezyume();
+}
+
+async function zapiskiCheti() {
+    const p = _zhivObekt();
+    if (!p) { showAlert('error', 'Първо избери обект.'); return; }
+    const fajlove = [...(document.getElementById('zp-fajlove')?.files || [])];
+    if (!fajlove.length) { showAlert('error', 'Избери записките.'); return; }
+    const hod = document.getElementById('zp-hod');
+    const z = (p.zapiski = p.zapiski || { chasti: [] });
+    hod.innerHTML = fajlove.map((f, i) => `<div id="zp-f-${i}">· ${_s2esc(f.name)}</div>`).join('');
+    const znak = (i, t) => { const e = document.getElementById('zp-f-' + i); if (e) e.innerHTML = t; };
+    let prochetени = 0;
+    for (let i = 0; i < fajlove.length; i++) {
+        const f = fajlove[i], ime = _s2esc(f.name);
+        if (/\.doc$/i.test(f.name)) { znak(i, `⚠️ ${ime} — стар .doc, запиши го като .docx`); continue; }
+        if (f.size > 25 * 1024 * 1024) { znak(i, `⚠️ ${ime} — над 25 MB`); continue; }
+        znak(i, `⏳ ${ime} — чета…`);
+        try {
+            const r = await apiCall('/api/zapiski/chete', 'POST', {
+                pi: p.pi, chetec: document.getElementById('zp-chetec')?.value || 'auto',
+                fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+            });
+            if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
+            const zap = r.zapiska;
+            // Ново четене на същата част заменя старото ѝ четене.
+            z.chasti = z.chasti.filter(x => x.fajl !== f.name);
+            z.chasti.push(zap);
+            prochetени++;
+            znak(i, `✓ ${ime} — <strong>${_s2esc(zap.chast_ime || zap.chast_kod || '?')}</strong>`
+                + ` · ${(zap.priznaci || []).length} признака · ${(zap.materiali || []).length} материала`
+                + (zap.ot_tekst ? ' <span style="color:var(--green,#2e7d32)">· от текст (безплатно)</span>'
+                               : zap.sken ? ' <span style="color:var(--muted)">· скан</span>' : '')
+                + ` <span style="color:var(--muted)">· ${_s2esc(zap.chetec || '')}</span>`);
+        } catch (e) {
+            znak(i, `❌ ${ime} — ${_s2esc(e.message)}`);
+        }
+    }
+    if (prochetени) {
+        z.koga = new Date().toISOString();
+        _zapishiObekt(p, `Записки: прочетени ${prochetени} части`);
+    }
+    zapiskiRezyume();
+}
+
+function zapiskiIzchisti() {
+    const p = _zhivObekt();
+    if (!p || !p.zapiski) return;
+    if (!confirm('Да изчистя прочетените записки за този обект?')) return;
+    delete p.zapiski;
+    _zapishiObekt(p, 'Записки: прочетеното е изчистено');
+    renderZapiskiKarta();
+}
+
+async function zapiskiRezyume() {
+    const p = _zhivObekt();
+    const kutiya = document.getElementById('zp-rezultat');
+    if (!p || !kutiya) return;
+    const chasti = p.zapiski?.chasti || [];
+    if (!chasti.length) { kutiya.innerHTML = ''; return; }
+    kutiya.innerHTML = '<div style="color:var(--muted);font-size:12px">Сглобявам…</div>';
+    try {
+        const r = await apiCall('/api/zapiski/rezyume', 'POST',
+            { zapiski: chasti, vid: p.vid === 'lineen' ? 'lineen' : 'sgrada' });
+        if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(r.greshka)}</div>`; return; }
+        kutiya.innerHTML = _zapiskiHtml(r);
+    } catch (e) {
+        kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
+    }
+}
+
+function _zpRed(x) {
+    const str = x.stranica ? ` <span style="color:var(--muted)">стр. ${x.stranica}</span>` : '';
+    const chast = x.chast ? ` <span style="color:var(--muted)">· ${_s2esc(x.chast)}</span>` : '';
+    const citat = x.citat ? `<div style="color:var(--muted);font-size:11px;margin-left:14px">„${_s2esc(x.citat)}“${str}</div>` : '';
+    const glava = [x.kakvo, x.material, x.ime, x.akt].find(v => v) || '';
+    const opis = [x.opisanie, x.kade, x.chlen, x.zashto].filter(v => v).join(' · ');
+    const chislo = x.stoynost ? ` — <strong>${_s2esc(x.stoynost)}${x.merna ? ' ' + _s2esc(x.merna) : ''}</strong>` : '';
+    return `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)">
+        ${_s2esc(glava)}${chislo}${opis ? ` <span style="color:var(--muted)">(${_s2esc(opis)})</span>` : ''}${chast}
+        ${citat}</div>`;
+}
+
+function _zapiskiHtml(r) {
+    const esc = _s2esc;
+    const prochetени = (r.chasti_prochetini || []).map(c => esc(c.ime)).join(' · ');
+    const lipsvat = (r.chasti_lipsvat || []).map(c => esc(c.ime)).join(' · ');
+
+    const razmin = (r.razminavania || []).map(x => `
+        <div style="padding:6px 0;border-bottom:1px solid var(--border-light)">
+            <strong>${esc(x.kakvo)}</strong>
+            ${(x.varianti || []).map(v => `<div style="margin-left:14px">
+                ${esc(v.stoynost)} <span style="color:var(--muted)">— ${(v.chasti || []).map(esc).join(', ')}</span>
+            </div>`).join('')}
+        </div>`).join('');
+
+    const priznaci = (r.priznaci || []).map(v => {
+        const t = v.tvardenia[0] || {};
+        return `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)">
+            ${v.edinno ? '✅' : '⚠️'} <strong>${esc(v.ime || v.priznak)}</strong>
+            — ${v.edinno ? esc(v.stoynost)
+                         : v.tvardenia.map(x => `${esc(x.stoynost)} <span style="color:var(--muted)">(${esc(x.chast)})</span>`).join(' срещу ')}
+            ${t.citat ? `<div style="color:var(--muted);font-size:11px;margin-left:18px">„${esc(t.citat)}“${t.stranica ? ` стр. ${t.stranica}` : ''}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    const proektanti = (r.proektanti || []).map(p => `
+        <div style="padding:3px 0">${esc(p.ime)}
+            <span style="color:var(--muted)">— ${(p.chasti || []).map(esc).join(', ') || '?'}</span>
+            ${p.registraciya ? `<span style="color:var(--muted);font-size:11px"> · ${esc(p.registraciya)}</span>` : ''}
+        </div>`).join('');
+
+    const razdeli = _ZP_RAZDELI.filter(([k]) => k !== 'priznaci' && (r[k] || []).length)
+        .map(([k, ime]) => `
+            <details style="margin-top:8px">
+                <summary style="cursor:pointer;font-weight:600;font-size:13px">${ime} (${r[k].length})</summary>
+                <div style="margin-top:6px">${r[k].map(_zpRed).join('')}</div>
+            </details>`).join('');
+
+    return `
+        <div style="font-size:13px">
+            <div style="margin-bottom:10px">
+                <strong>Прочетени части:</strong> ${prochetени || '—'}
+                ${lipsvat ? `<div style="color:var(--muted);margin-top:3px"><strong>Липсват:</strong> ${lipsvat}</div>` : ''}
+            </div>
+            ${(r.shapka || []).length ? `<div style="margin-bottom:10px">${
+                r.shapka.map(s => `<div style="padding:2px 0">${s.edinno ? '✅' : '⚠️'} ${esc(s.kakvo)}:
+                    ${s.edinno ? esc(s.stoynost)
+                               : s.varianti.map(v => `${esc(v.stoynost)} <span style="color:var(--muted)">(${(v.chasti || []).map(esc).join(', ')})</span>`).join(' срещу ')}
+                </div>`).join('')}</div>` : ''}
+            ${razmin ? `<div class="alert alert-warning" style="margin:10px 0">
+                <div><strong>⚠️ Частите не се връзват (${(r.razminavania || []).length})</strong>
+                <div style="font-size:12px;margin-top:4px">${razmin}</div></div>
+            </div>` : `<div class="alert alert-success" style="margin:10px 0">
+                ✅ Частите не си противоречат по това, което казват.</div>`}
+            ${priznaci ? `<details open style="margin-top:8px">
+                <summary style="cursor:pointer;font-weight:600;font-size:13px">🔑 Признаци — отговорени от проекта (${r.priznaci.length})</summary>
+                <div style="margin-top:6px">${priznaci}</div></details>` : ''}
+            ${razdeli}
+            ${proektanti ? `<details style="margin-top:8px">
+                <summary style="cursor:pointer;font-weight:600;font-size:13px">👷 Проектанти (${r.proektanti.length})</summary>
+                <div style="margin-top:6px">${proektanti}</div>
+                <p style="font-size:11px;color:var(--muted);margin-top:6px">
+                    За всеки се искат пълна проектантска правоспособност и застраховка професионална отговорност.</p>
+            </details>` : ''}
+        </div>`;
+}
+
 function renderOdAiKarta() {
     const box = document.getElementById('od-ai-karta');
     if (!box) return;
