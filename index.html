@@ -1423,7 +1423,7 @@
                     <h1 class="page-title">История на промените</h1>
                     <p class="page-subtitle">Пълен одит на всички действия в системата</p>
                 </div>
-                <button class="btn btn-ghost btn-sm" onclick="if(confirm('Изчисти цялата история?')){appData.history=[];saveData();renderHistory();}">
+                <button class="btn btn-ghost btn-sm" onclick="izchistiIstoria()">
                     🗑️ Изчисти история
                 </button>
             </div>
@@ -2237,9 +2237,13 @@ function loadData() {
     filterPassports();
     updateNavBadge();
 
+    // Консултантите и историята — ПРЕДИ обектите, защото обектите се връзват
+    // към консултант по id. (01.10.2026)
     // Load projects from API (authoritative source); localStorage is the cache/fallback
     if (appData.apiUrl && getToken()) {
-        apiCall('/api/passports')
+        zarediObshtiDanni()
+            .catch(e => console.warn('общи данни:', e))
+            .then(() => apiCall('/api/passports'))
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
                     // Normalise consultant: match by id first, then by name, so the
@@ -2306,6 +2310,121 @@ function _kazhiCheNeEZapisano(e) {
         120000);
 }
 
+// ═══════════════════════════════════════════════════════════
+//  ОБЩИ ДАННИ НА ФИРМАТА — консултанти и история (01.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Паспортите отдавна отиват в базата, но тези двете стояха САМО в браузъра:
+// затова Edge и Chrome показваха различни консултанти, а единственото им копие
+// беше в localStorage. Сега вървят към `/api/danni/<ключ>`.
+//
+// Правилото при разминаване е различно за двете, защото са различни по природа:
+//   · консултантите са ЕДИН списък, който се редактира — при зареждане печели
+//     сървърът (общата истина), при редакция се качва;
+//   · историята е дневник, който всеки браузър трупа поотделно — тя се СЛИВА,
+//     иначе единият би изтрил записите на другия.
+
+function _danniMozhe() {
+    return !!(appData.apiUrl && getToken());
+}
+
+async function _danniVzemi(klyuch) {
+    if (!_danniMozhe()) return null;
+    try {
+        const r = await apiCall(`/api/danni/${klyuch}`, 'GET');
+        return r && r.stoynost ? r.stoynost : null;
+    } catch (e) {
+        console.warn(`не можах да прочета „${klyuch}“ от сървъра:`, e.message);
+        return null;
+    }
+}
+
+// Тихо: вика се при всяка редакция, а едно сиво съобщение на всяко записване
+// е по-лошо от никакво. Казва се само когато НЕ е станало.
+async function _danniZapishi(klyuch, stoynost) {
+    if (!_danniMozhe()) return false;
+    try {
+        await apiCall(`/api/danni/${klyuch}`, 'POST', { stoynost });
+        return true;
+    } catch (e) {
+        showAlert('error', `⚠️ „${klyuch}“ не е качено на сървъра: ${e.message}. `
+            + 'Остава само в този браузър.');
+        return false;
+    }
+}
+
+function kachiKonsultanti() {
+    return _danniZapishi('konsultanti', appData.consultants || []);
+}
+
+// Историята се трупа по много на минута — качва се веднъж, след като шумът
+// утихне, а не на всеки ред.
+let _istoriaTaymer = null;
+function kachiIstoriaSledMalko() {
+    if (!_danniMozhe()) return;
+    clearTimeout(_istoriaTaymer);
+    _istoriaTaymer = setTimeout(() => {
+        _danniZapishi('istoria', (appData.history || []).slice(0, 500));
+    }, 5000);
+}
+
+// Зарежда двете от сървъра при влизане. Връща обещание, за да могат обектите
+// да изчакат консултантите — те се връзват към консултант по id.
+async function zarediObshtiDanni() {
+    if (!_danniMozhe()) return;
+
+    const [otSarvara, istoria] = await Promise.all([
+        _danniVzemi('konsultanti'),
+        _danniVzemi('istoria'),
+    ]);
+
+    // Консултанти: сървърът е общата истина. Ако там още няма нищо, качваме
+    // нашите — това е първото пренасяне и се случва веднъж.
+    if (Array.isArray(otSarvara) && otSarvara.length) {
+        appData.consultants = otSarvara;
+        renderConsultants();
+    } else if ((appData.consultants || []).length) {
+        await kachiKonsultanti();
+    }
+
+    // История: сливане, за да не изтрие единият браузър записите на другия.
+    if (Array.isArray(istoria) && istoria.length) {
+        const predi = (appData.history || []).length;
+        appData.history = _slejIstoria(appData.history, istoria);
+        if (appData.history.length !== predi) renderHistory();
+    }
+
+    saveData();
+}
+
+// Изчистването трябва да стигне и до сървъра ВЕДНАГА — иначе при следващото
+// влизане сливането би възкресило всичко изтрито. Затова не през таймера.
+async function izchistiIstoria() {
+    if (!confirm('Изчисти цялата история? Изтрива се и от сървъра, за всички браузъри.')) return;
+    clearTimeout(_istoriaTaymer);
+    appData.history = [];
+    saveData();
+    renderHistory();
+    if (_danniMozhe() && await _danniZapishi('istoria', [])) {
+        showAlert('success', 'Историята е изчистена — и тук, и на сървъра.');
+    }
+}
+
+// Два браузъра, два различни дневника — взема се обединението, без повторенията.
+function _slejIstoria(mestna, ot_sarvara) {
+    const vsichki = [...(mestna || []), ...(ot_sarvara || [])];
+    const vidyani = new Set();
+    const slyata = [];
+    for (const z of vsichki) {
+        if (!z || !z.date) continue;
+        const klyuch = `${z.date}|${z.type || ''}|${z.pi || ''}|${z.detail || z.description || ''}`;
+        if (vidyani.has(klyuch)) continue;
+        vidyani.add(klyuch);
+        slyata.push(z);
+    }
+    slyata.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    return slyata.slice(0, 500);
+}
+
 // Мястото в браузъра е около 5 MB. Като се прехвърли 4, казваме веднъж на час —
 // докато има какво да се направи, а не след като записът вече е отказал.
 let _myastoKazano = 0;
@@ -2328,6 +2447,7 @@ function addHistory(type, pi, detail) {
         date: new Date().toISOString()
     });
     if (appData.history.length > 500) appData.history.pop();
+    kachiIstoriaSledMalko();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -5738,6 +5858,7 @@ function addToHistory(type, pi, description) {
     if (!appData.history) appData.history = [];
     appData.history.unshift({ type, pi, description, date: new Date().toISOString() });
     saveData();
+    kachiIstoriaSledMalko();
 }
 
 function renderVozlagatelSelector(project) {
@@ -7784,6 +7905,7 @@ function saveConsultant() {
     }
 
     saveData();
+    kachiKonsultanti();
     renderConsultants();
     resetConsultantForm();
 }
@@ -7832,6 +7954,7 @@ function deleteConsultant(id) {
     if (!confirm('Изтрий консултанта?')) return;
     appData.consultants = appData.consultants.filter(c => c.id !== id);
     saveData();
+    kachiKonsultanti();
     renderConsultants();
     showAlert('success', 'Консултантът е изтрит.');
 }
