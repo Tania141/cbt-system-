@@ -4927,16 +4927,96 @@ function _predstoi(kutiya, p, stranica, zaglavie, redove, otkade) {
         </div>`;
 }
 
+// Имотът е ВХОДЪТ: тук са всичките строежи, а под всеки — основните му
+// документи. Клик върху строеж влиза в неговите проверки. (Операторът, 02.10.2026)
 function renderImotPage() {
     const p = _obektIliIzbor('imot-content', 'imot', 'Изберете имота');
     if (!p) return;
-    _predstoi('imot-content', p, 'imot', '🗺️ Имотът', [
-        'Идентификатор по КККР, ник, адрес, УПИ и местност',
-        'Скица и градоустройствени показатели',
-        'Акт 16 — един за всички строежи в имота',
-        'Списъкът на строежите, с добавяне и преименуване',
-    ], 'Идва от „Изходни данни и РС“ (градоустройството и скицата) и от записките. '
-     + 'Докато не се премести, работи старата страница.');
+    const esc = _s2esc;
+    const spisak = _stroezhi(p), tekusht = _indeksStroezh(p);
+
+    const red = (etiket, stoynost, lipsva) => `
+        <div style="display:flex;gap:8px;padding:3px 0;font-size:12.5px">
+            <span style="color:var(--muted);min-width:132px">${esc(etiket)}</span>
+            <span style="${lipsva ? 'color:var(--muted)' : 'font-weight:600'}">${esc(stoynost)}</span>
+        </div>`;
+
+    const kartaStroezh = (st, i) => {
+        const rs = st.permit || {};
+        const zapiski = (st.zapiski?.chasti || []).length;
+        const dokumenti = (st.sloy2?.od?.dokumenti || []).length;
+        const sveri = Object.values(st.fakti || {}).filter(f => f && (f.sastoyanie === 'potvardeno' || f.sastoyanie === 'popraveno')).length;
+        return `
+        <div class="card" style="margin:0 0 12px;${i === tekusht ? 'border-color:var(--gold)' : ''}">
+            <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+                <div style="flex:1;min-width:260px">
+                    <div style="font-size:17px;font-weight:700">${esc(_imeStroezh(st, i))}</div>
+                    <div style="margin-top:8px">
+                        ${red('Разрешение за строеж', rs.number ? `№ ${rs.number}${rs.date ? ' от ' + rs.date : ''}` : 'няма', !rs.number)}
+                        ${red('Категория', st.kategoria ? `${st.kategoria} категория` : 'няма', !st.kategoria)}
+                        ${red('Заповедна книга', (st.zk || {}).number || 'няма', !(st.zk || {}).number)}
+                        ${red('Надзор', (st.consultant || {}).name || 'няма', !(st.consultant || {}).name)}
+                    </div>
+                </div>
+                <div style="min-width:200px">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Събрано</div>
+                    ${red('Записки по части', zapiski ? `${zapiski}` : 'няма', !zapiski)}
+                    ${red('Прочетени документи', dokumenti ? `${dokumenti}` : 'няма', !dokumenti)}
+                    ${red('Сверени стойности', sveri ? `${sveri}` : 'няма', !sveri)}
+                </div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:7px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="vlezVStroezh(${i}, 'kakav')">✔️ Проверки</button>
+                <button class="btn btn-secondary btn-sm" onclick="vlezVStroezh(${i}, 'proekt')">📐 Проектът</button>
+                <button class="btn btn-secondary btn-sm" onclick="vlezVStroezh(${i}, 'dokumentite')">🗂️ Документите</button>
+                <button class="btn btn-ghost btn-sm" onclick="preimenuvajStroezh(${i})">преименувай</button>
+            </div>
+        </div>`;
+    };
+
+    document.getElementById('imot-content').innerHTML = _lentaObekt(p, 'imot') + `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:10px">🗺️ Имотът</div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px">
+                ${red('Идентификатор', p.pi || 'няма', !p.pi)}
+                ${red('Ник', p.nik || 'няма', !p.nik)}
+                ${red('Адрес', p.address || 'няма', !p.address)}
+                ${red('УПИ', (p.gradoustroystvo || {}).upi || '—', true)}
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">
+                Общо за всички строежи в имота: имотът, собствеността и Акт 16.
+                Градоустройството и скицата още живеят в „Изходни данни и РС“ — предстои да дойдат тук.
+            </p>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px">
+            <div style="font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">
+                Строежи в имота · ${spisak.length}
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="dobaviStroezh()">+ строеж</button>
+        </div>
+        ${spisak.map(kartaStroezh).join('')}`;
+}
+
+// Избира строежа и влиза в неговия екран.
+function vlezVStroezh(i, stranica) {
+    const p = _zhivObekt();
+    if (!p) return;
+    p.tekusht_stroezh = Number(i);
+    appData.currentProject = p;
+    saveData();
+    navigateTo(stranica);
+}
+
+function preimenuvajStroezh(i) {
+    const p = _zhivObekt();
+    if (!p) return;
+    const st = _stroezhi(p)[i];
+    if (!st) return;
+    const novo = prompt('Наименование на строежа:', st.stroej || '');
+    if (novo === null) return;
+    st.stroej = novo.trim();
+    _zapishiObekt(p, `Строежът е преименуван: ${st.stroej || 'без име'}`);
+    renderImotPage();
 }
 
 function renderSobstvenostPage() {
