@@ -1321,7 +1321,7 @@
 
         <div class="sidebar-section-label faza-glava">Строежът</div>
         <button class="nav-item" onclick="navigateTo('kakav')" id="nav-kakav">
-            <span class="nav-icon">🧩</span> Какъв е строежът
+            <span class="nav-icon">✔️</span> Проверки
         </button>
         <button class="nav-item" onclick="navigateTo('proekt')" id="nav-proekt">
             <span class="nav-icon">📐</span> Проектът
@@ -1695,8 +1695,8 @@
         <div class="page" id="page-kakav">
             <div class="page-header">
                 <div>
-                    <h1 class="page-title">Какъв е строежът</h1>
-                    <p class="page-subtitle">Прочетено от записките. Нищо не влиза в документ, преди ти да го потвърдиш.</p>
+                    <h1 class="page-title">Проверки</h1>
+                    <p class="page-subtitle">Прочетеното от проекта и от документите. Нищо не влиза в документ, преди ти да го потвърдиш.</p>
                 </div>
             </div>
             <div id="kakav-content" style="max-width:1100px"></div>
@@ -4985,7 +4985,7 @@ function renderNadzorPage() {
 
 async function renderKakavPage() {
     const p = _obektIliIzbor('kakav-content', 'kakav',
-        'Изберете обекта, чиито данни се четат от проекта');
+        'Изберете обекта, чиито проверки се водят');
     if (!p) return;
     const kutiya = document.getElementById('kakav-content');
     // Записките и фактите са НА СТРОЕЖА — един имот може да носи няколко.
@@ -4994,7 +4994,7 @@ async function renderKakavPage() {
     if (!chasti.length) {
         kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p) + `
             <div class="card">
-                <div class="card-title" style="margin-bottom:8px">🔑 Какъв е строежът</div>
+                <div class="card-title" style="margin-bottom:8px">✔️ Проверки</div>
                 <p style="font-size:13px;color:var(--muted);line-height:1.6">
                     Полетата тук се пълнят от <strong>обяснителните записки по частите на проекта</strong>.
                     Още няма прочетени записки за този обект.
@@ -5012,7 +5012,7 @@ async function renderKakavPage() {
               ime_na_stroezha: st.stroej || '' });
         if (r.greshka) throw new Error(r.greshka);
         const novi = _kesSleej(st, _kesPredlozheni(r));
-        if (novi) _s2ZapishiTiho(p, `Какъв е строежът: ${novi} нови предложения от проекта`);
+        if (novi) _s2ZapishiTiho(p, `Проверки: ${novi} нови предложения от проекта`);
         kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p) + _kesHtml(st, r);
     } catch (e) {
         kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p)
@@ -5171,7 +5171,7 @@ function kesPotvardi(k64) {
     const { p, k, f } = _kesFakt(k64);
     if (!p || !f) return;
     p.fakti[k] = { ...f, sastoyanie: 'potvardeno', koy: _s2Koy(), koga: new Date().toISOString() };
-    _kesZapishi(p, `Какъв е строежът: потвърдено „${_KES_IME[k] || k}“`);
+    _kesZapishi(p, `Проверки: потвърдено „${_KES_IME[k] || k}“`);
 }
 
 function kesPoprav(k64) {
@@ -5182,7 +5182,7 @@ function kesPoprav(k64) {
     p.fakti[k] = { ...(f || {}), sastoyanie: 'popraveno', stoynost: nova.trim(),
                    prochetena: (f && f.prochetena) || '', varianti: null,
                    koy: _s2Koy(), koga: new Date().toISOString() };
-    _kesZapishi(p, `Какъв е строежът: поправено „${_KES_IME[k] || k}“`);
+    _kesZapishi(p, `Проверки: поправено „${_KES_IME[k] || k}“`);
 }
 
 function kesIzberiVariant(k64, i) {
@@ -5193,7 +5193,7 @@ function kesIzberiVariant(k64, i) {
     p.fakti[k] = { ...f, sastoyanie: 'popraveno', stoynost: v.stoynost, prochetena: '',
                    iztochnik: { chast: (v.chasti || []).join(', '), citat: '' },
                    varianti: f.varianti, koy: _s2Koy(), koga: new Date().toISOString() };
-    _kesZapishi(p, `Какъв е строежът: избрано „${_KES_IME[k] || k}“ по ${(v.chasti || []).join(', ')}`);
+    _kesZapishi(p, `Проверки: избрано „${_KES_IME[k] || k}“ по ${(v.chasti || []).join(', ')}`);
 }
 
 function kesOtmeni(k64) {
@@ -5202,7 +5202,7 @@ function kesOtmeni(k64) {
     // Връща се към прочетеното; ако няма такова — полето изчезва.
     if (f.prochetena) p.fakti[k] = { ...f, sastoyanie: 'predlozheno', stoynost: f.prochetena, koy: '', koga: '' };
     else delete p.fakti[k];
-    _kesZapishi(p, `Какъв е строежът: отменено „${_KES_IME[k] || k}“`);
+    _kesZapishi(p, `Проверки: отменено „${_KES_IME[k] || k}“`);
 }
 
 function kesPotvardiVsichki(spisak64) {
@@ -5219,7 +5219,7 @@ function kesPotvardiVsichki(spisak64) {
         p.fakti[k] = { ...f, sastoyanie: 'potvardeno', koy, koga };
         n++;
     }
-    _kesZapishi(p, `Какъв е строежът: потвърдени ${n} стойности`);
+    _kesZapishi(p, `Проверки: потвърдени ${n} стойности`);
 }
 
 function renderZapiskiKarta() {
