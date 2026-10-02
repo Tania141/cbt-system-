@@ -1302,47 +1302,70 @@
 
     <!-- SIDEBAR -->
     <nav class="sidebar">
-        <!-- Подредбата на оператора (11.09.2026): горе е обектът — кои (паспортът)
-             и какво (изходните данни); под едрите заглавия е работата по фази. -->
+        <!-- НОВАТА ПОДРЕДБА (02.10.2026) — по работа, не по вид данни.
+             ИМОТ (ПИ) → СТРОЕЖИ (по едно РС) → фазата на строежа.
+             Групата „Стари“ долу е временна: показва какво още не е преместено
+             и ще се къса ред по ред, докато не изчезне. -->
         <button class="nav-item active" onclick="navigateTo('passports')" id="nav-passports">
             <span class="nav-icon">📋</span> Обекти
             <span class="nav-badge" id="nav-passports-count">0</span>
         </button>
+
+        <div class="sidebar-section-label faza-glava">Имотът</div>
+        <button class="nav-item" onclick="navigateTo('imot')" id="nav-imot">
+            <span class="nav-icon">🗺️</span> Имотът
+        </button>
+        <button class="nav-item" onclick="navigateTo('sobstvenost')" id="nav-sobstvenost">
+            <span class="nav-icon">🔑</span> Собственост
+        </button>
+
+        <div class="sidebar-section-label faza-glava">Строежът</div>
         <button class="nav-item" onclick="navigateTo('kakav')" id="nav-kakav">
-            <span class="nav-icon">🔑</span> Какъв е строежът
+            <span class="nav-icon">🧩</span> Какъв е строежът
         </button>
-        <button class="nav-item" onclick="navigateTo('dokumenti')" id="nav-dokumenti">
-            <span class="nav-icon">📎</span> Изходни данни, съгласувания и РС
+        <button class="nav-item" onclick="navigateTo('proekt')" id="nav-proekt">
+            <span class="nav-icon">📐</span> Проектът
+        </button>
+        <button class="nav-item" onclick="navigateTo('dokumentite')" id="nav-dokumentite">
+            <span class="nav-icon">🗂️</span> Документите
         </button>
 
-        <div class="sidebar-section-label faza-glava">До разрешение за строеж</div>
+        <div class="sidebar-section-label faza-glava">Фазата</div>
         <button class="nav-item" onclick="navigateTo('osip')" id="nav-osip">
-            <span class="nav-icon">📐</span> Оценка на съответствието
+            <span class="nav-icon">📝</span> Оценка на съответствието
         </button>
-
-        <div class="sidebar-section-label faza-glava">По време на строителството</div>
-        <button class="nav-item" onclick="navigateTo('generate')" id="nav-generate">
-            <span class="nav-icon">📄</span> Актове и протоколи
-        </button>
-        <button class="nav-item" onclick="navigateTo('zk')" id="nav-zk">
-            <span class="nav-icon">📓</span> Заповедни книги
-        </button>
-        <button class="nav-item" onclick="navigateTo('ai-protocols')" id="nav-ai-protocols">
-            <span class="nav-icon">🤖</span> AI протоколи
+        <button class="nav-item" onclick="navigateTo('nadzor')" id="nav-nadzor">
+            <span class="nav-icon">🏗️</span> Надзор — протоколите
         </button>
 
         <div class="sidebar-section-label" style="margin-top:16px">Общи</div>
         <button class="nav-item" onclick="navigateTo('consultants')" id="nav-consultants">
             <span class="nav-icon">🏢</span> Консултанти
         </button>
-        <button class="nav-item" onclick="navigateTo('history')" id="nav-history">
-            <span class="nav-icon">🕐</span> История
+        <button class="nav-item" onclick="navigateTo('zk')" id="nav-zk">
+            <span class="nav-icon">📓</span> Заповедни книги
         </button>
         <button class="nav-item" onclick="navigateTo('normativna')" id="nav-normativna">
             <span class="nav-icon">📖</span> Нормативна уредба
         </button>
+        <button class="nav-item" onclick="navigateTo('history')" id="nav-history">
+            <span class="nav-icon">🕐</span> История
+        </button>
         <button class="nav-item" onclick="navigateTo('settings')" id="nav-settings">
             <span class="nav-icon">⚙️</span> Настройки
+        </button>
+
+        <div class="sidebar-section-label" style="margin-top:16px;color:var(--muted)">
+            Стари — ще отпаднат
+        </div>
+        <button class="nav-item" onclick="navigateTo('dokumenti')" id="nav-dokumenti" style="opacity:.7">
+            <span class="nav-icon">📎</span> Изходни данни и РС
+        </button>
+        <button class="nav-item" onclick="navigateTo('generate')" id="nav-generate" style="opacity:.7">
+            <span class="nav-icon">📄</span> Актове и протоколи
+        </button>
+        <button class="nav-item" onclick="navigateTo('ai-protocols')" id="nav-ai-protocols" style="opacity:.7">
+            <span class="nav-icon">🤖</span> AI протоколи
         </button>
 
         <div class="sidebar-footer">АКТ СИСТЕМ v6 · 2026</div>
@@ -1415,7 +1438,6 @@
                     <p class="page-subtitle">Генериране с верификация срещу РС и одобрен проект</p>
                 </div>
             </div>
-            <div id="zapiski-karta"></div>
             <div id="od-ai-karta"></div>
             <div id="ai-protocols-content"></div>
         </div>
@@ -1622,6 +1644,49 @@
                 </div>
             </div>
             <div id="dokumenti-content" style="max-width:900px"></div>
+        </div>
+
+        <!-- ═══════════ НОВИЯТ СКЕЛЕТ (02.10.2026) ═══════════ -->
+        <!-- Празни са нарочно: първо формата, после нанасяме. Всяка казва
+             какво ще живее в нея и откъде ще дойде. -->
+        <div class="page" id="page-imot">
+            <div class="page-header"><div>
+                <h1 class="page-title">Имотът</h1>
+                <p class="page-subtitle">Каквото е общо за всички строежи в него</p>
+            </div></div>
+            <div id="imot-content" style="max-width:1000px"></div>
+        </div>
+
+        <div class="page" id="page-sobstvenost">
+            <div class="page-header"><div>
+                <h1 class="page-title">Собственост</h1>
+                <p class="page-subtitle">Веригата от нотариални актове — земята, после обектите</p>
+            </div></div>
+            <div id="sobstvenost-content" style="max-width:1000px"></div>
+        </div>
+
+        <div class="page" id="page-proekt">
+            <div class="page-header"><div>
+                <h1 class="page-title">Проектът</h1>
+                <p class="page-subtitle">Записките по частите — изворът на всичко за този строеж</p>
+            </div></div>
+            <div id="proekt-content" style="max-width:1100px"></div>
+        </div>
+
+        <div class="page" id="page-dokumentite">
+            <div class="page-header"><div>
+                <h1 class="page-title">Документите</h1>
+                <p class="page-subtitle">Досието на строежа — прочетено веднъж, ползва се навсякъде</p>
+            </div></div>
+            <div id="dokumentite-content" style="max-width:1100px"></div>
+        </div>
+
+        <div class="page" id="page-nadzor">
+            <div class="page-header"><div>
+                <h1 class="page-title">Надзор — протоколите</h1>
+                <p class="page-subtitle">Всеки протокол със своя чеклист; списъкът се трупа по пътя</p>
+            </div></div>
+            <div id="nadzor-content" style="max-width:1100px"></div>
         </div>
 
         <!-- ═══════════ КАКЪВ Е СТРОЕЖЪТ ═══════════ -->
@@ -2486,6 +2551,11 @@ function navigateTo(page) {
     else if (page === 'new-passport') renderPassportForm(null);
     else if (page === 'generate') renderGenerateSection();
     else if (page === 'osip') renderOsipPage();
+    else if (page === 'imot') renderImotPage();
+    else if (page === 'sobstvenost') renderSobstvenostPage();
+    else if (page === 'proekt') renderProektPage();
+    else if (page === 'dokumentite') renderDokumentitePage();
+    else if (page === 'nadzor') renderNadzorPage();
     else if (page === 'kakav') renderKakavPage();
     else if (page === 'dokumenti') renderDokumentiPage();
     else if (page === 'ai-protocols') renderAiProtocols();
@@ -2935,13 +3005,15 @@ function smeniObekt(id, stranica) {
     // Първо екранът, после записът: изборът трябва да се види, дори ако
     // запомнянето му в браузъра не мине.
     ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage,
-       kakav: renderKakavPage, zk: renderZkGen }[stranica]
+       kakav: renderKakavPage, zk: renderZkGen,
+       imot: renderImotPage, sobstvenost: renderSobstvenostPage, proekt: renderProektPage,
+       dokumentite: renderDokumentitePage, nadzor: renderNadzorPage }[stranica]
         || renderGenerateSection)();
     saveData();
 }
 
 function renderAiProtocols() {
-    renderZapiskiKarta();
+    // Записките се преместиха в „Проектът“ (02.10.2026) — тук вече ги няма.
     renderOdAiKarta();
     const content = document.getElementById('ai-protocols-content');
     const project = appData.currentProject;
@@ -4831,6 +4903,84 @@ function _kesSleej(p, predl) {
                  iztochnik: pr.iztochnik, varianti: null };
     }
     return novi;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  НОВИЯТ СКЕЛЕТ — страниците (02.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Празните казват честно какво чакат и откъде ще дойде. По-добре от „скоро“.
+
+function _predstoi(kutiya, p, stranica, zaglavie, redove, otkade) {
+    const esc = _s2esc;
+    document.getElementById(kutiya).innerHTML = _lentaObekt(p, stranica)
+        + (stranica === 'imot' || stranica === 'sobstvenost' ? '' : _lentaStroezhi(p))
+        + `<div class="card">
+            <div class="card-title" style="margin-bottom:10px">${esc(zaglavie)}</div>
+            <p style="font-size:13px;color:var(--slate);margin-bottom:12px">Тук ще живее:</p>
+            <ul style="margin:0 0 14px 18px;font-size:13.5px;line-height:1.9;color:var(--ink)">
+                ${redove.map(r => `<li>${esc(r)}</li>`).join('')}
+            </ul>
+            <div style="padding:11px 14px;background:var(--surface);border:1px solid var(--border-light);
+                        border-radius:9px;font-size:12.5px;color:var(--slate);line-height:1.6">
+                ${esc(otkade)}
+            </div>
+        </div>`;
+}
+
+function renderImotPage() {
+    const p = _obektIliIzbor('imot-content', 'imot', 'Изберете имота');
+    if (!p) return;
+    _predstoi('imot-content', p, 'imot', '🗺️ Имотът', [
+        'Идентификатор по КККР, ник, адрес, УПИ и местност',
+        'Скица и градоустройствени показатели',
+        'Акт 16 — един за всички строежи в имота',
+        'Списъкът на строежите, с добавяне и преименуване',
+    ], 'Идва от „Изходни данни и РС“ (градоустройството и скицата) и от записките. '
+     + 'Докато не се премести, работи старата страница.');
+}
+
+function renderSobstvenostPage() {
+    const p = _obektIliIzbor('sobstvenost-content', 'sobstvenost', 'Изберете имота');
+    if (!p) return;
+    _predstoi('sobstvenost-content', p, 'sobstvenost', '🔑 Собственост', [
+        'Първият ред е земята — началният собственик',
+        'После всеки продаден обект: апартамент, гараж, паркомясто',
+        'Всеки ред стои на нотариален акт — и отпадането също',
+        'Съсобственост и дялове: собственик отпада само като продаде всичко свое',
+    ], 'Идва от нотариалните актове, прочетени от четеца. Таблицата на собствениците '
+     + 'в окончателния доклад е този списък към момента на Акт 15 — не се събира отделно.');
+}
+
+function renderProektPage() {
+    const p = _obektIliIzbor('proekt-content', 'proekt', 'Изберете обекта');
+    if (!p) return;
+    document.getElementById('proekt-content').innerHTML =
+        _lentaObekt(p, 'proekt') + '<div id="zapiski-karta"></div>';
+    renderZapiskiKarta();
+}
+
+function renderDokumentitePage() {
+    const p = _obektIliIzbor('dokumentite-content', 'dokumentite', 'Изберете обекта');
+    if (!p) return;
+    _predstoi('dokumentite-content', p, 'dokumentite', '🗂️ Документите', [
+        'Нотариален акт, договорите, лицензите, проектантите — прочетени В НАЧАЛОТО',
+        'Разрешението за строеж — то разделя ОСИП от надзора',
+        'Всеки документ знае МОМЕНТА си: не му е времето · очаква се сега · налично',
+        'Сверява се веднъж; протоколите само показват оттам',
+    ], 'Машината вече я има — четецът познава нотариалния акт, договорите и лицензите, '
+     + 'но ги чете чак за окончателния доклад. Тук ще ги чете в началото.');
+}
+
+function renderNadzorPage() {
+    const p = _obektIliIzbor('nadzor-content', 'nadzor', 'Изберете обекта');
+    if (!p) return;
+    _predstoi('nadzor-content', p, 'nadzor', '🏗️ Надзор — протоколите', [
+        'Протокол 1 · Протокол 2 · заповедна книга · обр. 3 · актове 5–14',
+        'Всеки със своя малък чеклист — само неговото парче',
+        'Акт 15 → окончателен доклад → технически паспорт',
+        'Те не събират нищо ново, а пренареждат събраното',
+    ], 'Чака твоята работа: кой документ на кой протокол. Дотогава чеклистът е '
+     + 'в „Изходни данни и РС“, а генерирането — в „Актове и протоколи“.');
 }
 
 async function renderKakavPage() {
@@ -7577,7 +7727,9 @@ function _prerisuvai() {
     const stranica = [...document.querySelectorAll('.page')].find(x => x.classList.contains('active'));
     const id = (stranica && stranica.id || '').replace('page-', '');
     ({ kakav: renderKakavPage, 'ai-protocols': renderAiProtocols, dokumenti: renderDokumentiPage,
-       osip: renderOsipPage, generate: renderGenerateSection }[id] || (() => {}))();
+       osip: renderOsipPage, generate: renderGenerateSection, proekt: renderProektPage,
+       imot: renderImotPage, sobstvenost: renderSobstvenostPage,
+       dokumentite: renderDokumentitePage, nadzor: renderNadzorPage }[id] || (() => {}))();
 }
 
 // Лентата със строежите — показва се там, където работата е НА СТРОЕЖ.
