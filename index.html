@@ -4858,7 +4858,8 @@ async function renderKakavPage() {
         + '<div class="card"><div style="color:var(--muted);font-size:13px">Сглобявам от записките…</div></div>';
     try {
         const r = await apiCall('/api/zapiski/rezyume', 'POST',
-            { zapiski: chasti, vid: st.vid === 'lineen' ? 'lineen' : 'sgrada' });
+            { zapiski: chasti, vid: st.vid === 'lineen' ? 'lineen' : 'sgrada',
+              ime_na_stroezha: st.stroej || '' });
         if (r.greshka) throw new Error(r.greshka);
         const novi = _kesSleej(st, _kesPredlozheni(r));
         if (novi) _s2ZapishiTiho(p, `Какъв е строежът: ${novi} нови предложения от проекта`);
@@ -5159,6 +5160,47 @@ async function zapiskiCheti() {
     zapiskiRezyume();
 }
 
+// Премества една записка към друг строеж в същия имот. Операторът, 02.10.2026:
+// „ако сме му казали канал, а му предлагам архитектура, редно е да ги различава“.
+// Различаването без местене би било половин работа.
+function zapiskiPremesti(fajl64) {
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    const fajl = decodeURIComponent(fajl64);
+    const ot = _stroezh(obekt);
+    const spisak = _stroezhi(obekt), tekusht = _indeksStroezh(obekt);
+    const drugi = spisak.map((st, i) => ({ st, i })).filter(x => x.i !== tekusht);
+
+    let kam;
+    if (!drugi.length) {
+        if (!confirm('В имота има само един строеж.' + String.fromCharCode(10) + String.fromCharCode(10) + 'Да създам нов за „' + fajl + '“?')) return;
+        const ime = prompt('Наименование на новия строеж:', '');
+        if (ime === null) return;
+        (obekt.stroezhi_dop = obekt.stroezhi_dop || []).push({ stroej: ime.trim() });
+        kam = _stroezhi(obekt)[_brojStroezhi(obekt) - 1];
+    } else if (drugi.length === 1) {
+        kam = drugi[0].st;
+        if (!confirm(`Да преместя „${fajl}“ в „${_imeStroezh(kam, drugi[0].i)}“?`)) return;
+    } else {
+        const red = drugi.map((x, n) => (n + 1) + '. ' + _imeStroezh(x.st, x.i)).join(String.fromCharCode(10));
+        const izbor = prompt('Към кой строеж да преместя „' + fajl + '“?' + String.fromCharCode(10) + String.fromCharCode(10) + red + String.fromCharCode(10) + String.fromCharCode(10) + 'Номер:', '1');
+        if (izbor === null) return;
+        const n = Number(izbor) - 1;
+        if (!(n >= 0 && n < drugi.length)) { showAlert('error', 'Няма такъв номер.'); return; }
+        kam = drugi[n].st;
+    }
+
+    const chasti = (ot.zapiski && ot.zapiski.chasti) || [];
+    const mestim = chasti.filter(z => z.fajl === fajl);
+    if (!mestim.length) { showAlert('error', 'Не намирам тази записка.'); return; }
+    ot.zapiski.chasti = chasti.filter(z => z.fajl !== fajl);
+    const kamZ = (kam.zapiski = kam.zapiski || { chasti: [] });
+    kamZ.chasti = (kamZ.chasti || []).filter(z => z.fajl !== fajl).concat(mestim);
+    kamZ.koga = new Date().toISOString();
+    _zapishiObekt(obekt, `Записка „${fajl}“ → друг строеж`);
+    _prerisuvai();
+}
+
 function zapiskiIzchisti() {
     const obekt = _zhivObekt();
     const p = obekt && _stroezh(obekt);
@@ -5179,7 +5221,8 @@ async function zapiskiRezyume() {
     kutiya.innerHTML = '<div style="color:var(--muted);font-size:12px">Сглобявам…</div>';
     try {
         const r = await apiCall('/api/zapiski/rezyume', 'POST',
-            { zapiski: chasti, vid: p.vid === 'lineen' ? 'lineen' : 'sgrada' });
+            { zapiski: chasti, vid: p.vid === 'lineen' ? 'lineen' : 'sgrada',
+              ime_na_stroezha: p.stroej || '' });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(r.greshka)}</div>`; return; }
         kutiya.innerHTML = _zapiskiHtml(r);
     } catch (e) {
@@ -5317,6 +5360,24 @@ function _zapiskiHtml(r) {
             <div style="font-size:12px;margin-top:6px">Провери дали файлът не е сбъркан, или дали не е за друг обект в папката.</div>
         </div></div>` : '';
 
+    // Записка за ДРУГ СТРОЕЖ в същия имот — тук ѝ е мястото в папката, но не на
+    // този строеж. Операторът може да я премести с едно натискане. (02.10.2026)
+    const drugSt = (r.drug_stroezh_zapiski || []).length ? `
+        <div class="alert alert-warning" style="margin:0 0 12px"><div>
+            <strong>↪ ${r.drug_stroezh_zapiski.length}
+            ${r.drug_stroezh_zapiski.length === 1 ? 'записка е за ДРУГ строеж' : 'записки са за ДРУГИ строежи'}
+            в този имот — не влизат в нищо по-долу</strong>
+            <div style="font-size:12px;margin-top:5px;line-height:1.7">
+                ${r.drug_stroezh_zapiski.map(c => `<div>
+                    <strong>${esc(c.chast)}</strong> → ${esc(c.obekt)}
+                    <span style="opacity:.75">(${esc(c.vid)})</span>
+                    ${c.fajl ? `<button type="button" class="btn btn-secondary btn-sm" style="margin-left:6px"
+                        onclick="zapiskiPremesti('${encodeURIComponent(c.fajl)}')">премести</button>` : ''}
+                </div>`).join('')}
+                ${r.nash_vid_stroezh ? `<div style="margin-top:5px;opacity:.8">Този строеж е <strong>${esc(r.nash_vid_stroezh)}</strong>.</div>` : ''}
+            </div>
+        </div></div>` : '';
+
     const neyasno = r.imotat_e_neyasen ? `
         <div class="alert alert-warning" style="margin:0 0 12px"><div>
             <strong>⚠️ Записките сочат към различни имота — не мога да реша кой е този строеж</strong>
@@ -5328,7 +5389,7 @@ function _zapiskiHtml(r) {
 
     return `
         <div style="font-size:13px">
-            ${chuzhdi}${neyasno}
+            ${chuzhdi}${drugSt}${neyasno}
             <div style="margin-bottom:10px">
                 <strong>Прочетени части:</strong> ${prochetiniJs || '—'}
                 ${lipsvat ? `<div style="color:var(--muted);margin-top:3px"><strong>Липсват:</strong> ${lipsvat}</div>` : ''}
