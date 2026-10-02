@@ -5275,17 +5275,27 @@ function _chisloOtTekst(v) {
 }
 
 // Постигнатите плътност и Кинт често не са изписани — смятат се от ЗП и РЗП.
+// И НЕ се вярва на пряка стойност, която всъщност е ПЛОЩ: четецът слага „2828,4 м²“
+// в „плътност“, а то е застроената площ, не процентът. (Операторът, 02.10.2026)
+const _GORNA_GRANICA = { plytnost_post: 100, ozelen_post: 100, kint_post: 20 };
+
 function _postignatoChislo(f, klyuch) {
-    const pryako = _chisloOtTekst((f[klyuch] || {}).stoynost);
-    if (pryako !== null) return { st: pryako, kak: '' };
-    const plosht = _chisloOtTekst((f.plosht_upi || {}).stoynost);
-    if (!plosht) return { st: null, kak: '' };
-    const ot = klyuch === 'plytnost_post' ? 'zp' : klyuch === 'kint_post' ? 'rzp' : null;
+    const surovo = (f[klyuch] || {}).stoynost;
+    const pryako = _chisloOtTekst(surovo);
+    const plosht = /м\s*2|м²|m\s*2|m²|кв\.?\s*м/i.test(String(surovo || ''));
+    const nadGranica = pryako !== null && _GORNA_GRANICA[klyuch] && pryako > _GORNA_GRANICA[klyuch];
+    if (pryako !== null && !plosht && !nadGranica) return { st: pryako, kak: '' };
+    const imot = _chisloOtTekst((f.plosht_upi || {}).stoynost);
+    if (!imot) return { st: null, kak: '' };
+    // Озеленяването в м² се превръща в % от имота; плътността — от ЗП; Кинт — от РЗП.
+    const ot = klyuch === 'plytnost_post' ? 'zp'
+             : klyuch === 'kint_post' ? 'rzp'
+             : klyuch === 'ozelen_post' ? 'ozelen_post' : null;
     const v = ot ? _chisloOtTekst((f[ot] || {}).stoynost) : null;
     if (!v) return { st: null, kak: '' };
-    return klyuch === 'plytnost_post'
-        ? { st: v / plosht * 100, kak: `от ЗП ${v} ÷ ${plosht} м²` }
-        : { st: v / plosht, kak: `от РЗП ${v} ÷ ${plosht} м²` };
+    if (klyuch === 'kint_post') return { st: v / imot, kak: `от РЗП ${v} ÷ ${imot} м²` };
+    const ime = klyuch === 'plytnost_post' ? 'ЗП' : 'озеленена площ';
+    return { st: v / imot * 100, kak: `от ${ime} ${v} м² ÷ ${imot} м²` };
 }
 
 function _kesSravneniaHtml(f) {
