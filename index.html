@@ -4792,7 +4792,14 @@ function _kesSleej(p, predl) {
     for (const [k, pr] of Object.entries(predl)) {
         if (!_KES_IME[k]) continue;
         const star = f[k];
-        if (!pr.edinno) {                       // частите не се връзват → спорно
+        if (!pr.edinno) {                       // частите не се връзват
+            // Ако операторът ВЕЧЕ е решил кой вариант е верен, решението му
+            // остава — иначе всяко пререждане на екрана го изтриваше и полето
+            // пак ставаше спорно. (02.10.2026, намерено от оператора)
+            if (star && (star.sastoyanie === 'potvardeno' || star.sastoyanie === 'popraveno')) {
+                f[k] = { ...star, varianti: pr.varianti };
+                continue;
+            }
             f[k] = { ...(star || {}), sastoyanie: 'sporno', stoynost: '', prochetena: '',
                      varianti: pr.varianti, iztochnik: pr.iztochnik };
             continue;
@@ -4912,9 +4919,11 @@ function _kesPoleHtml(klyuch, f) {
     const koga = f.koga ? new Date(f.koga).toLocaleDateString('bg-BG') : '';
     const bilo = (f.sastoyanie === 'popraveno' && f.prochetena && _kesZn(f.prochetena) !== _kesZn(f.stoynost))
         ? ` <span style="color:var(--muted)">· прочетено беше: ${esc(f.prochetena)}</span>` : '';
+    const oshte = (f.varianti || []).length > 1
+        ? `<div style="margin-top:3px;font-size:11.5px;color:#b45309">Частите още дават различно — ти избра тази стойност.</div>` : '';
     return `<div style="border-left:3px solid var(--green,#2e7d32);padding:3px 0 3px 12px;margin-bottom:11px">
         <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
-        <div style="font-size:14.5px;font-weight:600">${esc(f.stoynost) || '—'}</div>
+        <div style="font-size:14.5px;font-weight:600">${esc(f.stoynost) || '—'}</div>${oshte}
         <div style="margin-top:2px;font-size:11.5px;color:#2e6b32">${znak}${koga ? ' · ' + esc(koga) : ''}${esc(f.koy ? ' · ' + f.koy : '')}${bilo}</div>
         <div style="margin-top:4px">
             <button class="btn btn-ghost btn-sm" onclick="kesPoprav('${k64}')">Поправи</button>
