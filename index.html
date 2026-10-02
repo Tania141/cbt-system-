@@ -4804,6 +4804,23 @@ const _KES_POLETA = [
     ['el_saobshteniya',     'Електронни съобщения',           'proekt'],
     ['vik',                 'ВиК присъединяване',             'proekt'],
     ['elektro',             'Електро присъединяване',         'proekt'],
+    // Градоустройство: допустимото е от визата, постигнатото — от архитектурата
+    // и ситуацията. Операторът, 02.10.2026: „чете се записка + виза, сверява се,
+    // чек, операторът верифицира“ — затова са редове тук, не форма.
+    ['zona',                'Устройствена зона',              'proekt'],
+    ['plosht_upi',          'Площ на УПИ',                    'proekt'],
+    ['pup',                 'ПУП — одобрен с',                'proekt'],
+    ['kadastr',             'Кадастрална карта — одобрена със', 'proekt'],
+    ['plytnost_dop',        'Плътност — допустима',           'proekt'],
+    ['plytnost_post',       'Плътност — постигната',          'proekt'],
+    ['kint_dop',            'Кинт — допустим',                'proekt'],
+    ['ozelen_dop',          'Озеленяване — допустимо',        'proekt'],
+    ['ozelen_post',         'Озеленяване — постигнато',       'proekt'],
+    ['korniz_dop',          'Кота корниз — допустима',        'proekt'],
+    ['korniz_post',         'Кота корниз — постигната',       'proekt'],
+    ['zp',                  'ЗП — постигната',                'proekt'],
+    ['rzp',                 'РЗП — постигната',               'proekt'],
+    ['otstoyania',          'Отстояния по виза',              'proekt'],
     // Групата „drugo“ не идва от проекта — пълни се от документите или на ръка.
     ['sobstvenik',          'Собственик на земята (възложител по ЗУТ)', 'drugo'],
     ['investitor',          'Възложител по договор',          'drugo'],
@@ -4976,77 +4993,16 @@ function renderImotPage() {
                     Когато няколко имота станат един УПИ, старите документи носят СТАРИТЕ номера.
                     Визата особено. Без тях системата ги мисли за чужд имот.
                 </p>
+                <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="zapishiImot()">Запази</button>
             </div>
+            <p style="font-size:11.5px;color:var(--muted);margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border-light)">
+                📊 Градоустройствените показатели вече не се пишат тук — четат се от
+                <strong>визата</strong> (допустимите) и от <strong>записките</strong> (постигнатите),
+                и се сверяват в „Проверки“.
+            </p>
             <p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">
                 Общо за всички строежи в имота: имотът, собствеността и Акт 16.
             </p>
-        </div>
-        <div class="card">
-            <div class="card-title" style="margin-bottom:8px">📊 Градоустройствени показатели</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Визата <strong>задава</strong>, проектът <strong>постига</strong>. Впиши показателите по
-                виза и стойностите от проекта — постигнатото системата го смята сама. Нормата по
-                Наредба № 7 я прилага главният архитект, когато издава визата.
-            </p>
-            <div class="form-grid">
-                <div class="form-group" style="grid-column:1/-1">
-                    <label class="form-label">Подробният устройствен план е одобрен с</label>
-                    <input type="text" id="fp-g-pup" class="form-input"
-                           placeholder="Решение на СОС № 50 по Протокол № 24/30.03.2001 г."
-                           value="${(p.gradoustroystvo||{}).pup||''}">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Влиза дословно в оценката по чл. 142, ал. 5, т. 1 — решението или
-                        заповедта, с които планът е одобрен, заедно с органа и датата.
-                    </p>
-                </div>
-                <div class="form-group" style="grid-column:1/-1">
-                    <label class="form-label">Кадастралната карта е одобрена със</label>
-                    <input type="text" id="fp-g-kadastr" class="form-input"
-                           placeholder="Заповед № РД-18-108/13.12.2016 г. на изпълнителния директор на АГКК"
-                           value="${(p.gradoustroystvo||{}).kadastr||''}">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Ако е изменяна — и последното изменение. Празно поле просто не се
-                        споменава в доклада.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Устройствена зона по виза</label>
-                    <input type="text" id="fp-zona" class="form-input" placeholder="Жм"
-                           value="${(p.gradoustroystvo||{}).zona||''}" oninput="smetniPokazateli()">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Както е записана във визата. Нормата по Наредба № 7 я прилага главният архитект.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Площ на имота (УПИ), м²</label>
-                    <input type="text" id="fp-g-plosht" class="form-input" placeholder="5000"
-                           value="${(p.gradoustroystvo||{}).plosht||''}" oninput="smetniPokazateli()">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        От нея се смятат плътността (ЗП ÷ площ) и интензивността (РЗП ÷ площ).
-                    </p>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;align-items:center;margin-top:12px">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">показател</div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">по виза</div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">от проекта</div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">постигнато</div>
-                ${[['plytnost','Плътност на застрояване','max','%','zp','ЗП, м²'],
-                   ['kint','Интензивност, К инт.','max','','rzp','РЗП, м²'],
-                   ['ozel','Озеленена площ','min','%','ozel','%'],
-                   ['kk','Кота корниз, Н','max','м','kk','м']].map(([k,label,posoka,ed,pk,pe]) => `
-                    <div style="font-size:13px">${label}
-                        <span style="color:var(--muted);font-size:11px">${posoka==='min'?'· минимум':'· максимум'}</span></div>
-                    <input type="text" id="fp-g-viza-${k}" class="form-input" placeholder="${ed || '—'}"
-                           value="${((p.gradoustroystvo||{}).viza||{})[k]||''}" oninput="smetniPokazateli()">
-                    <input type="text" id="fp-g-proekt-${pk}" class="form-input" placeholder="${pe}"
-                           value="${((p.gradoustroystvo||{}).proekt||{})[pk]||''}" oninput="smetniPokazateli()">
-                    <div id="g-post-${k}" style="font-size:13px;font-weight:600">—</div>`).join('')}
-            </div>
-            <div id="g-darvesna-info" style="font-size:12px;margin-top:12px"></div>
-        </div>
-        <div style="margin:0 0 18px">
-            <button class="btn btn-primary" onclick="zapishiImot()">Запази данните за имота</button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px">
             <div style="font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">
@@ -5064,16 +5020,6 @@ function zapishiImot() {
     if (!p) return;
     const v = id => (document.getElementById(id)?.value || '').trim();
     p.stari_identifikatori = v('fp-stari-ident').split(/[;,]/).map(x => x.trim()).filter(Boolean);
-    p.gradoustroystvo = {
-        ...(p.gradoustroystvo || {}),
-        zona: v('fp-zona'), plosht: v('fp-g-plosht'),
-        pup: v('fp-g-pup'), kadastr: v('fp-g-kadastr'),
-        viza: Object.fromEntries(['plytnost', 'kint', 'ozel', 'kk'].map(k => [k, v('fp-g-viza-' + k)])),
-        // Старите проценти се пазят, докато не се въведат ЗП и РЗП — да не
-        // изчезнат при запис.
-        proekt: { ...((p.gradoustroystvo || {}).proekt || {}),
-                  ...Object.fromEntries(['zp', 'rzp', 'ozel', 'kk'].map(k => [k, v('fp-g-proekt-' + k)])) },
-    };
     _zapishiObekt(p, 'Данните за имота са запазени');
 }
 
@@ -8289,7 +8235,6 @@ function renderDokumentiPage() {
             <button class="btn btn-success btn-lg" onclick="zapishiDokumenti()">💾 Запази изходните данни</button>
         </div>`;
     renderDokumenti(p);
-    smetniPokazateli();
     try { const s = localStorage.getItem('s2_chetec'); if (s) document.getElementById('s2-chetec').value = s; } catch (e) {}
     if (p.sloy2?.od?.dokumenti?.length) sloy2Sravni();
 }
@@ -8415,65 +8360,10 @@ async function generiraiZK() {
     }
 }
 
-// Градоустройствени показатели: постигнатото се СМЯТА от стойностите на проекта —
-// ЗП и РЗП върху площта на имота; озеленяването и котата корниз се сравняват
-// направо. Същата сметка прави правило G1 на сървъра.
-function _gChislo(v) {
-    const m = String(v ?? '').match(/-?\d+(?:[.,]\d+)?/);
-    return m ? parseFloat(m[0].replace(',', '.')) : null;
-}
+// Сметката на постигнатите показатели беше тук, за живото показване в
+// картата, която вече я няма (02.10.2026). Същата сметка прави правило G1
+// на сървъра — там ѝ е мястото.
 
-// Делът с дървесна растителност — само там, където наредбата го казва ясно:
-// една трета от озеленяването за жилищните и производствените зони (чл. 19,
-// ал. 2; чл. 20; чл. 24–26), половината за вилните (чл. 29). Другаде не се гадае.
-function _darvesnaDelitel(zona) {
-    const z = String(zona || '').trim().toLowerCase();
-    if (!z) return null;
-    if (z.startsWith('ов') || z.includes('вилн')) return 2;
-    if (/^[жп]/.test(z) || z.includes('жилищ') || z.includes('производ')) return 3;
-    return null;
-}
-
-function smetniPokazateli() {
-    const v = id => _gChislo(document.getElementById(id)?.value);
-    const plosht = v('fp-g-plosht');
-    const zp = v('fp-g-proekt-zp'), rzp = v('fp-g-proekt-rzp');
-    const post = {
-        plytnost: plosht && zp != null ? zp / plosht * 100 : null,
-        kint:     plosht && rzp != null ? rzp / plosht : null,
-        ozel:     v('fp-g-proekt-ozel'),
-        kk:       v('fp-g-proekt-kk'),
-    };
-    const bg = x => String(x).replace('.', ',');
-    const fmt = { plytnost: x => bg(x.toFixed(1)) + ' %', kint: x => bg(x.toFixed(2)),
-                  ozel: x => bg(x) + ' %', kk: x => bg(x) + ' м' };
-    const posoka = { plytnost: 'max', kint: 'max', ozel: 'min', kk: 'max' };
-    Object.keys(post).forEach(k => {
-        const el = document.getElementById('g-post-' + k);
-        if (!el) return;
-        const p = post[k], z = v('fp-g-viza-' + k);
-        if (p == null) {
-            el.innerHTML = (k === 'plytnost' || k === 'kint') && !plosht && (zp != null || rzp != null)
-                ? '<span style="color:var(--muted);font-weight:400">няма площ на имота</span>' : '—';
-            return;
-        }
-        const zle = z != null && (posoka[k] === 'max' ? p > z + 1e-9 : p < z - 1e-9);
-        el.innerHTML = `<span style="color:${z == null ? 'inherit' : zle ? 'var(--red)' : 'var(--green)'}">`
-            + `${z == null ? '' : zle ? '⚠️ ' : '✓ '}${fmt[k](p)}</span>`;
-    });
-    // Дървесната растителност — изискването, изписано за оператора, за да го
-    // провери в част „Озеленяване“ на проекта.
-    const info = document.getElementById('g-darvesna-info');
-    if (!info) return;
-    const del = _darvesnaDelitel(document.getElementById('fp-zona')?.value);
-    const ozV = v('fp-g-viza-ozel');
-    if (!del || ozV == null) { info.innerHTML = ''; return; }
-    const nuzhno = ozV / del;
-    const m2 = plosht ? ` (${Math.ceil(nuzhno / 100 * plosht)} м²)` : '';
-    info.innerHTML = `🌳 Дървесна растителност: поне <strong>${bg(nuzhno.toFixed(1))} %</strong> от имота${m2}
-        — ${del === 3 ? 'една трета' : 'половината'} от озеленяването по виза (Наредба № 7,
-        ${del === 3 ? 'чл. 19, ал. 2' : 'чл. 29'}). Провери го в част „Озеленяване“ на проекта.`;
-}
 
 function zapishiDatiDokumenti() {
     const p = _zhivObekt();
