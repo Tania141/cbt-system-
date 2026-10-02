@@ -1803,22 +1803,6 @@
     </main>
 </div>
 
-<!-- PASSPORT DETAIL MODAL -->
-<div class="modal-overlay" id="passport-modal">
-    <div class="modal">
-        <div class="modal-header">
-            <div class="modal-title" id="modal-passport-title">Паспорт</div>
-            <button class="btn btn-ghost btn-sm" onclick="closeModal('passport-modal')">✕ Затвори</button>
-        </div>
-        <div class="modal-body" id="modal-passport-body"></div>
-        <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeModal('passport-modal')">Затвори</button>
-            <button class="btn btn-secondary" id="modal-edit-btn">✏️ Редактирай</button>
-            <button class="btn btn-primary" id="modal-gen-btn">📄 Генерирай →</button>
-        </div>
-    </div>
-</div>
-
 <!-- ═══════════ MODAL АКТ 15 ═══════════ -->
 <div class="modal-overlay" id="modal-akt15" onclick="if(event.target===this)closeModal('modal-akt15')">
   <div class="modal" style="max-width:700px">
@@ -4998,6 +4982,15 @@ function renderImotPage() {
 }
 
 // Избира строежа и влиза в неговия екран.
+// Клик върху обект влиза в ИМОТА — там са строежите му. (Операторът, 02.10.2026)
+function otvoriImot(id) {
+    const p = appData.projects.find(x => String(x.id) === String(id));
+    if (!p) return;
+    appData.currentProject = p;
+    saveData();
+    navigateTo('imot');
+}
+
 function vlezVStroezh(i, stranica) {
     const p = _zhivObekt();
     if (!p) return;
@@ -7074,7 +7067,7 @@ function renderPassportsList(projects) {
         const isActive = appData.currentProject?.id === p.id;
         const docs = p.generatedDocs || [];
         return `
-        <div class="passport-card ${isActive ? 'selected' : ''}" onclick="openPassportModal('${p.id}')">
+        <div class="passport-card ${isActive ? 'selected' : ''}" onclick="otvoriImot('${p.id}')">
             <div>
                 <div class="passport-pi-label">ПИ</div>
                 <div class="passport-pi">${p.pi || '—'}</div>
@@ -7106,95 +7099,9 @@ function updateNavBadge() {
 // ═══════════════════════════════════════════════════════════
 //  PASSPORT MODAL
 // ═══════════════════════════════════════════════════════════
-function openPassportModal(id) {
-    const project = appData.projects.find(p => p.id == id || p.pi == id);
-    if (!project) return;
+// Модалът с преглед на паспорта е махнат (02.10.2026): клик върху обект влиза
+// в „Имотът“, а редактирането и триенето са си на картата.
 
-    document.getElementById('modal-passport-title').textContent = `ПИ: ${project.pi}`;
-
-    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
-    const docs = project.generatedDocs || [];
-
-    document.getElementById('modal-passport-body').innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-            <div>
-                <div class="section-sep">Основни данни</div>
-                ${detailRow('ПИ', project.pi)}
-                ${detailRow('Дата', formatDate(project.date))}
-                ${detailRow('Строеж', project.stroej)}
-                ${detailRow('Адрес', project.address)}
-                <div class="section-sep">Разрешение за строеж</div>
-                ${detailRow('Номер', project.permit?.number)}
-                ${detailRow('Дата РС', formatDate(project.permit?.date))}
-                ${detailRow('Издател', project.permit?.issuer)}
-                ${detailRow('В сила от', formatDate(project.permit?.effective))}
-            </div>
-            <div>
-                <div class="section-sep">Участници</div>
-                ${detailRow('Консултант', project.consultant?.name)}
-                ${detailRow('Възложител', project.client?.name)}
-                ${detailRow('Строител', project.builder?.company)}
-                ${detailRow('Управител строител', project.builder?.manager)}
-                ${detailRow('Техн. ръководител', project.builder?.tech)}
-                ${consultant?.employees?.length ? `
-                    <div class="section-sep">Служители надзор (${consultant.employees.length})</div>
-                    ${consultant.employees.map(e => `
-                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-light);font-size:12px">
-                            <span style="font-weight:600;color:var(--ink)">${e.name}</span>
-                            <span class="chip" style="font-size:10px;padding:2px 7px">${e.specialization}</span>
-                        </div>`).join('')}
-                ` : ''}
-            </div>
-        </div>
-        ${(project.projectants||[]).length > 0 ? `
-        <div class="section-sep" style="margin-top:16px">Проектанти (${project.projectants.length})</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
-            ${(project.projectants||[]).map(pp => `
-                <div style="border:1px solid var(--border-light);border-radius:var(--r-sm);padding:10px;background:var(--surface)">
-                    <div style="font-weight:700;font-size:13px;color:var(--ink)">${pp.name||'—'}</div>
-                    <div style="font-size:11px;color:var(--muted);margin:2px 0">ППП: ${pp.ppp||'—'} · <span class="chip" style="font-size:10px;padding:1px 6px">${pp.specialization}</span></div>
-                    ${pp.company ? `<div style="font-size:11px;color:var(--slate);margin-top:4px">🏢 ${pp.company}${pp.companyEik ? ` · ЕИК: ${pp.companyEik}` : ''}</div>` : ''}
-                    ${pp.companyManager ? `<div style="font-size:11px;color:var(--slate)">👤 ${pp.companyManager}</div>` : ''}
-                </div>
-            `).join('')}
-        </div>` : ''}
-        <div class="section-sep" style="margin-top:16px">Статус и документи</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-            ${appData.apiUrl ? '<span class="badge badge-blue">🔌 API конфигуриран</span>' : '<span class="badge badge-gray">API не е конфигуриран</span>'}
-        </div>
-        ${docs.length > 0 ? `
-        <div style="margin-bottom:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--slate);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Генерирани документи</div>
-            ${docs.map(d => `
-                <div class="doc-list-item">
-                    <div><span class="doc-type">📄 ${d.type}</span></div>
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <span class="doc-date">${formatDateTime(d.date)}</span>
-                        ${d.url ? `<a href="${d.url}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">⬇ Свали</a>` : ''}
-                    </div>
-                </div>
-            `).join('')}
-        </div>` : ''}
-        <div class="section-sep">История на проекта</div>
-        <div class="timeline" style="margin-top:8px">
-            ${appData.history.filter(h => h.pi === project.pi).slice(0,8).map(h => `
-                <div class="timeline-item">
-                    <div class="timeline-dot ${h.type}"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-action">${historyActionLabel(h)}</div>
-                        <div class="timeline-date">${formatDateTime(h.date)}</div>
-                        ${h.detail ? `<div class="timeline-detail">${h.detail}</div>` : ''}
-                    </div>
-                </div>
-            `).join('') || '<p style="color:var(--muted);font-size:13px">Няма история за този проект</p>'}
-        </div>
-    `;
-
-    document.getElementById('modal-edit-btn').onclick = () => { closeModal('passport-modal'); editPassport(id); };
-    document.getElementById('modal-gen-btn').onclick = () => kamGenerirane(id);
-
-    document.getElementById('passport-modal').classList.add('open');
-}
 
 function detailRow(label, value) {
     return `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-light)">
@@ -7715,7 +7622,6 @@ function kamStranica(id, stranica) {
     const project = appData.projects.find(p => String(p.id) === String(id));
     if (!project) return;
     appData.currentProject = project;
-    closeModal('passport-modal');
     navigateTo(stranica);
     saveData();
 }
@@ -9399,10 +9305,6 @@ function downloadHTML(filename, content) {
 // Set current date
 document.getElementById('current-date').textContent = new Date().toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-// Close modal on overlay click
-document.getElementById('passport-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal('passport-modal');
-});
 
 // Load everything
 loadData();
