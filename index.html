@@ -2926,7 +2926,7 @@ function izborObektHtml(stranica) {
                 onchange="smeniObekt(this.value, '${stranica}')">
         ${tekusht ? '' : '<option value="">— избери обект —</option>'}
         ${appData.projects.map(p => `<option value="${esc(p.id)}" ${p.id === tekusht ? 'selected' : ''}>
-            ПИ ${esc(p.pi)} — ${esc(p.stroej)}</option>`).join('')}
+            ${p.nik ? esc(p.nik) + ' · ' : ''}ПИ ${esc(p.pi)}</option>`).join('')}
     </select>`;
 }
 
@@ -4838,9 +4838,11 @@ async function renderKakavPage() {
         'Изберете обекта, чиито данни се четат от проекта');
     if (!p) return;
     const kutiya = document.getElementById('kakav-content');
-    const chasti = p.zapiski?.chasti || [];
+    // Записките и фактите са НА СТРОЕЖА — един имот може да носи няколко.
+    const st = _stroezh(p);
+    const chasti = st.zapiski?.chasti || [];
     if (!chasti.length) {
-        kutiya.innerHTML = _lentaObekt(p, 'kakav') + `
+        kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p) + `
             <div class="card">
                 <div class="card-title" style="margin-bottom:8px">🔑 Какъв е строежът</div>
                 <p style="font-size:13px;color:var(--muted);line-height:1.6">
@@ -4852,17 +4854,17 @@ async function renderKakavPage() {
             </div>`;
         return;
     }
-    kutiya.innerHTML = _lentaObekt(p, 'kakav')
+    kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p)
         + '<div class="card"><div style="color:var(--muted);font-size:13px">Сглобявам от записките…</div></div>';
     try {
         const r = await apiCall('/api/zapiski/rezyume', 'POST',
-            { zapiski: chasti, vid: p.vid === 'lineen' ? 'lineen' : 'sgrada' });
+            { zapiski: chasti, vid: st.vid === 'lineen' ? 'lineen' : 'sgrada' });
         if (r.greshka) throw new Error(r.greshka);
-        const novi = _kesSleej(p, _kesPredlozheni(r));
+        const novi = _kesSleej(st, _kesPredlozheni(r));
         if (novi) _s2ZapishiTiho(p, `Какъв е строежът: ${novi} нови предложения от проекта`);
-        kutiya.innerHTML = _lentaObekt(p, 'kakav') + _kesHtml(p, r);
+        kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p) + _kesHtml(st, r);
     } catch (e) {
-        kutiya.innerHTML = _lentaObekt(p, 'kakav')
+        kutiya.innerHTML = _lentaObekt(p, 'kakav') + _lentaStroezhi(p)
             + `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
     }
 }
@@ -5000,15 +5002,17 @@ function _kesHtml(p, r) {
 
 // ── Действията ──────────────────────────────────────────────
 function _kesFakt(k64) {
-    const p = _zhivObekt();
+    const obekt = _zhivObekt();
     const k = decodeURIComponent(k64);
-    if (!p) return {};
+    if (!obekt) return {};
+    const p = _stroezh(obekt);          // фактите са на строежа
     p.fakti = p.fakti || {};
-    return { p, k, f: p.fakti[k] };
+    return { p, obekt, k, f: p.fakti[k] };
 }
 
 function _kesZapishi(p, opis) {
-    _s2ZapishiTiho(p, opis);
+    // Записва се ОБЕКТЪТ — строежът живее в него.
+    _s2ZapishiTiho(_zhivObekt() || p, opis);
     renderKakavPage();
 }
 
@@ -5051,8 +5055,9 @@ function kesOtmeni(k64) {
 }
 
 function kesPotvardiVsichki(spisak64) {
-    const p = _zhivObekt();
-    if (!p) return;
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    const p = _stroezh(obekt);
     const kluchove = JSON.parse(decodeURIComponent(spisak64));
     if (!confirm(`Потвърждаваш ${kluchove.length} стойности наведнъж.\n\nВсички ли си проверила?`)) return;
     const koy = _s2Koy(), koga = new Date().toISOString();
@@ -5069,11 +5074,12 @@ function kesPotvardiVsichki(spisak64) {
 function renderZapiskiKarta() {
     const box = document.getElementById('zapiski-karta');
     if (!box) return;
-    const p = _zhivObekt();
-    if (!p) { box.innerHTML = ''; return; }
+    const obekt = _zhivObekt();
+    if (!obekt) { box.innerHTML = ''; return; }
+    const p = _stroezh(obekt);
     const z = p.zapiski || {};
     const chasti = z.chasti || [];
-    box.innerHTML = `
+    box.innerHTML = _lentaStroezhi(obekt) + `
         <div class="card" style="margin-bottom:16px">
             <div class="card-title" style="margin-bottom:8px">📐 Прочети записките по частите на проекта</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
@@ -5111,8 +5117,9 @@ function renderZapiskiKarta() {
 }
 
 async function zapiskiCheti() {
-    const p = _zhivObekt();
-    if (!p) { showAlert('error', 'Първо избери обект.'); return; }
+    const obekt = _zhivObekt();
+    if (!obekt) { showAlert('error', 'Първо избери обект.'); return; }
+    const p = _stroezh(obekt);            // записките са на СТРОЕЖА
     const fajlove = [...(document.getElementById('zp-fajlove')?.files || [])];
     if (!fajlove.length) { showAlert('error', 'Избери записките.'); return; }
     const hod = document.getElementById('zp-hod');
@@ -5127,7 +5134,7 @@ async function zapiskiCheti() {
         znak(i, `⏳ ${ime} — чета…`);
         try {
             const r = await apiCall('/api/zapiski/chete', 'POST', {
-                pi: p.pi, chetec: document.getElementById('zp-chetec')?.value || 'auto',
+                pi: obekt.pi, chetec: document.getElementById('zp-chetec')?.value || 'auto',
                 fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
             });
             if (r.greshka) { znak(i, `⚠️ ${ime} — ${_s2esc(r.greshka)}`); continue; }
@@ -5147,22 +5154,24 @@ async function zapiskiCheti() {
     }
     if (prochetени) {
         z.koga = new Date().toISOString();
-        _zapishiObekt(p, `Записки: прочетени ${prochetени} части`);
+        _zapishiObekt(obekt, `Записки: прочетени ${prochetени} части`);
     }
     zapiskiRezyume();
 }
 
 function zapiskiIzchisti() {
-    const p = _zhivObekt();
+    const obekt = _zhivObekt();
+    const p = obekt && _stroezh(obekt);
     if (!p || !p.zapiski) return;
-    if (!confirm('Да изчистя прочетените записки за този обект?')) return;
+    if (!confirm('Да изчистя прочетените записки за този строеж?')) return;
     delete p.zapiski;
-    _zapishiObekt(p, 'Записки: прочетеното е изчистено');
+    _zapishiObekt(obekt, 'Записки: прочетеното е изчистено');
     renderZapiskiKarta();
 }
 
 async function zapiskiRezyume() {
-    const p = _zhivObekt();
+    const obekt = _zhivObekt();
+    const p = obekt && _stroezh(obekt);
     const kutiya = document.getElementById('zp-rezultat');
     if (!p || !kutiya) return;
     const chasti = p.zapiski?.chasti || [];
@@ -7405,6 +7414,110 @@ function kamGenerirane(id) { kamStranica(id, 'generate'); }
 
 // currentProject е снимка (при зареждане от браузъра — копие); работи се
 // върху живия запис в appData.projects.
+// ═══════════════════════════════════════════════════════════
+//  ОБЕКТ = ИМОТ · СТРОЕЖ = ЕДНО РАЗРЕШЕНИЕ ЗА СТРОЕЖ
+//  Стъпка 1 от преустройството (02.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Операторът: „КТП и улица и пр. всеки е отделен обект с отделно РС, но понякога
+// съм надзор на такъв сложен проект с 3 или 4 РС“ — и „за него се пише 1 акт 16“.
+// Тоест един имот може да носи няколко строежа.
+//
+// БЕЗ ДУБЛИРАНЕ: строеж №1 живее В САМИЯ ОБЕКТ — полетата му са там от самото
+// начало и десетки места в кода ги четат оттам. Няма смисъл да ги местя и да
+// държа две копия. Следващите строежи живеят в `p.stroezhi_dop[]`, а помощникът
+// по-долу скрива разликата: и за двата се работи еднакво.
+//
+// Какво е на ИМОТА (и затова НЕ се копира в строежа): pi, ник, адрес, УПИ,
+// скица, градоустройство, собствеността, и Акт 16 — един за всички строежи.
+
+// Полетата, които принадлежат на СТРОЕЖА, не на имота.
+const _STROEZH_POLETA = [
+    'stroej', 'kategoria', 'vid', 'permit', 'zk', 'consultant',
+    'prednaznachenie', 'povod', 'imaMashini', 'metalnaKonstrukcia', 'spo',
+    'zapiski', 'fakti', 'sloy2', 'docDates', 'generatedDocs', 'neotnasya',
+    'tehnichesko_opisanie',
+];
+
+function _stroezhi(p) {
+    if (!p) return [];
+    // Първият е самият обект; останалите — допълнителните.
+    return [p, ...(p.stroezhi_dop || [])];
+}
+
+function _brojStroezhi(p) {
+    return 1 + (p?.stroezhi_dop || []).length;
+}
+
+// Кой строеж се работи в момента. Индекс 0 = първият (самият обект).
+function _indeksStroezh(p) {
+    const i = Number(p?.tekusht_stroezh || 0);
+    return i >= 0 && i < _brojStroezhi(p) ? i : 0;
+}
+
+// Връща ОБЕКТА, върху който да се пише — за строеж №1 това е самият обект.
+function _stroezh(p) {
+    return _stroezhi(p)[_indeksStroezh(p)] || p;
+}
+
+function _imeStroezh(s, i) {
+    return (s && s.stroej) || (i === 0 ? 'Строеж 1' : `Строеж ${i + 1}`);
+}
+
+function dobaviStroezh() {
+    const p = _zhivObekt();
+    if (!p) return;
+    const ime = prompt('Наименование на новия строеж в този имот:\n\n'
+        + 'напр. „Външно електрозахранване с нови кабели НН 1 kV“');
+    if (ime === null) return;
+    (p.stroezhi_dop = p.stroezhi_dop || []).push({ stroej: ime.trim() });
+    p.tekusht_stroezh = _brojStroezhi(p) - 1;
+    _zapishiObekt(p, `Нов строеж в имота: ${ime.trim() || 'без име'}`);
+    _prerisuvai();
+}
+
+function smeniStroezh(i) {
+    const p = _zhivObekt();
+    if (!p) return;
+    p.tekusht_stroezh = Number(i);
+    _zapishiTiho_ilisave(p);
+    _prerisuvai();
+}
+
+function _zapishiTiho_ilisave(p) {
+    appData.currentProject = p;
+    saveData();
+}
+
+function _prerisuvai() {
+    const stranica = [...document.querySelectorAll('.page')].find(x => x.classList.contains('active'));
+    const id = (stranica && stranica.id || '').replace('page-', '');
+    ({ kakav: renderKakavPage, 'ai-protocols': renderAiProtocols, dokumenti: renderDokumentiPage,
+       osip: renderOsipPage, generate: renderGenerateSection }[id] || (() => {}))();
+}
+
+// Лентата със строежите — показва се там, където работата е НА СТРОЕЖ.
+function _lentaStroezhi(p) {
+    const spisak = _stroezhi(p), tekusht = _indeksStroezh(p);
+    const edin = spisak.length === 1;
+    return `
+        <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <div style="font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">
+                    ${edin ? 'Строеж' : `Строежи в имота · ${spisak.length}`}
+                </div>
+                ${spisak.map((s, i) => `
+                    <button type="button" class="btn ${i === tekusht ? 'btn-primary' : 'btn-secondary'} btn-sm"
+                            onclick="smeniStroezh(${i})" title="${_s2esc(_imeStroezh(s, i))}">
+                        ${_s2esc(_imeStroezh(s, i))}
+                    </button>`).join('')}
+                <button type="button" class="btn btn-ghost btn-sm" onclick="dobaviStroezh()">+ строеж</button>
+            </div>
+            ${edin ? `<p style="font-size:11.5px;color:var(--muted);margin:8px 0 0">
+                Един имот може да носи няколко строежа — всеки със свое разрешение, своя категория
+                и своя заповедна книга. Общи са имотът, собствеността и Акт 16.</p>` : ''}
+        </div>`;
+}
+
 function _zhivObekt() {
     const c = appData.currentProject;
     return c ? appData.projects.find(x => String(x.id) === String(c.id)) || null : null;
@@ -7424,17 +7537,38 @@ function _obektIliIzbor(kutiyaId, stranica, podkana) {
     return p;
 }
 
+// Лентата е за ИМОТА. Името на строежа беше тук — махнато е (02.10.2026):
+// един имот може да носи няколко строежа и смесването на двете в един ред
+// беше точно подредбата, която изоставяме. Строежът е в своята лента.
 function _lentaObekt(p, stranica) {
+    const nik = (p.nik || '').trim();
     return `
         <div class="card" style="margin-bottom:16px">
             <div class="card-header">
                 <div>
-                    <div class="card-title">📋 Обект</div>
-                    <div class="card-subtitle">ПИ: ${p.pi} — ${p.stroej || ''}</div>
+                    <div class="card-title">📋 ${nik ? _s2esc(nik) : 'Имот'}</div>
+                    <div class="card-subtitle">
+                        ПИ ${_s2esc(p.pi || '—')}${p.address ? ' · ' + _s2esc(p.address) : ''}
+                        <button type="button" class="btn btn-ghost btn-sm" style="margin-left:6px"
+                                onclick="smeniNik()">${nik ? 'смени ника' : '+ ник'}</button>
+                    </div>
                 </div>
                 ${izborObektHtml(stranica)}
             </div>
         </div>`;
+}
+
+// Номерът е верният ключ, никът е нейният. „ПИ 68134.209.689“ не казва нищо на
+// окото; „Бъкстон“ казва всичко. (Операторът, 01.10.2026)
+function smeniNik() {
+    const p = _zhivObekt();
+    if (!p) return;
+    const nov = prompt('Ник на имота — както ти го наричаш:' + String.fromCharCode(10,10) + 'напр. „Бъкстон“, „Обеля“', p.nik || '');
+
+    if (nov === null) return;
+    p.nik = nov.trim();
+    _zapishiObekt(p, p.nik ? `Ник на имота: ${p.nik}` : 'Никът на имота е махнат');
+    _prerisuvai();
 }
 
 function _zapishiObekt(p, saobshtenie) {
