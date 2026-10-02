@@ -4836,6 +4836,15 @@ const _KES_DOKAZ = {
     sobstvenik: ['нотариален акт', 'Име в проект или договор е само податка — собствеността се доказва с нотариален акт.'],
     kategoria:  ['разрешение за строеж', 'Преписва се от разрешението — то е легалната верификация.'],
     investitor: ['договор', 'От проекта е само как е записан; меродавен е договорът.'],
+    // Независимата проверка живее от ДВА РАЗЛИЧНИ източника: визата казва колко
+    // е допустимо, проектът — колко е постигнато. Ако и двете дойдат от една
+    // записка, архитектът сам си поставя оценката. (Операторът, 02.10.2026)
+    zona:         ['виза за проектиране', 'Записката често преразказва визата — меродавна е самата виза.'],
+    plytnost_dop: ['виза за проектиране', 'Допустимото се доказва с визата, не с преразказа му в записка.'],
+    kint_dop:     ['виза за проектиране', 'Допустимото се доказва с визата, не с преразказа му в записка.'],
+    ozelen_dop:   ['виза за проектиране', 'Допустимото се доказва с визата, не с преразказа му в записка.'],
+    korniz_dop:   ['виза за проектиране', 'Допустимото се доказва с визата, не с преразказа му в записка.'],
+    otstoyania:   ['виза за проектиране', 'Отстоянията са както ги е записала визата.'],
 };
 
 const _KES_PODSKAZKA = {
@@ -5011,6 +5020,33 @@ function renderImotPage() {
             <button class="btn btn-secondary btn-sm" onclick="dobaviStroezh()">+ строеж</button>
         </div>
         ${spisak.map(kartaStroezh).join('')}`;
+}
+
+// Сверените показатели се връщат в `gradoustroystvo`: оттам ги четат правилото
+// G1 на сървъра и шаблонът на ОСИП. Формата отпадна, източникът не бива.
+// (02.10.2026)
+const _POKAZATEL_KAM_GRAD = {
+    zona: 'zona', plosht_upi: 'plosht', pup: 'pup', kadastr: 'kadastr',
+    plytnost_dop: 'viza.plytnost', kint_dop: 'viza.kint',
+    ozelen_dop: 'viza.ozel', korniz_dop: 'viza.kk',
+    zp: 'proekt.zp', rzp: 'proekt.rzp',
+    ozelen_post: 'proekt.ozel', korniz_post: 'proekt.kk',
+};
+
+function _pokazateliKamGrad(obekt, st) {
+    const g = { ...(obekt.gradoustroystvo || {}) };
+    g.viza = { ...(g.viza || {}) };
+    g.proekt = { ...(g.proekt || {}) };
+    let n = 0;
+    for (const [klyuch, pat] of Object.entries(_POKAZATEL_KAM_GRAD)) {
+        const f = (st.fakti || {})[klyuch];
+        if (!f || (f.sastoyanie !== 'potvardeno' && f.sastoyanie !== 'popraveno')) continue;
+        const [a, b] = pat.split('.');
+        if (b) g[a][b] = f.stoynost; else g[a] = f.stoynost;
+        n++;
+    }
+    if (n) obekt.gradoustroystvo = g;
+    return n;
 }
 
 // Данните на ИМОТА: градоустройството и каквото е общо за всички строежи в него.
@@ -5223,6 +5259,66 @@ function _kesPoleHtml(klyuch, f) {
     </div>`;
 }
 
+// Независимата проверка: визата казва колко е допустимо, проектът — колко е
+// постигнато, КОДЪТ ги сравнява. Това беше смисълът на полетата от самото начало
+// (операторът си го спомни, 02.10.2026) и не бива да се губи, като ги четем.
+const _SRAVNENIA = [
+    ['plytnost_dop', 'plytnost_post', 'Плътност на застрояване', '%', 'maks'],
+    ['kint_dop',     'kint_post',     'Коефициент на интензивност', '', 'maks'],
+    ['ozelen_dop',   'ozelen_post',   'Озеленяване', '%', 'min'],
+    ['korniz_dop',   'korniz_post',   'Кота корниз', 'м', 'maks'],
+];
+
+function _chisloOtTekst(v) {
+    const m = String(v ?? '').replace(/\s/g, '').match(/-?\d+(?:[.,]\d+)?/);
+    return m ? parseFloat(m[0].replace(',', '.')) : null;
+}
+
+// Постигнатите плътност и Кинт често не са изписани — смятат се от ЗП и РЗП.
+function _postignatoChislo(f, klyuch) {
+    const pryako = _chisloOtTekst((f[klyuch] || {}).stoynost);
+    if (pryako !== null) return { st: pryako, kak: '' };
+    const plosht = _chisloOtTekst((f.plosht_upi || {}).stoynost);
+    if (!plosht) return { st: null, kak: '' };
+    const ot = klyuch === 'plytnost_post' ? 'zp' : klyuch === 'kint_post' ? 'rzp' : null;
+    const v = ot ? _chisloOtTekst((f[ot] || {}).stoynost) : null;
+    if (!v) return { st: null, kak: '' };
+    return klyuch === 'plytnost_post'
+        ? { st: v / plosht * 100, kak: `от ЗП ${v} ÷ ${plosht} м²` }
+        : { st: v / plosht, kak: `от РЗП ${v} ÷ ${plosht} м²` };
+}
+
+function _kesSravneniaHtml(f) {
+    const esc = _s2esc, redove = [];
+    for (const [kd, kp, ime, merna, posoka] of _SRAVNENIA) {
+        const dop = _chisloOtTekst((f[kd] || {}).stoynost);
+        const { st: post, kak } = _postignatoChislo(f, kp);
+        if (dop === null || post === null) continue;
+        const naredno = posoka === 'min' ? post >= dop : post <= dop;
+        // „На ръба“: разликата е под 1% — тогава си струва да се погледне чертежът.
+        const naRaba = Math.abs(post - dop) < Math.max(Math.abs(dop) * 0.01, 0.01);
+        const znak = !naredno ? '⛔' : naRaba ? '⚠️' : '✅';
+        const cvyat = !naredno ? '#a02828' : naRaba ? '#b45309' : '#2e6b32';
+        redove.push(`<div style="display:flex;gap:10px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border-light)">
+            <span>${znak}</span>
+            <span style="flex:1"><strong>${esc(ime)}</strong>
+                <span style="color:var(--muted)">· ${posoka === 'min' ? 'минимум' : 'максимум'} ${dop}${esc(merna)}</span></span>
+            <span style="color:${cvyat};font-weight:600">постигнато ${Number(post.toFixed(2))}${esc(merna)}</span>
+            ${kak ? `<span style="color:var(--muted);font-size:11.5px">${esc(kak)}</span>` : ''}
+            ${naRaba && naredno ? '<span style="color:#b45309;font-size:11.5px">на ръба</span>' : ''}
+        </div>`);
+    }
+    if (!redove.length) return '';
+    return `<div class="card" style="margin:0 0 16px">
+        <div class="card-title" style="margin-bottom:4px;font-size:13px">📊 Допустимо срещу постигнато</div>
+        <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px">
+            Визата казва колко е допустимо, проектът — колко е постигнато. Сравнява кодът, не АИ-то.
+            „На ръба“ значи разлика под 1% — тогава си струва да се погледне чертежът.
+        </p>
+        ${redove.join('')}
+    </div>`;
+}
+
 function _kesHtml(p, r) {
     const f = p.fakti || {};
     const broi = v => _KES_POLETA.filter(([k]) => (f[k]?.sastoyanie || 'prazno') === v).length;
@@ -5253,6 +5349,7 @@ function _kesHtml(p, r) {
                 onclick="kesPotvardiVsichki('${encodeURIComponent(JSON.stringify(zaPotvarzhdavane))}')">
                 ✔ Потвърди всички ${predl}</button>` : ''}
         </div>
+        ${_kesSravneniaHtml(f)}
         ${(r.razminavania || []).length ? `<div class="alert alert-warning">
             Записките не се връзват на ${r.razminavania.length}
             ${r.razminavania.length === 1 ? 'място' : 'места'} — спорните полета по-долу остават празни,
@@ -5279,7 +5376,9 @@ function _kesFakt(k64) {
 
 function _kesZapishi(p, opis) {
     // Записва се ОБЕКТЪТ — строежът живее в него.
-    _s2ZapishiTiho(_zhivObekt() || p, opis);
+    const obekt = _zhivObekt() || p;
+    _pokazateliKamGrad(obekt, p);
+    _s2ZapishiTiho(obekt, opis);
     renderKakavPage();
 }
 
