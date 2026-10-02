@@ -5126,7 +5126,7 @@ async function zapiskiCheti() {
     const z = (p.zapiski = p.zapiski || { chasti: [] });
     hod.innerHTML = fajlove.map((f, i) => `<div id="zp-f-${i}">· ${_s2esc(f.name)}</div>`).join('');
     const znak = (i, t) => { const e = document.getElementById('zp-f-' + i); if (e) e.innerHTML = t; };
-    let prochetени = 0;
+    let prochetiniJs = 0;
     for (let i = 0; i < fajlove.length; i++) {
         const f = fajlove[i], ime = _s2esc(f.name);
         if (/\.doc$/i.test(f.name)) { znak(i, `⚠️ ${ime} — стар .doc, запиши го като .docx`); continue; }
@@ -5142,7 +5142,7 @@ async function zapiskiCheti() {
             // Ново четене на същата част заменя старото ѝ четене.
             z.chasti = z.chasti.filter(x => x.fajl !== f.name);
             z.chasti.push(zap);
-            prochetени++;
+            prochetiniJs++;
             znak(i, `✓ ${ime} — <strong>${_s2esc(zap.chast_ime || zap.chast_kod || '?')}</strong>`
                 + ` · ${(zap.priznaci || []).length} признака · ${(zap.materiali || []).length} материала`
                 + (zap.ot_tekst ? ' <span style="color:var(--green,#2e7d32)">· от текст (безплатно)</span>'
@@ -5152,9 +5152,9 @@ async function zapiskiCheti() {
             znak(i, `❌ ${ime} — ${_s2esc(e.message)}`);
         }
     }
-    if (prochetени) {
+    if (prochetiniJs) {
         z.koga = new Date().toISOString();
-        _zapishiObekt(obekt, `Записки: прочетени ${prochetени} части`);
+        _zapishiObekt(obekt, `Записки: прочетени ${prochetiniJs} части`);
     }
     zapiskiRezyume();
 }
@@ -5271,7 +5271,7 @@ function _zpRed(x) {
 
 function _zapiskiHtml(r) {
     const esc = _s2esc;
-    const prochetени = (r.chasti_prochetini || []).map(c => esc(c.ime)).join(' · ');
+    const prochetiniJs = (r.chasti_prochetini || []).map(c => esc(c.ime)).join(' · ');
     const lipsvat = (r.chasti_lipsvat || []).map(c => esc(c.ime)).join(' · ');
 
     const razmin = (r.razminavania || []).map(x => `
@@ -5303,10 +5303,34 @@ function _zapiskiHtml(r) {
                 <div style="margin-top:6px">${r[k].map(_zpRed).join('')}</div>
             </details>`).join('');
 
+    // Записка за ДРУГ имот не е разминаване — тя изобщо не е тук. Казва се
+    // ПЪРВО и най-високо, преди каквото и да било друго. (02.10.2026)
+    const chuzhdi = (r.chuzhdi_zapiski || []).length ? `
+        <div class="alert alert-error" style="margin:0 0 12px"><div>
+            <strong>⛔ ${r.chuzhdi_zapiski.length}
+            ${r.chuzhdi_zapiski.length === 1 ? 'записка е за ДРУГ имот' : 'записки са за ДРУГ имот'}
+            — не влизат в нищо по-долу</strong>
+            <div style="font-size:12px;margin-top:5px;line-height:1.6">
+                ${r.chuzhdi_zapiski.map(c => `<div><strong>${esc(c.chast)}</strong>${c.fajl ? ` <span style="opacity:.75">(${esc(c.fajl)})</span>` : ''} → ${esc(c.imot)}</div>`).join('')}
+                ${r.nash_imot ? `<div style="margin-top:5px;opacity:.8">Останалите са за: ${esc(r.nash_imot)}</div>` : ''}
+            </div>
+            <div style="font-size:12px;margin-top:6px">Провери дали файлът не е сбъркан, или дали не е за друг обект в папката.</div>
+        </div></div>` : '';
+
+    const neyasno = r.imotat_e_neyasen ? `
+        <div class="alert alert-warning" style="margin:0 0 12px"><div>
+            <strong>⚠️ Записките сочат към различни имота — не мога да реша кой е този строеж</strong>
+            <div style="font-size:12px;margin-top:5px;line-height:1.6">
+                ${(r.imoti_v_papkata || []).map(x => `<div>· ${esc(x)}</div>`).join('')}
+            </div>
+            <div style="font-size:12px;margin-top:6px">Нищо не е изключено — махни чуждите файлове и прочети пак.</div>
+        </div></div>` : '';
+
     return `
         <div style="font-size:13px">
+            ${chuzhdi}${neyasno}
             <div style="margin-bottom:10px">
-                <strong>Прочетени части:</strong> ${prochetени || '—'}
+                <strong>Прочетени части:</strong> ${prochetiniJs || '—'}
                 ${lipsvat ? `<div style="color:var(--muted);margin-top:3px"><strong>Липсват:</strong> ${lipsvat}</div>` : ''}
             </div>
             ${(r.shapka || []).length ? `<div style="margin-bottom:10px">${
