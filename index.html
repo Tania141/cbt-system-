@@ -4198,8 +4198,9 @@ function _s2PurvaStr(d) {
 }
 
 async function sloy2Cheti() {
-    const p = _zhivObekt();
-    if (!p) { showAlert('error', 'Първо избери обект.'); return; }
+    const obekt = _zhivObekt();
+    if (!obekt) { showAlert('error', 'Първо избери обект.'); return; }
+    const p = _stroezh(obekt);          // досието е на СТРОЕЖА
     const fajlove = [...(document.getElementById('s2-fajlove')?.files || [])];
     if (!fajlove.length) { showAlert('error', 'Избери файловете на обекта.'); return; }
     const hod = document.getElementById('s2-hod');
@@ -4282,23 +4283,24 @@ async function sloy2Cheti() {
     }
     if (procheteni) {
         s2.koga = new Date().toISOString();
-        _zapishiObekt(p, `Слой 2: прочетени ${procheteni} файла`);
+        _zapishiObekt(obekt, `Слой 2: прочетени ${procheteni} файла`);
     }
     sloy2Sravni();
 }
 
 function sloy2Izchisti() {
-    const p = _zhivObekt();
+    const obekt = _zhivObekt();
+    const p = obekt && _stroezh(obekt);
     if (!p || !p.sloy2?.od) return;
-    if (!confirm('Да изчистя прочетеното за този обект? Файловете ще трябва да се прочетат наново.')) return;
+    if (!confirm('Да изчистя прочетеното за този строеж? Файловете ще трябва да се прочетат наново.')) return;
     delete p.sloy2.od;
-    _zapishiObekt(p, 'Слой 2: прочетеното е изчистено');
+    _zapishiObekt(obekt, 'Слой 2: прочетеното е изчистено');
     document.getElementById('s2-rezultat').innerHTML = '';
     document.getElementById('s2-hod').innerHTML = '';
 }
 
 async function sloy2Sravni() {
-    const p = _zhivObekt();
+    const p = _stroezh(_zhivObekt());
     const kutiya = document.getElementById('s2-rezultat');
     if (!p || !kutiya) return;
     const procheteni = p.sloy2?.od?.dokumenti || [];
@@ -4668,7 +4670,7 @@ function _s2SverkaHtml(r, dokumenti, potv) {
 }
 
 async function s2PotvardiMnogo(kl64, pitai) {
-    const p = _zhivObekt();
+    const p = _stroezh(_zhivObekt());
     if (!p?.sloy2?.od) return;
     const kluchove = JSON.parse(decodeURIComponent(kl64));
     if (pitai && !confirm(`Сверяваш ${kluchove.length} стойности наведнъж.\n\nВсички ли си проверила на хартия?`)) return;
@@ -4691,7 +4693,7 @@ function _s2Tog(el) {
 }
 
 function _s2Namer(k64) {
-    const p = _zhivObekt(), kl = decodeURIComponent(k64), i = kl.indexOf('::');
+    const p = _stroezh(_zhivObekt()), kl = decodeURIComponent(k64), i = kl.indexOf('::');
     const d = (p?.sloy2?.od?.dokumenti || []).find(x => _s2Id(x) === kl.slice(0, i));
     const fakt = d ? _s2Fakti(d).find(x => x.k === kl.slice(i + 2)) : null;
     return { p, kl, fakt };
@@ -5111,16 +5113,58 @@ function renderProektPage() {
 }
 
 function renderDokumentitePage() {
-    const p = _obektIliIzbor('dokumentite-content', 'dokumentite', 'Изберете обекта');
-    if (!p) return;
-    _predstoi('dokumentite-content', p, 'dokumentite', '🗂️ Документите', [
-        'Нотариален акт, договорите, лицензите, проектантите — прочетени В НАЧАЛОТО',
-        'Разрешението за строеж — то разделя ОСИП от надзора',
-        'Всеки документ знае МОМЕНТА си: не му е времето · очаква се сега · налично',
-        'Сверява се веднъж; протоколите само показват оттам',
-    ], 'Машината вече я има — четецът познава нотариалния акт, договорите и лицензите, '
-     + 'но ги чете чак за окончателния доклад. Тук ще ги чете в началото.');
+    const obekt = _obektIliIzbor('dokumentite-content', 'dokumentite', 'Изберете обекта');
+    if (!obekt) return;
+    const p = _stroezh(obekt);
+    document.getElementById('dokumentite-content').innerHTML =
+        _lentaObekt(obekt, 'dokumentite') + _lentaStroezhi(obekt) + `
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">🤖 Прочети документите — за Акт 15 / ОД</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Избери документите на обекта (PDF, снимки, .docx). АИ-то чете всеки —
+                номер, дата, издател, обект, участници и на какво се позовава; кодът
+                сравнява между тях и показва <strong>къде се разминават</strong>.
+                Файловете не се пазят — пазят се само прочетените факти.
+                Прочетеното от скан е <strong>за потвърждение</strong>: няма текст, срещу който да се свери.
+            </p>
+            <input type="file" id="s2-fajlove" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.docx"
+                   class="form-input" style="margin-bottom:10px">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                <label for="s2-stranici" style="font-size:13px;color:var(--muted)">Страници (по избор):</label>
+                <input type="text" id="s2-stranici" class="form-input" style="width:160px" placeholder="напр. 1-4, 20">
+                <span style="font-size:12px;color:var(--muted)">само за дълъг PDF (нотариални актове) — чете се
+                    само това, по-малко токени; празно = целият файл. Важи за всички избрани PDF.</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                <label for="s2-chetec" style="font-size:13px;color:var(--muted)">Четец:</label>
+                <select id="s2-chetec" class="form-input" style="width:auto"
+                        onchange="try { localStorage.setItem('s2_chetec', this.value) } catch (e) {}">
+                    <option value="auto">Автоматично — Claude, при проблем Mistral</option>
+                    <option value="claude">Само Claude</option>
+                    <option value="mistral">Само Mistral</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-primary btn-sm" onclick="sloy2Cheti()">📖 Прочети избраните</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="sloy2Sravni()">🔁 Сравни пак</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="sloy2Izchisti()">Изчисти прочетеното</button>
+            </div>
+            <div id="s2-hod" style="margin-top:10px;font-size:12px"></div>
+            <div id="s2-rezultat" style="margin-top:12px"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+            <div class="card-title" style="margin-bottom:8px">🗂️ Предстои тук</div>
+            <ul style="margin:0 0 0 18px;font-size:13px;line-height:1.9;color:var(--slate)">
+                <li>Нотариалният акт, договорите, лицензите и проектантите — прочетени В НАЧАЛОТО</li>
+                <li>Всеки документ знае момента си: не му е времето · очаква се сега · налично</li>
+                <li>Сверява се веднъж; протоколите само показват оттам</li>
+            </ul>
+        </div>`;
+    try { const c = localStorage.getItem('s2_chetec'); if (c) document.getElementById('s2-chetec').value = c; } catch (e) {}
+    if (p.sloy2?.od?.dokumenti?.length) sloy2Sravni();
 }
+
+
 
 function renderNadzorPage() {
     const p = _obektIliIzbor('nadzor-content', 'nadzor', 'Изберете обекта');
@@ -5830,8 +5874,9 @@ function _zapiskiHtml(r) {
 function renderOdAiKarta() {
     const box = document.getElementById('od-ai-karta');
     if (!box) return;
-    const p = _zhivObekt();
-    if (!p) { box.innerHTML = ''; return; }
+    const obekt = _zhivObekt();
+    if (!obekt) { box.innerHTML = ''; return; }
+    const p = _stroezh(obekt);          // документите и описанието са на строежа
     const docs = p.sloy2?.od?.dokumenti || [];
     const potv = p.sloy2?.od?.potvardeni || {};
     const vsichki = docs.reduce((s, d) => s + _s2Fakti(d).length, 0);
@@ -5881,13 +5926,14 @@ function renderOdAiKarta() {
 }
 
 function zapishiTehnichesko() {
-    const p = _zhivObekt();
+    const obekt = _zhivObekt();
+    const p = obekt && _stroezh(obekt);   // описанието е на строежа
     const el = document.getElementById('od-ai-tehn');
     if (!p || !el) return;
     const tekst = el.value.replace(/\s+$/, '');
     if ((p.tehnichesko_opisanie?.tekst || '') === tekst) { showAlert('info', 'Описанието не е променено.'); return; }
     p.tehnichesko_opisanie = { tekst, koy: _s2Koy(), koga: new Date().toISOString() };
-    _zapishiObekt(p, 'Техническото описание на строежа е записано');
+    _zapishiObekt(obekt, 'Техническото описание на строежа е записано');
     renderOdAiKarta();
 }
 
@@ -5922,8 +5968,9 @@ function tehnOtAiAkt15() {
 }
 
 async function generiraiOdAi() {
-    const p = _zhivObekt();
-    if (!p) return;
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    const p = _stroezh(obekt);          // документите и описанието са на строежа
     const btn = document.getElementById('btn-od-ai');
     const kutiya = document.getElementById('od-ai-belezhki');
     if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Генериране…'; }
@@ -8288,40 +8335,6 @@ function renderDokumentiPage() {
                 </button>
             </div>
             <div id="fp-dok-rezultat" style="margin-top:12px"></div>
-        </div>
-        <div class="card">
-            <div class="card-title" style="margin-bottom:8px">🤖 Прочети документите — за Акт 15 / ОД</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Избери документите на обекта (PDF, снимки, .docx). АИ-то чете всеки —
-                номер, дата, издател, обект, участници и на какво се позовава; кодът
-                сравнява между тях и показва <strong>къде се разминават</strong>.
-                Файловете не се пазят — пазят се само прочетените факти.
-                Прочетеното от скан е <strong>за потвърждение</strong>: няма текст, срещу който да се свери.
-            </p>
-            <input type="file" id="s2-fajlove" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.docx"
-                   class="form-input" style="margin-bottom:10px">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-                <label for="s2-stranici" style="font-size:13px;color:var(--muted)">Страници (по избор):</label>
-                <input type="text" id="s2-stranici" class="form-input" style="width:160px" placeholder="напр. 1-4, 20">
-                <span style="font-size:12px;color:var(--muted)">само за дълъг PDF (нотариални актове) — чете се
-                    само това, по-малко токени; празно = целият файл. Важи за всички избрани PDF.</span>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-                <label for="s2-chetec" style="font-size:13px;color:var(--muted)">Четец:</label>
-                <select id="s2-chetec" class="form-input" style="width:auto"
-                        onchange="try { localStorage.setItem('s2_chetec', this.value) } catch (e) {}">
-                    <option value="auto">Автоматично — Claude, при проблем Mistral</option>
-                    <option value="claude">Само Claude</option>
-                    <option value="mistral">Само Mistral</option>
-                </select>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button type="button" class="btn btn-primary btn-sm" onclick="sloy2Cheti()">📖 Прочети избраните</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="sloy2Sravni()">🔁 Сравни пак</button>
-                <button type="button" class="btn btn-ghost btn-sm" onclick="sloy2Izchisti()">Изчисти прочетеното</button>
-            </div>
-            <div id="s2-hod" style="margin-top:10px;font-size:12px"></div>
-            <div id="s2-rezultat" style="margin-top:12px"></div>
         </div>
         <div class="card">
             <div class="card-title" style="margin-bottom:16px">📜 Разрешение за строеж</div>
