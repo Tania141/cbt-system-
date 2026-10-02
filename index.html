@@ -5534,15 +5534,17 @@ function _nashiteIdent(obekt) {
 }
 
 // Операторът познава имота си: един клик и старият номер влиза в списъка.
-function priemiStarIdent(ident64) {
+function priemiStarIdent(spisak64) {
     const p = _zhivObekt();
     if (!p) return;
-    const ident = decodeURIComponent(ident64).trim();
-    if (!ident) return;
+    let novi;
+    try { novi = JSON.parse(decodeURIComponent(spisak64)); } catch (e) { novi = [decodeURIComponent(spisak64)]; }
+    novi = (Array.isArray(novi) ? novi : [novi]).map(x => String(x).trim()).filter(Boolean);
+    if (!novi.length) return;
     const spisak = p.stari_identifikatori || [];
-    if (!spisak.includes(ident)) spisak.push(ident);
+    for (const x of novi) if (!spisak.includes(x)) spisak.push(x);
     p.stari_identifikatori = spisak;
-    _zapishiObekt(p, `Стар идентификатор на имота: ${ident}`);
+    _zapishiObekt(p, `Стари идентификатори на имота: ${novi.join(', ')}`);
     _prerisuvai();
 }
 
@@ -5739,12 +5741,14 @@ function _zapiskiHtml(r) {
             — не влизат в нищо по-долу</strong>
             <div style="font-size:12px;margin-top:5px;line-height:1.6">
                 ${r.chuzhdi_zapiski.map(c => {
-                    // Старите номера на същия имот — операторът го знае, един клик стига.
-                    const ident = (String(c.imot || '').match(/\d{5}\.\d+\.\d+/) || [])[0];
+                    // Визата на обединен имот носи НЯКОЛКО стари номера — приемат се
+                    // наведнъж, операторът познава имота си. (02.10.2026)
+                    const ident = c.identifikatori || [];
                     return `<div><strong>${esc(c.chast)}</strong>${c.fajl ? ` <span style="opacity:.75">(${esc(c.fajl)})</span>` : ''} → ${esc(c.imot)}
-                    ${ident ? `<button type="button" class="btn btn-secondary btn-sm" style="margin-left:6px"
-                        onclick="priemiStarIdent('${encodeURIComponent(ident)}')"
-                        title="Добавя ${esc(ident)} към предишните номера на имота">това е стар номер на имота</button>` : ''}</div>`;
+                    ${ident.length ? `<button type="button" class="btn btn-secondary btn-sm" style="margin-left:6px"
+                        onclick="priemiStarIdent('${encodeURIComponent(JSON.stringify(ident))}')"
+                        title="Добавя ${esc(ident.join(', '))} към предишните номера на имота">
+                        ${ident.length === 1 ? 'това е стар номер на имота' : `това са стари номера на имота (${ident.length})`}</button>` : ''}</div>`;
                 }).join('')}
                 ${r.nash_imot ? `<div style="margin-top:5px;opacity:.8">Останалите са за: ${esc(r.nash_imot)}</div>` : ''}
             </div>
