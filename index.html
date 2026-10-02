@@ -4967,6 +4967,16 @@ function renderImotPage() {
                 ${red('Адрес', p.address || 'няма', !p.address)}
                 ${red('УПИ', (p.gradoustroystvo || {}).upi || '—', true)}
             </div>
+            <div style="margin-top:10px">
+                <label class="form-label" style="font-size:11.5px">Предишни идентификатори на имота</label>
+                <input type="text" id="fp-stari-ident" class="form-input" style="font-size:13px"
+                       placeholder="68134.4354.264; 68134.4354.277; 68134.4354.288 — през точка и запетая"
+                       value="${esc((p.stari_identifikatori || []).join('; '))}">
+                <p style="font-size:11.5px;color:var(--muted);margin-top:4px">
+                    Когато няколко имота станат един УПИ, старите документи носят СТАРИТЕ номера.
+                    Визата особено. Без тях системата ги мисли за чужд имот.
+                </p>
+            </div>
             <p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">
                 Общо за всички строежи в имота: имотът, собствеността и Акт 16.
             </p>
@@ -5053,6 +5063,7 @@ function zapishiImot() {
     const p = _zhivObekt();
     if (!p) return;
     const v = id => (document.getElementById(id)?.value || '').trim();
+    p.stari_identifikatori = v('fp-stari-ident').split(/[;,]/).map(x => x.trim()).filter(Boolean);
     p.gradoustroystvo = {
         ...(p.gradoustroystvo || {}),
         zona: v('fp-zona'), plosht: v('fp-g-plosht'),
@@ -5167,7 +5178,8 @@ async function renderKakavPage() {
     try {
         const r = await apiCall('/api/zapiski/rezyume', 'POST',
             { zapiski: chasti, vid: st.vid === 'lineen' ? 'lineen' : 'sgrada',
-              ime_na_stroezha: st.stroej || '' });
+              ime_na_stroezha: st.stroej || '',
+              stari_identifikatori: _nashiteIdent(p) });
         if (r.greshka) throw new Error(r.greshka);
         const novi = _kesSleej(st, _kesPredlozheni(r));
         if (novi) _s2ZapishiTiho(p, `Проверки: ${novi} нови предложения от проекта`);
@@ -5471,6 +5483,24 @@ async function zapiskiCheti() {
 // Премества една записка към друг строеж в същия имот. Операторът, 02.10.2026:
 // „ако сме му казали канал, а му предлагам архитектура, редно е да ги различава“.
 // Различаването без местене би било половин работа.
+// Всички номера на ТОЗИ имот: текущият плюс предишните. Виж `stari_identifikatori`.
+function _nashiteIdent(obekt) {
+    return [obekt?.pi, ...(obekt?.stari_identifikatori || [])].filter(Boolean);
+}
+
+// Операторът познава имота си: един клик и старият номер влиза в списъка.
+function priemiStarIdent(ident64) {
+    const p = _zhivObekt();
+    if (!p) return;
+    const ident = decodeURIComponent(ident64).trim();
+    if (!ident) return;
+    const spisak = p.stari_identifikatori || [];
+    if (!spisak.includes(ident)) spisak.push(ident);
+    p.stari_identifikatori = spisak;
+    _zapishiObekt(p, `Стар идентификатор на имота: ${ident}`);
+    _prerisuvai();
+}
+
 function zapiskiPremesti(fajl64) {
     const obekt = _zhivObekt();
     if (!obekt) return;
@@ -5530,7 +5560,8 @@ async function zapiskiRezyume() {
     try {
         const r = await apiCall('/api/zapiski/rezyume', 'POST',
             { zapiski: chasti, vid: p.vid === 'lineen' ? 'lineen' : 'sgrada',
-              ime_na_stroezha: p.stroej || '' });
+              ime_na_stroezha: p.stroej || '',
+              stari_identifikatori: _nashiteIdent(obekt) });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(r.greshka)}</div>`; return; }
         kutiya.innerHTML = _zapiskiHtml(r);
     } catch (e) {
@@ -5662,7 +5693,14 @@ function _zapiskiHtml(r) {
             ${r.chuzhdi_zapiski.length === 1 ? 'записка е за ДРУГ имот' : 'записки са за ДРУГ имот'}
             — не влизат в нищо по-долу</strong>
             <div style="font-size:12px;margin-top:5px;line-height:1.6">
-                ${r.chuzhdi_zapiski.map(c => `<div><strong>${esc(c.chast)}</strong>${c.fajl ? ` <span style="opacity:.75">(${esc(c.fajl)})</span>` : ''} → ${esc(c.imot)}</div>`).join('')}
+                ${r.chuzhdi_zapiski.map(c => {
+                    // Старите номера на същия имот — операторът го знае, един клик стига.
+                    const ident = (String(c.imot || '').match(/\d{5}\.\d+\.\d+/) || [])[0];
+                    return `<div><strong>${esc(c.chast)}</strong>${c.fajl ? ` <span style="opacity:.75">(${esc(c.fajl)})</span>` : ''} → ${esc(c.imot)}
+                    ${ident ? `<button type="button" class="btn btn-secondary btn-sm" style="margin-left:6px"
+                        onclick="priemiStarIdent('${encodeURIComponent(ident)}')"
+                        title="Добавя ${esc(ident)} към предишните номера на имота">това е стар номер на имота</button>` : ''}</div>`;
+                }).join('')}
                 ${r.nash_imot ? `<div style="margin-top:5px;opacity:.8">Останалите са за: ${esc(r.nash_imot)}</div>` : ''}
             </div>
             <div style="font-size:12px;margin-top:6px">Провери дали файлът не е сбъркан, или дали не е за друг обект в папката.</div>
