@@ -4969,8 +4969,74 @@ function renderImotPage() {
             </div>
             <p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">
                 Общо за всички строежи в имота: имотът, собствеността и Акт 16.
-                Градоустройството и скицата още живеят в „Изходни данни и РС“ — предстои да дойдат тук.
             </p>
+        </div>
+        <div class="card">
+            <div class="card-title" style="margin-bottom:8px">📊 Градоустройствени показатели</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                Визата <strong>задава</strong>, проектът <strong>постига</strong>. Впиши показателите по
+                виза и стойностите от проекта — постигнатото системата го смята сама. Нормата по
+                Наредба № 7 я прилага главният архитект, когато издава визата.
+            </p>
+            <div class="form-grid">
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Подробният устройствен план е одобрен с</label>
+                    <input type="text" id="fp-g-pup" class="form-input"
+                           placeholder="Решение на СОС № 50 по Протокол № 24/30.03.2001 г."
+                           value="${(p.gradoustroystvo||{}).pup||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Влиза дословно в оценката по чл. 142, ал. 5, т. 1 — решението или
+                        заповедта, с които планът е одобрен, заедно с органа и датата.
+                    </p>
+                </div>
+                <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Кадастралната карта е одобрена със</label>
+                    <input type="text" id="fp-g-kadastr" class="form-input"
+                           placeholder="Заповед № РД-18-108/13.12.2016 г. на изпълнителния директор на АГКК"
+                           value="${(p.gradoustroystvo||{}).kadastr||''}">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Ако е изменяна — и последното изменение. Празно поле просто не се
+                        споменава в доклада.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Устройствена зона по виза</label>
+                    <input type="text" id="fp-zona" class="form-input" placeholder="Жм"
+                           value="${(p.gradoustroystvo||{}).zona||''}" oninput="smetniPokazateli()">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        Както е записана във визата. Нормата по Наредба № 7 я прилага главният архитект.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Площ на имота (УПИ), м²</label>
+                    <input type="text" id="fp-g-plosht" class="form-input" placeholder="5000"
+                           value="${(p.gradoustroystvo||{}).plosht||''}" oninput="smetniPokazateli()">
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
+                        От нея се смятат плътността (ЗП ÷ площ) и интензивността (РЗП ÷ площ).
+                    </p>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;align-items:center;margin-top:12px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">показател</div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">по виза</div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">от проекта</div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">постигнато</div>
+                ${[['plytnost','Плътност на застрояване','max','%','zp','ЗП, м²'],
+                   ['kint','Интензивност, К инт.','max','','rzp','РЗП, м²'],
+                   ['ozel','Озеленена площ','min','%','ozel','%'],
+                   ['kk','Кота корниз, Н','max','м','kk','м']].map(([k,label,posoka,ed,pk,pe]) => `
+                    <div style="font-size:13px">${label}
+                        <span style="color:var(--muted);font-size:11px">${posoka==='min'?'· минимум':'· максимум'}</span></div>
+                    <input type="text" id="fp-g-viza-${k}" class="form-input" placeholder="${ed || '—'}"
+                           value="${((p.gradoustroystvo||{}).viza||{})[k]||''}" oninput="smetniPokazateli()">
+                    <input type="text" id="fp-g-proekt-${pk}" class="form-input" placeholder="${pe}"
+                           value="${((p.gradoustroystvo||{}).proekt||{})[pk]||''}" oninput="smetniPokazateli()">
+                    <div id="g-post-${k}" style="font-size:13px;font-weight:600">—</div>`).join('')}
+            </div>
+            <div id="g-darvesna-info" style="font-size:12px;margin-top:12px"></div>
+        </div>
+        <div style="margin:0 0 18px">
+            <button class="btn btn-primary" onclick="zapishiImot()">Запази данните за имота</button>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px">
             <div style="font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">
@@ -4979,6 +5045,25 @@ function renderImotPage() {
             <button class="btn btn-secondary btn-sm" onclick="dobaviStroezh()">+ строеж</button>
         </div>
         ${spisak.map(kartaStroezh).join('')}`;
+}
+
+// Данните на ИМОТА: градоустройството и каквото е общо за всички строежи в него.
+// Преместено от „Изходни данни и РС“ на 02.10.2026 — там вече го няма.
+function zapishiImot() {
+    const p = _zhivObekt();
+    if (!p) return;
+    const v = id => (document.getElementById(id)?.value || '').trim();
+    p.gradoustroystvo = {
+        ...(p.gradoustroystvo || {}),
+        zona: v('fp-zona'), plosht: v('fp-g-plosht'),
+        pup: v('fp-g-pup'), kadastr: v('fp-g-kadastr'),
+        viza: Object.fromEntries(['plytnost', 'kint', 'ozel', 'kk'].map(k => [k, v('fp-g-viza-' + k)])),
+        // Старите проценти се пазят, докато не се въведат ЗП и РЗП — да не
+        // изчезнат при запис.
+        proekt: { ...((p.gradoustroystvo || {}).proekt || {}),
+                  ...Object.fromEntries(['zp', 'rzp', 'ozel', 'kk'].map(k => [k, v('fp-g-proekt-' + k)])) },
+    };
+    _zapishiObekt(p, 'Данните за имота са запазени');
 }
 
 // Избира строежа и влиза в неговия екран.
@@ -8084,70 +8169,6 @@ function renderDokumentiPage() {
             </div>
         </div>
         <div class="card">
-            <div class="card-title" style="margin-bottom:8px">📊 Градоустройствени показатели</div>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
-                Визата <strong>задава</strong>, проектът <strong>постига</strong>. Впиши показателите по
-                виза и стойностите от проекта — постигнатото системата го смята сама. Нормата по
-                Наредба № 7 я прилага главният архитект, когато издава визата.
-            </p>
-            <div class="form-grid">
-                <div class="form-group" style="grid-column:1/-1">
-                    <label class="form-label">Подробният устройствен план е одобрен с</label>
-                    <input type="text" id="fp-g-pup" class="form-input"
-                           placeholder="Решение на СОС № 50 по Протокол № 24/30.03.2001 г."
-                           value="${(p.gradoustroystvo||{}).pup||''}">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Влиза дословно в оценката по чл. 142, ал. 5, т. 1 — решението или
-                        заповедта, с които планът е одобрен, заедно с органа и датата.
-                    </p>
-                </div>
-                <div class="form-group" style="grid-column:1/-1">
-                    <label class="form-label">Кадастралната карта е одобрена със</label>
-                    <input type="text" id="fp-g-kadastr" class="form-input"
-                           placeholder="Заповед № РД-18-108/13.12.2016 г. на изпълнителния директор на АГКК"
-                           value="${(p.gradoustroystvo||{}).kadastr||''}">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Ако е изменяна — и последното изменение. Празно поле просто не се
-                        споменава в доклада.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Устройствена зона по виза</label>
-                    <input type="text" id="fp-zona" class="form-input" placeholder="Жм"
-                           value="${(p.gradoustroystvo||{}).zona||''}" oninput="smetniPokazateli()">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        Както е записана във визата. Нормата по Наредба № 7 я прилага главният архитект.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Площ на имота (УПИ), м²</label>
-                    <input type="text" id="fp-g-plosht" class="form-input" placeholder="5000"
-                           value="${(p.gradoustroystvo||{}).plosht||''}" oninput="smetniPokazateli()">
-                    <p style="font-size:11px;color:var(--muted);margin-top:4px">
-                        От нея се смятат плътността (ЗП ÷ площ) и интензивността (РЗП ÷ площ).
-                    </p>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;align-items:center;margin-top:12px">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">показател</div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">по виза</div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">от проекта</div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">постигнато</div>
-                ${[['plytnost','Плътност на застрояване','max','%','zp','ЗП, м²'],
-                   ['kint','Интензивност, К инт.','max','','rzp','РЗП, м²'],
-                   ['ozel','Озеленена площ','min','%','ozel','%'],
-                   ['kk','Кота корниз, Н','max','м','kk','м']].map(([k,label,posoka,ed,pk,pe]) => `
-                    <div style="font-size:13px">${label}
-                        <span style="color:var(--muted);font-size:11px">${posoka==='min'?'· минимум':'· максимум'}</span></div>
-                    <input type="text" id="fp-g-viza-${k}" class="form-input" placeholder="${ed || '—'}"
-                           value="${((p.gradoustroystvo||{}).viza||{})[k]||''}" oninput="smetniPokazateli()">
-                    <input type="text" id="fp-g-proekt-${pk}" class="form-input" placeholder="${pe}"
-                           value="${((p.gradoustroystvo||{}).proekt||{})[pk]||''}" oninput="smetniPokazateli()">
-                    <div id="g-post-${k}" style="font-size:13px;font-weight:600">—</div>`).join('')}
-            </div>
-            <div id="g-darvesna-info" style="font-size:12px;margin-top:12px"></div>
-        </div>
-        <div class="card">
             <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
                 Кои документи се изискват за този обект решава чеклистът —
@@ -8443,15 +8464,8 @@ function zapishiDokumenti() {
         pametnik: ch('fp-pametnik'),
         opasni: ch('fp-opasni'),
         vodi: ch('fp-vodi'),
-        gradoustroystvo: {
-            zona: v('fp-zona'), plosht: v('fp-g-plosht'),
-            pup: v('fp-g-pup'), kadastr: v('fp-g-kadastr'),
-            viza: Object.fromEntries(['plytnost', 'kint', 'ozel', 'kk'].map(k => [k, v('fp-g-viza-' + k)])),
-            // Стойностите от проекта. Старите проценти (plytnost, kint) се пазят,
-            // докато не се въведат ЗП и РЗП — да не изчезнат при запис.
-            proekt: { ...((p.gradoustroystvo || {}).proekt || {}),
-                      ...Object.fromEntries(['zp', 'rzp', 'ozel', 'kk'].map(k => [k, v('fp-g-proekt-' + k)])) },
-        },
+        // Градоустройството се премести в „Имотът“ (02.10.2026) — тук вече НЕ се
+        // пише, иначе страницата, която няма тези полета, би записала празно.
         permit: {
             number: v('fp-permit-num'), date: v('fp-permit-date'),
             issuer: v('fp-permit-issuer'), effective: v('fp-permit-effective'),
