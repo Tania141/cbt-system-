@@ -7025,11 +7025,14 @@ function filterPassports() {
     let filtered = appData.projects;
 
     if (search) {
+        // Търси се и по ник, и по име на КОЙТО И ДА Е строеж в имота: „ХХХХХ“
+        // показва всичките му строежи, „канал“ — само него. (02.10.2026)
         filtered = filtered.filter(p =>
             p.pi?.toLowerCase().includes(search) ||
-            p.stroej?.toLowerCase().includes(search) ||
+            p.nik?.toLowerCase().includes(search) ||
             p.address?.toLowerCase().includes(search) ||
-            p.client?.name?.toLowerCase().includes(search)
+            p.client?.name?.toLowerCase().includes(search) ||
+            _stroezhi(p).some(st => (st.stroej || '').toLowerCase().includes(search))
         );
     }
 
@@ -7047,6 +7050,10 @@ function filterPassports() {
     renderPassportsList(filtered);
 }
 
+// Списъкът е по СТРОЕЖИ, не по имоти. Операторът, 02.10.2026: „ако търся да
+// работя по Строеж — Канал от имот ХХХХХ, не е ли редно, когато напиша ХХХХХ, да
+// ми се покажат колкото строежа има в този имот“. Тя не мисли „отвори имот, после
+// избери строеж“ — мисли „работя по канала“. Клик → право в строежа.
 function renderPassportsList(projects) {
     const container = document.getElementById('passports-list');
     if (!container) return;
@@ -7055,40 +7062,70 @@ function renderPassportsList(projects) {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📋</div>
-                <div class="empty-title">Няма намерени обекти</div>
+                <div class="empty-title">Няма намерени строежи</div>
                 <div class="empty-text">Опитайте с различни филтри или добавете нов обект</div>
                 <button class="btn btn-primary" onclick="navigateTo('new-passport')">➕ Нов обект</button>
-            </div>
-        `;
+            </div>`;
         return;
     }
 
+    const esc = _s2esc;
+    // Търсене по ПИ, ник или адрес → всички строежи в имота.
+    // Търсене по име на строеж → само той. (Операторът, 02.10.2026)
+    const tarsene = (document.getElementById('search-pi')?.value || '').trim().toLowerCase();
+    const imotatSavpada = p => !tarsene || [p.pi, p.nik, p.address, p.client?.name]
+        .some(x => (x || '').toLowerCase().includes(tarsene));
+
     container.innerHTML = projects.map(p => {
-        const isActive = appData.currentProject?.id === p.id;
-        const docs = p.generatedDocs || [];
-        return `
-        <div class="passport-card ${isActive ? 'selected' : ''}" onclick="otvoriImot('${p.id}')">
+        const vsichki = _stroezhi(p);
+        const mnogo = vsichki.length > 1;
+        const poImot = imotatSavpada(p);
+        const spisak = vsichki
+            .map((st, i) => ({ st, i }))
+            .filter(({ st }) => poImot || (st.stroej || '').toLowerCase().includes(tarsene));
+        return spisak.map(({ st, i }) => {
+            const aktiven = appData.currentProject?.id === p.id && _indeksStroezh(p) === i;
+            const docs = st.generatedDocs || [];
+            const rs = st.permit || {};
+            return `
+        <div class="passport-card ${aktiven ? 'selected' : ''}" onclick="otvoriStroezh('${esc(p.id)}', ${i})">
             <div>
-                <div class="passport-pi-label">ПИ</div>
-                <div class="passport-pi">${p.pi || '—'}</div>
+                <div class="passport-pi-label">${p.nik ? esc(p.nik) : 'ПИ'}</div>
+                <div class="passport-pi">${esc(p.pi || '—')}</div>
+                ${mnogo ? `<div style="font-size:10.5px;color:var(--muted);margin-top:3px">строеж ${i + 1} от ${vsichki.length}</div>` : ''}
             </div>
             <div class="passport-meta">
-                <div class="passport-name">${p.stroej || '(без строеж)'}</div>
-                <div class="passport-details">${p.address || ''} ${p.consultant?.name ? '· '+p.consultant.name : ''}</div>
+                <div class="passport-name">${esc(_imeStroezh(st, i))}</div>
+                <div class="passport-details">
+                    ${esc(p.address || '')}
+                    ${st.kategoria ? ` · ${esc(st.kategoria)} категория` : ''}
+                    ${rs.number ? ` · РС № ${esc(rs.number)}` : ''}
+                    ${st.consultant?.name ? ' · ' + esc(st.consultant.name) : ''}
+                </div>
                 <div class="passport-docs">
-                    ${docs.map(d => `<span class="badge badge-blue">${d.type}</span>`).join('')}
+                    ${docs.map(d => `<span class="badge badge-blue">${esc(d.type)}</span>`).join('')}
                 </div>
             </div>
             <div class="passport-actions">
                 <span style="font-size:12px;color:var(--muted)">${formatDate(p.date)}</span>
-                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();kamGenerirane('${p.id}')"
-                        title="Генерирай — отваря „Актове и протоколи“ за този обект">📄 Генерирай</button>
-                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editPassport('${p.id}')">✏️</button>
-                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePassport('${p.id}')">🗑️</button>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();otvoriImot('${esc(p.id)}')"
+                        title="Имотът — общото за всички строежи в него">🗺️</button>
+                ${i === 0 ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editPassport('${esc(p.id)}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deletePassport('${esc(p.id)}')">🗑️</button>` : ''}
             </div>
-        </div>
-        `;
+        </div>`;
+        }).join('');
     }).join('');
+}
+
+// Клик върху строеж → право в проверките му, без междинна спирка.
+function otvoriStroezh(id, i) {
+    const p = appData.projects.find(x => String(x.id) === String(id));
+    if (!p) return;
+    p.tekusht_stroezh = Number(i);
+    appData.currentProject = p;
+    saveData();
+    navigateTo('kakav');
 }
 
 function updateNavBadge() {
