@@ -5244,6 +5244,142 @@ function renderDokumentitePage() {
 
 
 
+// ═══════════════════════════════════════════════════════════
+//  ПИТАНЕТО — един документ наведнъж (09.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Операторът: „системата трябва да ги ИЗИСКВА, а не да ги изброява, защото PWA
+// става тромаво“. Редът е по МОМЕНТА: ОСИП отначало докрай, после Протокол 1…
+//
+// Три отговора, не два: „няма го“ е различно от „не се отнася“ — първото е
+// работа по събиране, второто приключва реда завинаги.
+//
+// Качването тук е по-добро от накуп, защото системата ЗНАЕ кой е документът —
+// четецът не гадае вида, а това беше най-честата му грешка. Накуп си остава в
+// „Документите“: един PDF с 24 нотариални акта отговаря на десет въпроса.
+
+function _pitaneOpashka(st, r) {
+    const otmetnati = new Set(st.nadzor_otmetnati || []);
+    const nyama = new Set(st.nadzor_lipsvat || []);
+    const neotnasya = new Set(st.neotnasya || []);
+    const out = [];
+    for (const g of r.grupi) {
+        for (const d of g.dokumenti) {
+            if (d.sastoyanie === 'не му е времето') continue;
+            const ime = d.dokument;
+            if (otmetnati.has(ime) || nyama.has(ime) || neotnasya.has(ime)) continue;
+            out.push({ ...d, moment: g.moment });
+        }
+    }
+    const propusnati = new Set(_pitanePropusnati);
+    return [...out.filter(x => !propusnati.has(x.dokument)),
+            ...out.filter(x => propusnati.has(x.dokument))];
+}
+
+function _pitaneHtml(st, r) {
+    const esc = _s2esc;
+    const opashka = _pitaneOpashka(st, r);
+    const nyama = (st.nadzor_lipsvat || []).length;
+    if (!opashka.length) {
+        return `<div class="card" style="margin-bottom:16px">
+            <div style="font-size:14px">✅ Няма повече въпроси за сега.</div>
+            ${nyama ? `<div style="font-size:12.5px;color:#b45309;margin-top:6px">
+                ${nyama} ${nyama === 1 ? 'документ липсва' : 'документа липсват'} — виж списъка долу.</div>` : ''}
+        </div>`;
+    }
+    const d = opashka[0];
+    const k = encodeURIComponent(d.dokument);
+    return `
+        <div class="card" style="margin-bottom:16px;border-color:var(--gold)">
+            <div style="font-size:11.5px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase">
+                ${esc(d.moment)} · остават ${opashka.length}
+            </div>
+            <div style="font-size:19px;font-weight:700;margin:6px 0 2px">${esc(d.dokument)}</div>
+            ${d.uslovie && d.uslovie !== 'винаги'
+                ? `<div style="font-size:12.5px;color:var(--muted)">иска се когато: ${esc(d.uslovie)}</div>` : ''}
+            ${(d.vliza_v || []).length
+                ? `<div style="font-size:12px;color:var(--muted);margin-top:3px">влиза в: ${d.vliza_v.map(esc).join(', ')}</div>` : ''}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+                <button class="btn btn-primary" onclick="pitaneOtgovor('${k}', 'ima')">Имам го</button>
+                <button class="btn btn-secondary" onclick="pitaneOtgovor('${k}', 'nyama')">Няма го</button>
+                <button class="btn btn-ghost" onclick="pitaneOtgovor('${k}', 'neotnasya')">Не се отнася</button>
+                <button class="btn btn-ghost" onclick="pitanePropusni('${k}')">Пропусни</button>
+            </div>
+            <div style="margin-top:12px;padding-top:11px;border-top:1px solid var(--border-light)">
+                <label class="form-label" style="font-size:11.5px">…или качи файла и системата ще го прочете</label>
+                <input type="file" id="pitane-fajl" class="form-input" style="font-size:13px"
+                       accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,.tif,.tiff"
+                       onchange="pitaneKachi('${k}')">
+                <div id="pitane-hod" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+            </div>
+        </div>`;
+}
+
+function _pitaneSpisak(st) {
+    const esc = _s2esc;
+    const nyama = st.nadzor_lipsvat || [];
+    if (!nyama.length) return '';
+    return `<div class="alert alert-warning" style="margin:0 0 16px"><div>
+        <strong>Какво липсва (${nyama.length})</strong>
+        <div style="font-size:12.5px;margin-top:5px;line-height:1.7">
+            ${nyama.map(x => `<div>· ${esc(x)}
+                <button type="button" class="btn btn-ghost btn-sm" style="margin-left:4px"
+                        onclick="pitaneOtgovor('${encodeURIComponent(x)}', 'ima')">намерих го</button></div>`).join('')}
+        </div>
+    </div></div>`;
+}
+
+function pitaneOtgovor(ime64, kak) {
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    const st = _stroezh(obekt);
+    const ime = decodeURIComponent(ime64);
+    const mahni = (pole) => { st[pole] = (st[pole] || []).filter(x => x !== ime); };
+    mahni('nadzor_otmetnati'); mahni('nadzor_lipsvat'); mahni('neotnasya');
+    const pole = { ima: 'nadzor_otmetnati', nyama: 'nadzor_lipsvat', neotnasya: 'neotnasya' }[kak];
+    if (pole) st[pole] = [...(st[pole] || []), ime];
+    const dumi = { ima: 'налично', nyama: 'липсва', neotnasya: 'не се отнася' }[kak] || kak;
+    _s2ZapishiTiho(obekt, `${ime} — ${dumi}`);
+    _prerisuvai();
+}
+
+// „Пропусни“ не е отговор: само мести въпроса назад за този път.
+let _pitanePropusnati = [];
+function pitanePropusni(ime64) {
+    _pitanePropusnati.push(decodeURIComponent(ime64));
+    _prerisuvai();
+}
+
+async function pitaneKachi(ime64) {
+    const obekt = _zhivObekt();
+    const vhod = document.getElementById('pitane-fajl');
+    const hod = document.getElementById('pitane-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!obekt || !f) return;
+    const st = _stroezh(obekt);
+    const ime = decodeURIComponent(ime64);
+    if (/\.doc$/i.test(f.name)) { hod.textContent = 'Стар .doc — запиши го като .docx или PDF.'; return; }
+    hod.textContent = `Чета „${f.name}“…`;
+    try {
+        const r = await apiCall('/api/sloy2/chete', 'POST', {
+            agenda: 'od', pi: obekt.pi, edin: true,
+            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+        });
+        if (r.greshka) { hod.textContent = `⚠️ ${r.greshka}`; return; }
+        const novi = r.dokumenti || [r.dokument];
+        const s2 = ((st.sloy2 = st.sloy2 || {}).od = st.sloy2.od || { dokumenti: [] });
+        s2.dokumenti = s2.dokumenti.filter(x => x.fajl !== f.name).concat(novi);
+        s2.koga = new Date().toISOString();
+        // Отговорът на ТОЗИ въпрос е „имам го“ — файлът е пред нас.
+        st.nadzor_otmetnati = [...new Set([...(st.nadzor_otmetnati || []), ime])];
+        st.nadzor_lipsvat = (st.nadzor_lipsvat || []).filter(x => x !== ime);
+        _zapishiObekt(obekt, `${ime} — прочетен от „${f.name}“`);
+        _prerisuvai();
+    } catch (e) {
+        hod.textContent = `❌ ${e.message}`;
+    }
+}
+
 // Надзорът: протоколите по ред, всеки със своя чеклист. Операторът, 01.10.2026:
 // „за всеки протокол имаме чек лист… така в процеса на работа по документите ще
 // получим пълния списък за акт 15 и за ОД“. Чеклистът спира да е списък от 86
@@ -5359,7 +5495,7 @@ function _nadzorHtml(st, r, bezIzbor) {
                 ${sled ? `<span style="font-size:12px;color:var(--slate)">следва: <strong>${esc(sled)}</strong></span>` : ''}
             </div>
         </div>`;
-    return izbor + `
+    return izbor + _pitaneHtml(st, r) + _pitaneSpisak(st) + `
         <div class="card" style="margin-bottom:16px;font-size:13px">
             <strong style="color:#2e6b32">${gotovi}</strong> събрани ·
             <strong style="color:#8a6522">${chakat}</strong> чакат сега ·
