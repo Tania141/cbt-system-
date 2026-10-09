@@ -5504,7 +5504,15 @@ function _nadzorHtml(st, r, bezIzbor) {
                 Документ, събран веднъж, се носи напред — „влиза в“ показва къде ще го срещнеш пак.
             </div>
         </div>
-        ${r.grupi.map(g => _nadzorGrupaHtml(g, tekusht, izklyucheni, r.po_izbor)).join('')}`;
+        <details style="margin-top:4px">
+            <summary style="cursor:pointer;font-size:13px;font-weight:600;padding:10px 14px;
+                            background:var(--surface);border:1px solid var(--border-light);border-radius:9px">
+                Целият списък по моменти (${obshto} документа)
+            </summary>
+            <div style="margin-top:12px">
+                ${r.grupi.map(g => _nadzorGrupaHtml(g, tekusht, izklyucheni, r.po_izbor)).join('')}
+            </div>
+        </details>`;
 }
 
 function nadzorMoment(m) {
