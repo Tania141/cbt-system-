@@ -5244,16 +5244,138 @@ function renderDokumentitePage() {
 
 
 
-function renderNadzorPage() {
-    const p = _obektIliIzbor('nadzor-content', 'nadzor', 'Изберете обекта');
-    if (!p) return;
-    _predstoi('nadzor-content', p, 'nadzor', '🏗️ Надзор — протоколите', [
-        'Протокол 1 · Протокол 2 · заповедна книга · обр. 3 · актове 5–14',
-        'Всеки със своя малък чеклист — само неговото парче',
-        'Акт 15 → окончателен доклад → технически паспорт',
-        'Те не събират нищо ново, а пренареждат събраното',
-    ], 'Чака твоята работа: кой документ на кой протокол. Дотогава чеклистът е '
-     + 'в „Изходни данни и РС“, а генерирането — в „Актове и протоколи“.');
+// Надзорът: протоколите по ред, всеки със своя чеклист. Операторът, 01.10.2026:
+// „за всеки протокол имаме чек лист… така в процеса на работа по документите ще
+// получим пълния списък за акт 15 и за ОД“. Чеклистът спира да е списък от 86
+// реда и става ИЗГЛЕД — всеки момент показва само своето парче.
+async function renderNadzorPage() {
+    const obekt = _obektIliIzbor('nadzor-content', 'nadzor', 'Изберете обекта');
+    if (!obekt) return;
+    const st = _stroezh(obekt);
+    const kutiya = document.getElementById('nadzor-content');
+    const glava = _lentaObekt(obekt, 'nadzor') + _lentaStroezhi(obekt);
+    kutiya.innerHTML = glava + '<div class="card"><div style="color:var(--muted);font-size:13px">Подреждам по моменти…</div></div>';
+    try {
+        const r = await apiCall('/api/nadzor', 'POST', {
+            pi: obekt.pi,
+            nalichni: _nadzorNalichni(st),
+            tekusht: st.tekusht_moment || '',
+            sastavyani: st.sastavyani_momenti || [],
+        });
+        if (r.greshka) throw new Error(r.greshka);
+        kutiya.innerHTML = glava + _nadzorHtml(st, r);
+    } catch (e) {
+        kutiya.innerHTML = glava + `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
+    }
+}
+
+// Какво вече е събрано: от прочетените документи и от отметнатото на ръка.
+function _nadzorNalichni(st) {
+    const otChetene = (st.sloy2?.od?.dokumenti || [])
+        .map(d => (d.cheklist_red || '').trim()).filter(Boolean);
+    return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene])];
+}
+
+const _NADZOR_CVYAT = { 'налично': 'var(--green,#2e7d32)', 'очаква се': 'var(--ink)',
+                        'не му е времето': 'var(--muted)' };
+
+function _nadzorGrupaHtml(g, tekusht, sast, poIzborSpisak) {
+    const esc = _s2esc;
+    const poIzbor = (poIzborSpisak || []).includes(g.moment);
+    const seSastavya = !poIzbor || sast.includes(g.moment);
+    const vidimi = g.dokumenti.filter(d => d.sastoyanie !== 'не му е времето');
+    const skriti = g.dokumenti.length - vidimi.length;
+    const redove = vidimi.map(d => `
+        <label style="display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border-light);cursor:pointer">
+            <input type="checkbox" style="margin-top:3px;width:15px;height:15px"
+                   ${d.sastoyanie === 'налично' ? 'checked' : ''}
+                   onchange="nadzorOtmetni('${encodeURIComponent(d.dokument)}', this.checked)">
+            <span style="flex:1;font-size:13.5px;color:${_NADZOR_CVYAT[d.sastoyanie]}">
+                ${esc(d.dokument)}
+                ${d.uslovie && d.uslovie !== 'винаги' ? `<span style="color:var(--muted);font-size:11.5px"> · ${esc(d.uslovie)}</span>` : ''}
+                ${(d.vliza_v || []).length ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">влиза в: ${d.vliza_v.map(esc).join(', ')}</div>` : ''}
+            </span>
+        </label>`).join('');
+    return `
+    <div class="card" style="margin-bottom:12px;${g.moment === tekusht ? 'border-color:var(--gold)' : ''}">
+        <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <div style="font-size:16px;font-weight:700">${esc(g.moment)}</div>
+            <div style="font-size:12px;color:var(--muted)">
+                ${g.gotovi} от ${g.dokumenti.length}${g.lipsvat ? ` · остават ${g.lipsvat}` : ''}
+            </div>
+            ${poIzbor ? `<label style="margin-left:auto;font-size:11.5px;color:var(--slate);display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" ${seSastavya ? 'checked' : ''}
+                       onchange="nadzorSastavya('${encodeURIComponent(g.moment)}', this.checked)">
+                съставя се за този строеж</label>` : ''}
+        </div>
+        ${!seSastavya ? `<p style="font-size:12px;color:var(--muted);margin:8px 0 0">
+            Не се съставя — документите му падат на следващия момент.</p>` : `
+        <div style="margin-top:10px">
+            ${redove || '<div style="font-size:12.5px;color:var(--muted)">нищо за сега</div>'}
+            ${skriti ? `<div style="font-size:11.5px;color:var(--muted);margin-top:7px">${skriti} още — не им е времето</div>` : ''}
+        </div>`}
+    </div>`;
+}
+
+function _nadzorHtml(st, r) {
+    const esc = _s2esc;
+    const tekusht = st.tekusht_moment || '';
+    const sast = st.sastavyani_momenti || [];
+    const obshto = r.grupi.reduce((a, g) => a + g.dokumenti.length, 0);
+    const gotovi = r.grupi.reduce((a, g) => a + g.gotovi, 0);
+    const chakat = r.grupi.reduce((a, g) => a + g.lipsvat, 0);
+    return `
+        <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <label class="form-label" style="margin:0">Докъде си стигнала</label>
+                <select class="form-input" style="width:auto" onchange="nadzorMoment(this.value)">
+                    <option value="">— още не е започнало —</option>
+                    ${r.red.map(m => `<option value="${esc(m)}" ${m === tekusht ? 'selected' : ''}>${esc(m)}</option>`).join('')}
+                </select>
+                <span style="font-size:11.5px;color:var(--muted)">Оттук нататък нищо не се иска — „не му е времето“.</span>
+            </div>
+        </div>
+        <div class="card" style="margin-bottom:16px;font-size:13px">
+            <strong style="color:#2e6b32">${gotovi}</strong> събрани ·
+            <strong style="color:#8a6522">${chakat}</strong> чакат сега ·
+            <strong>${obshto - gotovi - chakat}</strong> още не им е времето
+            <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+                Документ, събран веднъж, се носи напред — „влиза в“ показва къде ще го срещнеш пак.
+            </div>
+        </div>
+        ${r.grupi.map(g => _nadzorGrupaHtml(g, tekusht, sast, r.po_izbor)).join('')}`;
+}
+
+function nadzorMoment(m) {
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    _stroezh(obekt).tekusht_moment = m;
+    _s2ZapishiTiho(obekt, `Надзор: докъде — ${m || 'не е започнало'}`);
+    renderNadzorPage();
+}
+
+function nadzorSastavya(moment64, da) {
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    const moment = decodeURIComponent(moment64);
+    const st = _stroezh(obekt);
+    const spisak = new Set(st.sastavyani_momenti || []);
+    if (da) spisak.add(moment); else spisak.delete(moment);
+    st.sastavyani_momenti = [...spisak];
+    _s2ZapishiTiho(obekt, `Надзор: ${moment} ${da ? 'се съставя' : 'не се съставя'}`);
+    renderNadzorPage();
+}
+
+function nadzorOtmetni(ime64, da) {
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    const st = _stroezh(obekt);
+    const ime = decodeURIComponent(ime64);
+    const spisak = new Set(st.nadzor_otmetnati || []);
+    if (da) spisak.add(ime); else spisak.delete(ime);
+    st.nadzor_otmetnati = [...spisak];
+    _s2ZapishiTiho(obekt, `Надзор: ${ime} — ${da ? 'налично' : 'отметката е махната'}`);
+    renderNadzorPage();
 }
 
 async function renderKakavPage() {
