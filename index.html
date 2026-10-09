@@ -5260,13 +5260,27 @@ async function renderNadzorPage() {
             pi: obekt.pi, faza: 'nadzor',
             nalichni: _nadzorNalichni(st),
             tekusht: st.tekusht_moment || '',
-            sastavyani: st.sastavyani_momenti || [],
+            priznaci: _nadzorPriznaci(obekt, st),
+            izklyucheni: st.izklyucheni_momenti || [],
         });
         if (r.greshka) throw new Error(r.greshka);
         kutiya.innerHTML = glava + _nadzorHtml(st, r);
     } catch (e) {
         kutiya.innerHTML = glava + `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
     }
+}
+
+// По тези признаци системата решава кои актове изобщо се съставят — операторът
+// не ги цъка. Акт 5 и 6 са за 1–3 категория, Акт 9 — при машини, Акт 16 — само
+// при назначена ДПК. (Операторът, 09.10.2026: „сега операторът тича по екрана“.)
+function _nadzorPriznaci(obekt, st) {
+    return {
+        kategoria: st.kategoria || '',
+        imaMashini: !!st.imaMashini,
+        metalnaKonstrukcia: !!st.metalnaKonstrukcia,
+        dpk: !!st.dpk_naznachena,
+        po_poiskvane: !!st.protokol17_poiskan,
+    };
 }
 
 // Какво вече е събрано: от прочетените документи и от отметнатото на ръка.
@@ -5279,10 +5293,14 @@ function _nadzorNalichni(st) {
 const _NADZOR_CVYAT = { 'налично': 'var(--green,#2e7d32)', 'очаква се': 'var(--ink)',
                         'не му е времето': 'var(--muted)' };
 
-function _nadzorGrupaHtml(g, tekusht, sast, poIzborSpisak) {
+function _nadzorGrupaHtml(g, tekusht, izklyucheni, poIzborSpisak) {
     const esc = _s2esc;
     const poIzbor = (poIzborSpisak || []).includes(g.moment);
-    const seSastavya = !poIzbor || sast.includes(g.moment);
+    // Системата е решила; отметката само позволява изключение.
+    const reshenoOtSistemata = g.po_podrazbirane;
+    const seSastavya = izklyucheni.includes('+' + g.moment) ? true
+        : izklyucheni.includes(g.moment) ? false
+        : (reshenoOtSistemata === undefined ? true : reshenoOtSistemata);
     const vidimi = g.dokumenti.filter(d => d.sastoyanie !== 'не му е времето');
     const skriti = g.dokumenti.length - vidimi.length;
     const redove = vidimi.map(d => `
@@ -5303,13 +5321,14 @@ function _nadzorGrupaHtml(g, tekusht, sast, poIzborSpisak) {
             <div style="font-size:12px;color:var(--muted)">
                 ${g.gotovi} от ${g.dokumenti.length}${g.lipsvat ? ` · остават ${g.lipsvat}` : ''}
             </div>
-            ${poIzbor ? `<label style="margin-left:auto;font-size:11.5px;color:var(--slate);display:flex;align-items:center;gap:6px;cursor:pointer">
+            ${poIzbor ? `<label style="margin-left:auto;font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer"
+                    title="Системата го реши по категорията и признаците — пипни само ако е друго">
                 <input type="checkbox" ${seSastavya ? 'checked' : ''}
                        onchange="nadzorSastavya('${encodeURIComponent(g.moment)}', this.checked)">
-                съставя се за този строеж</label>` : ''}
+                съставя се</label>` : ''}
         </div>
         ${!seSastavya ? `<p style="font-size:12px;color:var(--muted);margin:8px 0 0">
-            Не се съставя — документите му падат на следващия момент.</p>` : `
+            Не се съставя за този строеж — документите му падат на следващия момент.</p>` : `
         <div style="margin-top:10px">
             ${redove || '<div style="font-size:12.5px;color:var(--muted)">нищо за сега</div>'}
             ${skriti ? `<div style="font-size:11.5px;color:var(--muted);margin-top:7px">${skriti} още — не им е времето</div>` : ''}
@@ -5320,7 +5339,11 @@ function _nadzorGrupaHtml(g, tekusht, sast, poIzborSpisak) {
 function _nadzorHtml(st, r, bezIzbor) {
     const esc = _s2esc;
     const tekusht = st.tekusht_moment || '';
-    const sast = st.sastavyani_momenti || [];
+    const izklyucheni = st.izklyucheni_momenti || [];
+    // Кой момент идва след текущия — от тези, които наистина се съставят.
+    const sledvashti = r.grupi.map(g => g.moment);
+    const i = sledvashti.indexOf(tekusht);
+    const sled = tekusht ? (sledvashti[i + 1] || '') : (sledvashti[0] || '');
     const obshto = r.grupi.reduce((a, g) => a + g.dokumenti.length, 0);
     const gotovi = r.grupi.reduce((a, g) => a + g.gotovi, 0);
     const chakat = r.grupi.reduce((a, g) => a + g.lipsvat, 0);
@@ -5333,7 +5356,7 @@ function _nadzorHtml(st, r, bezIzbor) {
                     <option value="">— още не е започнало —</option>
                     ${r.red.map(m => `<option value="${esc(m)}" ${m === tekusht ? 'selected' : ''}>${esc(m)}</option>`).join('')}
                 </select>
-                <span style="font-size:11.5px;color:var(--muted)">Оттук нататък нищо не се иска — „не му е времето“.</span>
+                ${sled ? `<span style="font-size:12px;color:var(--slate)">следва: <strong>${esc(sled)}</strong></span>` : ''}
             </div>
         </div>`;
     return izbor + `
@@ -5345,7 +5368,7 @@ function _nadzorHtml(st, r, bezIzbor) {
                 Документ, събран веднъж, се носи напред — „влиза в“ показва къде ще го срещнеш пак.
             </div>
         </div>
-        ${r.grupi.map(g => _nadzorGrupaHtml(g, tekusht, sast, r.po_izbor)).join('')}`;
+        ${r.grupi.map(g => _nadzorGrupaHtml(g, tekusht, izklyucheni, r.po_izbor)).join('')}`;
 }
 
 function nadzorMoment(m) {
@@ -5356,14 +5379,19 @@ function nadzorMoment(m) {
     renderNadzorPage();
 }
 
+// Пази се ИЗКЛЮЧЕНИЕТО, не целият списък: „Акт 5“ значи „въпреки решеното, не
+// се съставя“, а „+Акт 16“ — „въпреки решеното, съставя се“. Така промяна в
+// признаците веднага се отразява, без да влачи стари отметки.
 function nadzorSastavya(moment64, da) {
     const obekt = _zhivObekt();
     if (!obekt) return;
     const moment = decodeURIComponent(moment64);
     const st = _stroezh(obekt);
-    const spisak = new Set(st.sastavyani_momenti || []);
-    if (da) spisak.add(moment); else spisak.delete(moment);
-    st.sastavyani_momenti = [...spisak];
+    const spisak = new Set(st.izklyucheni_momenti || []);
+    spisak.delete(moment);
+    spisak.delete('+' + moment);
+    spisak.add(da ? '+' + moment : moment);
+    st.izklyucheni_momenti = [...spisak];
     _s2ZapishiTiho(obekt, `Надзор: ${moment} ${da ? 'се съставя' : 'не се съставя'}`);
     renderNadzorPage();
 }
@@ -8318,7 +8346,8 @@ async function _osipDokumenti(p) {
             pi: p.pi, faza: 'osip',
             nalichni: _nadzorNalichni(st),
             tekusht: 'ОСИП',
-            sastavyani: st.sastavyani_momenti || [],
+            priznaci: _nadzorPriznaci(p, st),
+            izklyucheni: st.izklyucheni_momenti || [],
         });
         if (r.greshka) throw new Error(r.greshka);
         kutiya.innerHTML = _nadzorHtml({ ...st, tekusht_moment: 'ОСИП' }, r, true);
