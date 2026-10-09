@@ -5257,7 +5257,7 @@ async function renderNadzorPage() {
     kutiya.innerHTML = glava + '<div class="card"><div style="color:var(--muted);font-size:13px">Подреждам по моменти…</div></div>';
     try {
         const r = await apiCall('/api/nadzor', 'POST', {
-            pi: obekt.pi,
+            pi: obekt.pi, faza: 'nadzor',
             nalichni: _nadzorNalichni(st),
             tekusht: st.tekusht_moment || '',
             sastavyani: st.sastavyani_momenti || [],
@@ -5317,14 +5317,15 @@ function _nadzorGrupaHtml(g, tekusht, sast, poIzborSpisak) {
     </div>`;
 }
 
-function _nadzorHtml(st, r) {
+function _nadzorHtml(st, r, bezIzbor) {
     const esc = _s2esc;
     const tekusht = st.tekusht_moment || '';
     const sast = st.sastavyani_momenti || [];
     const obshto = r.grupi.reduce((a, g) => a + g.dokumenti.length, 0);
     const gotovi = r.grupi.reduce((a, g) => a + g.gotovi, 0);
     const chakat = r.grupi.reduce((a, g) => a + g.lipsvat, 0);
-    return `
+    // При ОСИП няма „докъде си стигнала“ — моментът е един.
+    const izbor = bezIzbor ? '' : `
         <div class="card" style="margin-bottom:16px">
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
                 <label class="form-label" style="margin:0">Докъде си стигнала</label>
@@ -5334,7 +5335,8 @@ function _nadzorHtml(st, r) {
                 </select>
                 <span style="font-size:11.5px;color:var(--muted)">Оттук нататък нищо не се иска — „не му е времето“.</span>
             </div>
-        </div>
+        </div>`;
+    return izbor + `
         <div class="card" style="margin-bottom:16px;font-size:13px">
             <strong style="color:#2e6b32">${gotovi}</strong> събрани ·
             <strong style="color:#8a6522">${chakat}</strong> чакат сега ·
@@ -8294,10 +8296,38 @@ function _zapishiObekt(p, saobshtenie) {
             : `⛔ „${saobshtenie}“ НЕ Е ЗАПАЗЕНО НИКЪДЕ — браузърът отказа и базата данни също: ${e.message}`));
 }
 
-function renderOsipPage() {
+async function renderOsipPage() {
     const p = _obektIliIzbor('osip-content', 'osip',
         'Изберете обекта, чиято оценка на съответствието се попълва');
     if (!p) return;
+    _renderOsipOsnova(p);
+    _osipDokumenti(p);
+}
+
+// Документите, които се събират ДО разрешението за строеж — 37 реда, по същия
+// изглед като надзора. РС е превключвателят: оттам нататък е другата фаза.
+// (09.10.2026)
+async function _osipDokumenti(p) {
+    const st = _stroezh(p);
+    const kutiya = document.createElement('div');
+    kutiya.id = 'osip-dokumenti';
+    document.getElementById('osip-content').appendChild(kutiya);
+    kutiya.innerHTML = '<div class="card"><div style="color:var(--muted);font-size:13px">Подреждам документите за ОСИП…</div></div>';
+    try {
+        const r = await apiCall('/api/nadzor', 'POST', {
+            pi: p.pi, faza: 'osip',
+            nalichni: _nadzorNalichni(st),
+            tekusht: 'ОСИП',
+            sastavyani: st.sastavyani_momenti || [],
+        });
+        if (r.greshka) throw new Error(r.greshka);
+        kutiya.innerHTML = _nadzorHtml({ ...st, tekusht_moment: 'ОСИП' }, r, true);
+    } catch (e) {
+        kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
+    }
+}
+
+function _renderOsipOsnova(p) {
     document.getElementById('osip-content').innerHTML = _lentaObekt(p, 'osip') + _priznaciKarta(p) + `
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
