@@ -4769,6 +4769,15 @@ const _KES_DOKAZ = {
     otstoyania:   ['виза за проектиране', 'Отстоянията са както ги е записала визата.'],
 };
 
+// Полета, които се въвеждат НА РЪКА. Няма „потвърди предложеното“ — АИ-то
+// показва какво е прочело, но стойността я пишеш ти. Критерият не е „АИ-то
+// бърка ли“, а „ако сбърка, ще се види ли“: сбъркана цифра в идентификатор или
+// в номер на РС изглежда нормална и влиза в цялото досие.
+const _KES_NARAKA = {
+    identifikator: 'Цифрите влизат във всеки документ. Сбъркана цифра сочи чужд имот и не личи.',
+    kategoria:     'Преписва се от разрешението за строеж, не от записка — то е легалната верификация.',
+};
+
 // Полета с краен брой отговори — изборът е от списък, не свободен текст.
 const _KES_IZBOR = {
     vid: ['сграда', 'линеен обект', 'линеен обект с КТП', 'съоръжение'],
@@ -5547,9 +5556,13 @@ function _kesPoleHtml(klyuch, f) {
     const k64 = encodeURIComponent(klyuch);
 
     if (!f || !f.sastoyanie) {
-        return `<div style="border-left:3px solid var(--border);padding:3px 0 3px 12px;margin-bottom:11px">
+        const naraka = _KES_NARAKA[klyuch];
+        return `<div style="border-left:3px solid ${naraka ? '#d99a00' : 'var(--border)'};padding:3px 0 3px 12px;margin-bottom:11px">
             <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
-            <div style="font-size:14.5px;color:var(--muted)">[ празно ]</div>${podsk}${_kesDokazHtml(klyuch, f)}
+            <div style="font-size:14.5px;color:${naraka ? '#8a6400' : 'var(--muted)'};font-weight:${naraka ? '700' : '400'}">
+                ${naraka ? '[___] вписва се на ръка' : '[ празно ]'}</div>
+            ${naraka ? `<div style="margin-top:3px;font-size:11.5px;color:var(--muted)">${esc(naraka)}</div>` : ''}
+            ${podsk}${_kesDokazHtml(klyuch, f)}
             <button class="btn btn-ghost btn-sm" style="margin-top:5px" onclick="kesPoprav('${k64}')">Впиши на ръка</button>
         </div>`;
     }
@@ -5572,6 +5585,19 @@ function _kesPoleHtml(klyuch, f) {
         </div>`;
     }
 
+    // За ръчните полета предложението е само справка — вписва се на ръка.
+    if (f.sastoyanie === 'predlozheno' && _KES_NARAKA[klyuch]) {
+        return `<div style="border-left:3px solid #d99a00;background:#fffbef;border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:11px">
+            <div style="font-size:11.5px;color:var(--muted)">${ime}</div>
+            <div style="font-size:14.5px;font-weight:700;color:#8a6400">[___] вписва се на ръка</div>
+            <div style="margin-top:4px;font-size:12.5px;color:var(--slate)">
+                АИ-то прочете: <strong>${esc(f.stoynost) || '(нищо)'}</strong>${_kesIztochnik(f)}
+            </div>
+            <div style="margin-top:3px;font-size:11.5px;color:var(--muted)">${esc(_KES_NARAKA[klyuch])}</div>
+            <button class="btn btn-primary btn-sm" style="margin-top:7px" onclick="kesPoprav('${k64}')">Впиши на ръка</button>
+        </div>`;
+    }
+
     if (f.sastoyanie === 'predlozheno') {
         const predishna = f.predishna
             ? `<div style="margin-top:3px;font-size:11.5px;color:#b45309">Ново четене дава друго. Преди беше: ${esc(f.predishna)}</div>` : '';
@@ -5590,7 +5616,8 @@ function _kesPoleHtml(klyuch, f) {
     }
 
     // потвърдено или поправено
-    const znak = f.sastoyanie === 'popraveno' ? '✍ поправено' : '✓ потвърдено';
+    const znak = _KES_NARAKA[klyuch] ? '✍ вписано на ръка'
+        : f.sastoyanie === 'popraveno' ? '✍ поправено' : '✓ потвърдено';
     const koga = f.koga ? new Date(f.koga).toLocaleDateString('bg-BG') : '';
     const bilo = (f.sastoyanie === 'popraveno' && f.prochetena && _kesZn(f.prochetena) !== _kesZn(f.stoynost))
         ? ` <span style="color:var(--muted)">· прочетено беше: ${esc(f.prochetena)}</span>` : '';
@@ -5745,6 +5772,8 @@ function _kesZapishi(p, opis) {
 function kesPotvardi(k64) {
     const { p, k, f } = _kesFakt(k64);
     if (!p || !f) return;
+    // Втора ключалка: и да се извика отнякъде, ръчното поле не се потвърждава.
+    if (_KES_NARAKA[k]) return kesPoprav(k64);
     p.fakti[k] = { ...f, sastoyanie: 'potvardeno', koy: _s2Koy(), koga: new Date().toISOString() };
     _kesZapishi(p, `Проверки: потвърдено „${_KES_IME[k] || k}“`);
 }
@@ -5802,6 +5831,7 @@ function kesPotvardiVsichki(spisak64) {
     for (const k of kluchove) {
         const f = (p.fakti || {})[k];
         if (!f || f.sastoyanie !== 'predlozheno') continue;
+        if (_KES_NARAKA[k]) continue;        // ръчните не минават накуп
         p.fakti[k] = { ...f, sastoyanie: 'potvardeno', koy, koga };
         n++;
     }
@@ -8578,7 +8608,13 @@ function renderDokumentiPage() {
             <div id="fp-dok-rezultat" style="margin-top:12px"></div>
         </div>
         <div class="card">
-            <div class="card-title" style="margin-bottom:16px">📜 Разрешение за строеж</div>
+            <div class="card-title" style="margin-bottom:8px">📜 Разрешение за строеж</div>
+            <p style="font-size:12px;color:#8a6400;background:#fffbef;border-left:3px solid #d99a00;
+                      padding:7px 10px;border-radius:0 6px 6px 0;margin-bottom:14px">
+                <strong>Номерът и датата се преписват на ръка от самото разрешение.</strong>
+                Те влизат в акт 7, акт 14, акт 15 и окончателния доклад — сбъркана цифра
+                не личи никъде и излиза чак при приемателната комисия.
+            </p>
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">Номер</label>
