@@ -2877,44 +2877,6 @@ const PREDNAZNACHENIA = [['жилищна','Жилищна сграда'],['см
     ['телекомуникации','Телекомуникации'],['подземни','Подземни мрежи'],
     ['култура','Културна ценност'],['оръжия','Оръжия, боеприпаси'],['друго','Друго']];
 
-// Признаците на обекта — резюме само за четене. Пишат се на едно място, в
-// паспорта; тук само се показват, защото от тях зависи какво излиза в доклада
-// и кои документи се искат. Два места за писане значат две истини.
-function _priznaciKarta(p) {
-    const vid = { sgrada: 'Сграда', lineen: 'Линеен обект',
-                  lineen_ktp: 'Линеен обект с КТП (и сграда)', saorajenie: 'Съоръжение' }[p.vid || 'sgrada'] || p.vid;
-    const predn = (PREDNAZNACHENIA.find(([k]) => k === (p.prednaznachenie || 'жилищна')) || [])[1]
-                  || p.prednaznachenie || '—';
-    const kat = p.kategoria
-        ? `${['', 'първа', 'втора', 'трета', 'четвърта', 'пета'][p.kategoria] || p.kategoria} категория`
-        : '<span style="color:var(--red)">не е посочена</span>';
-    const povod = p.povod === 'преработка_154' ? 'Преработка по чл. 154 ЗУТ' : 'Ново строителство';
-    const rezhimi = [[p.pametnik, 'паметник на културата'], [p.zashtitena, 'защитена зона'],
-                     [p.vodi, 'засяга води'], [p.opasni, 'опасни вещества']]
-        .filter(([da]) => da).map(([, t]) => `<span class="badge badge-gold">${t}</span>`).join(' ');
-    const spo = (p.spo || []).join(', ');
-    const red = (et, st) => `<div style="color:var(--muted)">${et}</div><div>${st}</div>`;
-    return `
-        <div class="card" style="margin-bottom:16px">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">🏗️ Обектът — вид и признаци</div>
-                    <div class="card-subtitle">От записаните изходни данни. От тях зависят разделите на
-                        доклада, нормативният списък и изискваните документи.</div>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="kamStranica('${p.id}','dokumentite')">✏️ Промени в изходните данни</button>
-            </div>
-            <div style="display:grid;grid-template-columns:160px 1fr;gap:6px 12px;font-size:13px">
-                ${red('Вид', vid)}
-                ${red('Предназначение', predn)}
-                ${red('Категория', kat)}
-                ${red('Повод', povod)}
-                ${red('Особени режими', rezhimi || '<span style="color:var(--muted)">няма</span>')}
-                ${red('СПО', spo || '<span style="color:var(--muted)">няма</span>')}
-            </div>
-        </div>`;
-}
-
 // Отваря паспорта на обекта за редакция. „Редактирай“ сравнява id строго, а
 // id-то е число за местно създадените и текст (ПИ) за заредените от сървъра —
 // затова обектът се намира тук и се подава с истинския си вид.
@@ -8453,7 +8415,10 @@ async function _osipDokumenti(p) {
     const st = _stroezh(p);
     const kutiya = document.createElement('div');
     kutiya.id = 'osip-dokumenti';
-    document.getElementById('osip-content').appendChild(kutiya);
+    // Над формата, веднага под лентата с имота: първото, което се вижда, е
+    // какво се иска СЕГА, а не полетата на доклада.
+    const dom = document.getElementById('osip-content');
+    dom.insertBefore(kutiya, dom.children[1] || null);
     kutiya.innerHTML = '<div class="card"><div style="color:var(--muted);font-size:13px">Подреждам документите за ОСИП…</div></div>';
     try {
         const r = await apiCall('/api/nadzor', 'POST', {
@@ -8471,7 +8436,9 @@ async function _osipDokumenti(p) {
 }
 
 function _renderOsipOsnova(p) {
-    document.getElementById('osip-content').innerHTML = _lentaObekt(p, 'osip') + _priznaciKarta(p) + `
+    // Картата „Обектът — вид и признаци“ е махната оттук (13.10.2026):
+    // тя живее в „Проверки“ и две копия означаваха два различни отговора.
+    document.getElementById('osip-content').innerHTML = _lentaObekt(p, 'osip') + `
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📐 Оценка на съответствието (ОСИП)</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
