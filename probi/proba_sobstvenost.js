@@ -92,4 +92,46 @@ t('суперфициарът е възложител', v2026.includes('Супе
 ok.forEach(x => console.log('  ok  ' + x));
 lo.forEach(x => console.log('  ЛО  ' + x));
 console.log(lo.length ? '\n' + lo.length + ' проблема' : '\n' + ok.length + ' проверки — всичко е наред');
-process.exit(lo.length ? 1 : 0);
+
+// ── към документите ────────────────────────────────────────────────────────
+const G = new Function(
+    "const _s2esc=x=>String(x??'');\n"
+    + parche('const _nod =', '// ── данните')
+    + parche('const _SB_VID =', 'function _sbDanni')
+    + grab('_sbDanni') + '\n'
+    + parche('const _sbLice =', '// ── сметката')
+    + [grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'),
+       grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
+    + '\nreturn {_sbDveImena,_sbKlienti,_sbPredstavitel,_sbDanni};')();
+
+const o2 = [], l2 = [];
+const u = (x, c, kak) => (c ? o2 : l2).push(x + (c ? '' : '  → ' + kak));
+
+u('три имена → две', G._sbDveImena('Иван Георгиев Петров') === 'Иван Петров', G._sbDveImena('Иван Георгиев Петров'));
+u('две имена си остават две', G._sbDveImena('Мария Петрова') === 'Мария Петрова');
+u('фирмата се изписва цяла', G._sbDveImena('Строй Инвест ЕООД') === 'Строй Инвест ЕООД', G._sbDveImena('Строй Инвест ЕООД'));
+
+const p3 = { pi: '1' };
+const s3 = G._sbDanni(p3);
+s3.lica.push({ id: 'z', ime: 'Иван Георгиев Петров' },
+             { id: 'sup', ime: 'Строй ЕООД', vid: 'юридическо', egn: '123456789' });
+s3.obekti.push({ id: 'zem', vid: 'земя', identifikator: '1' },
+               { id: 'ps', vid: 'право на строеж', opisanie: 'право на строеж' });
+s3.sabitia.push({ id: '1', obekt: 'zem', data: '01.01.2020', vid: 'първоначално', ot: null, na: 'z', dyal: '1/1' },
+                { id: '2', obekt: 'ps', data: '01.06.2022', vid: 'учредяване право на строеж', ot: null, na: 'sup', dyal: '1/1' });
+
+const kl = G._sbKlienti(p3, '01.01.2026');
+u('хедърът дава двама', kl.length === 2, kl.length);
+u('физическото лице е с две имена', kl[0].dveImena === 'Иван Петров', kl[0].dveImena);
+u('фирмата е ЮЛ с ЕИК', kl[1].type === 'ЮЛ' && kl[1].eik === '123456789', JSON.stringify(kl[1]));
+u('представителят по подразбиране е първият', G._sbPredstavitel(p3, '01.01.2026') === 'Иван Петров', G._sbPredstavitel(p3, '01.01.2026'));
+s3.predstavitel = 'sup';
+u('изборът на представител се пази', G._sbPredstavitel(p3, '01.01.2026') === 'Строй ЕООД', G._sbPredstavitel(p3, '01.01.2026'));
+u('преди учредяването представителят е само земевладелецът',
+  G._sbKlienti(p3, '01.01.2021').length === 1, G._sbKlienti(p3, '01.01.2021').length);
+
+o2.forEach(x => console.log('  ok  ' + x));
+l2.forEach(x => console.log('  ЛО  ' + x));
+const vsichki = lo.length + l2.length;
+console.log(vsichki ? '\n' + vsichki + ' проблема общо' : '\nи към документите — наред');
+process.exit(vsichki ? 1 : 0);

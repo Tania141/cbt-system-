@@ -5249,6 +5249,46 @@ function _sbNahodki(p) {
 }
 const _sbImeImeBezopasno = (s, id) => _s2esc(_sbImeLice(s, id));
 
+// ── към документите ───────────────────────────────────────────────────────
+// Операторът, 13.10.2026: в акт 7 възложител не се изисква; в протокол 2 се
+// пише само името на ЕДИН представител по избор; в хедъра на документите —
+// всички възложители, с по две имена.
+
+// „Иван Георгиев Петров“ → „Иван Петров“. Фирмите се изписват както са.
+function _sbDveImena(ime) {
+    const d = String(ime || '').trim().split(/\s+/);
+    if (d.length < 3) return d.join(' ');
+    if (/(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)/.test(ime)) return ime.trim();
+    return d[0] + ' ' + d[d.length - 1];
+}
+
+// Възложителите към дата, в вида, който шаблоните вече приемат. Празен списък
+// значи „регистърът още не е пълнен“ — тогава се ползва писаното на ръка.
+function _sbKlienti(p, data) {
+    const s = _sbDanni(p);
+    return _sbVazlozhiteli(p, data).map(v => {
+        const l = _sbLice(s, v.lice) || {};
+        const yur = l.vid === 'юридическо';
+        return {
+            type: yur ? 'ЮЛ' : 'ФЛ',
+            name: l.ime || '',
+            dveImena: _sbDveImena(l.ime),
+            eik: l.egn || '',
+            ot_registar: true,
+        };
+    });
+}
+
+// Кой представлява възложителите в протокол 2. Един, по избор — пази се на
+// имота, защото се сменя рядко.
+function _sbPredstavitel(p, data) {
+    const s = _sbDanni(p);
+    const spisak = _sbVazlozhiteli(p, data);
+    if (!spisak.length) return '';
+    const izbran = spisak.find(v => v.lice === s.predstavitel) || spisak[0];
+    return _sbDveImena(_sbImeLice(s, izbran.lice));
+}
+
 // ── екранът ────────────────────────────────────────────────────────────────
 const _sbDnes = () => new Date().toLocaleDateString('bg-BG').replace(/\s/g, '');
 
@@ -5302,7 +5342,16 @@ function _sbHtml(p) {
             ${vaz.length ? `<div style="font-size:13.5px;line-height:1.9">
                 ${vaz.map(v => `<div><strong>${esc(v.ime)}</strong>
                     <span style="color:var(--muted)">— ${v.prava.map(pr =>
-                        `${_drTekst(pr.dyal)} от ${esc(_sbImeObekt(s, pr.obekt))}`).join(' · ')}</span></div>`).join('')}
+                        `${_drTekst(pr.dyal)} от ${esc(_sbImeObekt(s, pr.obekt))}`).join(' · ')}</span>
+                    <label style="margin-left:8px;font-size:11.5px;color:var(--muted);cursor:pointer">
+                        <input type="radio" name="sb-pred" ${s.predstavitel === v.lice
+                            || (!s.predstavitel && v === vaz[0]) ? 'checked' : ''}
+                               onchange="sbPredstavitel('${v.lice}')"> представител</label>
+                    </div>`).join('')}
+                <div style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.6">
+                    В хедъра на документите излизат <strong>всички</strong>, с по две имена.
+                    В протокол 2 — само избраният представител. В акт 7 възложител не се изисква.
+                </div>
             </div>` : `<div style="font-size:13px;color:var(--muted)">
                 Към ${esc(data)} никой не държи вещно право — виж находките горе.</div>`}
         </div>` : '';
@@ -5349,6 +5398,12 @@ function _sbTablici(p) {
 // Засега на ръка. Четенето на нотариален акт от АИ-то идва след това и ще пълни
 // същите три таблици — номерът на акта остава ръчен (вж. _KES_NARAKA).
 function _sbZapishi(p, kakvo) { _s2ZapishiTiho(p, 'Собственост: ' + kakvo); _prerisuvai(); }
+
+function sbPredstavitel(lice) {
+    const p = _zhivObekt(); if (!p) return;
+    _sbDanni(p).predstavitel = lice;
+    _sbZapishi(p, 'представител за протокол 2');
+}
 
 function sbData(v) { const p = _zhivObekt(); if (p) { p._sb_data = v.trim(); _prerisuvai(); } }
 
@@ -6916,8 +6971,14 @@ function buildPassportRows(project, consultant, extra) {
     add('Строител_ТехРък', project.builder?.tech || extra.teh_rukovoditel);
     add('Строител_ТехРък_Титла', project.builder?.techTitle);
 
-    // Възложител — списъчен контракт (backend Стъпка 1)
-    const clients = project.clients || (project.client ? [project.client] : []);
+    // Възложител — списъчен контракт (backend Стъпка 1).
+    // Регистърът на собствеността бие писаното на ръка: той знае КОЙ към КОЯ
+    // дата държи вещно право, а всяко вещно право е възложител по ЗУТ.
+    // Празен регистър значи „още не е пълнен“ — тогава си върви старото.
+    const otRegistar = (typeof _sbKlienti === 'function' && project.sobstvenost)
+        ? _sbKlienti(project, extra.data_dokument || '') : [];
+    const clients = otRegistar.length ? otRegistar
+        : (project.clients || (project.client ? [project.client] : []));
     add('Възложители_Брой', clients.length);
     clients.forEach((c, idx) => {
         const i = idx + 1;
@@ -6931,6 +6992,7 @@ function buildPassportRows(project, consultant, extra) {
         } else {
             add(`Възложител_${i}_Титла`, c.nameTitle || '');
         }
+        add(`Възложител_${i}_2имена`, c.dveImena || _sbDveImena(c.name || ''));
         add(`Възложител_${i}_Подписва`,       c.podpisva      || '');
         add(`Възложител_${i}_Подписва_Титла`, c.podpisvaTitle || '');
         // Кой подписва долу — избор в момента на генериране.
@@ -6941,8 +7003,10 @@ function buildPassportRows(project, consultant, extra) {
     });
     add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
 
-    // Представител на Възложителя за подписи
-    const vozPodpis = document.getElementById('vozlagatel-podpis')?.value?.trim() || '';
+    // Представител на Възложителя за подписи. В протокол 2 се пише само ЕДНО
+    // име — избраният представител; регистърът го дава, ако е пълнен.
+    const vozPodpis = document.getElementById('vozlagatel-podpis')?.value?.trim()
+        || (otRegistar.length ? _sbPredstavitel(project, extra.data_dokument || '') : '');
     add('Възложител_1и3', vozPodpis);
     add('Възложител_2имена', vozPodpis);
 
