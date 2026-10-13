@@ -5093,17 +5093,331 @@ function preimenuvajStroezh(i) {
     renderImotPage();
 }
 
+// ═══════════════════════════════════════════════════════════
+//  СОБСТВЕНОСТТА — регистър, не форма (13.10.2026)
+// ═══════════════════════════════════════════════════════════
+// България е регистър на АКТОВЕ, не на права: кой е собственик днес не пише
+// никъде — извежда се от веригата. Затова тук няма поле „собственик“ и няма
+// поле „възложител“. Има три таблици и една сметка.
+//
+// Операторът, 13.10.2026: „Собственост на земята — възложител; право на строеж
+// — възложител; купил апартамент — възложител. Всяко възникнало вещно право е
+// Възложител по ЗУТ.“ Значи „възложител“ е РОЛЯ: питаш към дата и системата
+// изброява. На ОСИП може да са много; от Акт 15 нататък съставът се мени.
+//
+// Докъде се копае назад не е преценка, а сметка: докато земята се събере до
+// 1/1. Дяловете са ДРОБИ — три по 1/3 от 1/2 дава точно 1/6, докато с проценти
+// излиза 16.67% и сборът не става цяло.
+
+// ── дроби ──────────────────────────────────────────────────────────────────
+const _nod = (a, b) => (b ? _nod(b, a % b) : Math.abs(a));
+function _dr(txt) {                       // „1/6“, „3/4“, „1“ → {n, d}
+    const t = String(txt ?? '').trim().replace(',', '.');
+    if (!t) return null;
+    const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
+    if (m) { const d = +m[2]; return d ? _drSvi({ n: +m[1], d }) : null; }
+    if (/^\d+$/.test(t)) return { n: +t, d: 1 };
+    return null;                          // проценти и десетични не се приемат
+}
+const _drSvi = f => { const g = _nod(f.n, f.d) || 1; return { n: f.n / g, d: f.d / g }; };
+const _drSabi = (a, b) => _drSvi({ n: a.n * b.d + b.n * a.d, d: a.d * b.d });
+const _drIzvadi = (a, b) => _drSvi({ n: a.n * b.d - b.n * a.d, d: a.d * b.d });
+const _drTekst = f => (f.n === 0 ? '0' : f.d === 1 ? String(f.n) : `${f.n}/${f.d}`);
+const _drEdno = f => f.n === f.d;
+const _NULA = { n: 0, d: 1 };
+
+// ── данните ────────────────────────────────────────────────────────────────
+// Стоят на ИМОТА, не на строежа: един нотариален акт важи за всички строежи в
+// имота, а и земята е обща.
+const _SB_VID = ['първоначално', 'покупко-продажба', 'дарение', 'наследяване',
+                 'делба', 'замяна', 'учредяване право на строеж', 'апорт'];
+
+function _sbDanni(p) {
+    const s = p.sobstvenost = p.sobstvenost || {};
+    s.lica = s.lica || [];
+    s.obekti = s.obekti || [];
+    s.sabitia = s.sabitia || [];
+    return s;
+}
+const _sbLice = (s, id) => s.lica.find(x => x.id === id);
+const _sbImeLice = (s, id) => (_sbLice(s, id) || {}).ime || '(неизвестен)';
+const _sbObekt = (s, id) => s.obekti.find(x => x.id === id);
+const _sbImeObekt = (s, id) => {
+    const o = _sbObekt(s, id);
+    return o ? (o.identifikator || o.opisanie || '(обект)') : '(обект)';
+};
+const _sbNovId = () => 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+// Датата се пази както е въведена (дд.мм.гггг) — за подредба се обръща.
+const _sbRed = d => {
+    const m = String(d || '').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    return m ? m[3] + m[2] + m[1] : '00000000';
+};
+
+// ── сметката ───────────────────────────────────────────────────────────────
+// Кой какво държи в този обект към дадена дата. Празна дата = днес.
+function _sbSmetka(p, obektId, doData) {
+    const s = _sbDanni(p);
+    const pred = doData ? _sbRed(doData) : '99999999';
+    const salda = new Map();
+    const dvizh = (lice, f, znak) => {
+        if (!lice) return;
+        const beshe = salda.get(lice) || _NULA;
+        salda.set(lice, znak > 0 ? _drSabi(beshe, f) : _drIzvadi(beshe, f));
+    };
+    const redove = s.sabitia
+        .filter(e => e.obekt === obektId && _sbRed(e.data) <= pred)
+        .sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)));
+    for (const e of redove) {
+        const f = _dr(e.dyal);
+        if (!f) continue;
+        dvizh(e.na, f, +1);
+        dvizh(e.ot, f, -1);
+    }
+    return salda;
+}
+
+// Събраното: сборът на положителните салда. Стане ли 1/1 — няма какво повече
+// да се копае назад.
+function _sbSabrano(p, obektId, doData) {
+    let sbor = _NULA;
+    for (const f of _sbSmetka(p, obektId, doData).values())
+        if (f.n > 0) sbor = _drSabi(sbor, f);
+    return sbor;
+}
+
+// ── ролята „възложител“ ────────────────────────────────────────────────────
+// Не се въвежда. Всеки, който към тази дата държи вещно право в който и да е
+// обект на имота, е възложител по ЗУТ — включително суперфициарът.
+function _sbVazlozhiteli(p, data) {
+    const s = _sbDanni(p);
+    const out = new Map();
+    for (const o of s.obekti)
+        for (const [lice, f] of _sbSmetka(p, o.id, data))
+            if (f.n > 0) {
+                const red = out.get(lice) || { lice, prava: [] };
+                red.prava.push({ obekt: o.id, dyal: f });
+                out.set(lice, red);
+            }
+    return [...out.values()].map(r => ({ ...r, ime: _sbImeLice(s, r.lice) }));
+}
+
+// ── находките ──────────────────────────────────────────────────────────────
+// Кодът съди. Показва се САМО което не връзва — от сто акта обикновено три.
+function _sbNahodki(p) {
+    const s = _sbDanni(p);
+    const out = [];
+    for (const o of s.obekti) {
+        const salda = _sbSmetka(p, o.id);
+        const sabrano = _sbSabrano(p, o.id);
+        if (!s.sabitia.some(e => e.obekt === o.id)) {
+            out.push({ vid: 'prazno', obekt: o.id,
+                tekst: `${_sbImeObekt(s, o.id)} — няма нито едно събитие.` });
+        } else if (!_drEdno(sabrano)) {
+            const lipsva = _drIzvadi({ n: 1, d: 1 }, sabrano);
+            out.push({ vid: 'nepalno', obekt: o.id,
+                tekst: `${_sbImeObekt(s, o.id)} — събрани ${_drTekst(sabrano)}, `
+                     + `липсва ${_drTekst(lipsva)}.` });
+        }
+        for (const [lice, f] of salda)
+            if (f.n < 0) out.push({ vid: 'minus', obekt: o.id,
+                tekst: `${_sbImeImeBezopasno(s, lice)} е прехвърлил ${_drTekst({ n: -f.n, d: f.d })} `
+                     + `повече, отколкото е имал в ${_sbImeObekt(s, o.id)}.` });
+    }
+    // Покойник, който още държи дял. Аритметиката НЕ го хваща: сборът си остава
+    // 1/1 и всичко изглежда наред. Пробата го показа (13.10.2026) — трима
+    // наследници по 1/6, вписани двама, а Иван остава с 1/6 и е починал.
+    for (const l of s.lica) {
+        if (!l.pochinal) continue;
+        for (const o of s.obekti) {
+            const f = _sbSmetka(p, o.id).get(l.id);
+            if (f && f.n > 0) out.push({ vid: 'pochinal', lice: l.id, obekt: o.id,
+                tekst: `${_sbImeImeBezopasno(s, l.id)} е починал на ${l.pochinal}, `
+                     + `а още държи ${_drTekst(f)} от ${_sbImeObekt(s, o.id)} — липсва наследяване.` });
+        }
+    }
+    for (const e of s.sabitia) {
+        if (!e.ot && e.vid !== 'първоначално')
+            out.push({ vid: 'otnikade', sabitie: e.id,
+                tekst: `${_sbImeImeBezopasno(s, e.na)} придобива в `
+                     + `${_sbImeObekt(s, e.obekt)} без да е посочено от кого (${e.data}).` });
+        if (!_dr(e.dyal))
+            out.push({ vid: 'dyal', sabitie: e.id,
+                tekst: `Дялът „${e.dyal || ''}“ в ${e.data} не е дроб — пиши 1/2, не 50%.` });
+    }
+    return out;
+}
+const _sbImeImeBezopasno = (s, id) => _s2esc(_sbImeLice(s, id));
+
+// ── екранът ────────────────────────────────────────────────────────────────
+const _sbDnes = () => new Date().toLocaleDateString('bg-BG').replace(/\s/g, '');
+
 function renderSobstvenostPage() {
     const p = _obektIliIzbor('sobstvenost-content', 'sobstvenost', 'Изберете имота');
     if (!p) return;
-    _predstoi('sobstvenost-content', p, 'sobstvenost', '🔑 Собственост', [
-        'Първият ред е земята — началният собственик',
-        'После всеки продаден обект: апартамент, гараж, паркомясто',
-        'Всеки ред стои на нотариален акт — и отпадането също',
-        'Съсобственост и дялове: собственик отпада само като продаде всичко свое',
-    ], 'Идва от нотариалните актове, прочетени от четеца. Таблицата на собствениците '
-     + 'в окончателния доклад е този списък към момента на Акт 15 — не се събира отделно.');
+    document.getElementById('sobstvenost-content').innerHTML =
+        _lentaObekt(p, 'sobstvenost') + _sbHtml(p);
 }
+
+function _sbHtml(p) {
+    const esc = _s2esc, s = _sbDanni(p);
+    const nah = _sbNahodki(p);
+    const data = p._sb_data || _sbDnes();
+    const vaz = _sbVazlozhiteli(p, data);
+    const zemya = s.obekti.find(o => o.vid === 'земя');
+
+    const glava = !s.obekti.length ? `
+        <div class="card" style="margin-bottom:16px;border-color:var(--gold)">
+            <div style="font-size:19px;font-weight:700;margin-bottom:4px">Веригата започва от земята</div>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+                Първият обект е поземленият имот. После всяко право в него — право на строеж,
+                апартамент, гараж — е отделен обект със своя верига.
+            </p>
+            <button class="btn btn-primary" onclick="sbZapochni()">Започни от ${esc(p.pi || 'имота')}</button>
+        </div>`
+    : nah.length ? `
+        <div class="alert alert-warning" style="margin:0 0 16px"><div>
+            <strong>Веригата не връзва на ${nah.length} ${nah.length === 1 ? 'място' : 'места'}</strong>
+            <div style="font-size:12.5px;margin-top:6px;line-height:1.8">
+                ${nah.map(n => `<div>· ${n.tekst}</div>`).join('')}
+            </div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:8px">
+                Назад се копае, докато земята се събере до 1/1 — не по-далеч.
+            </div>
+        </div></div>`
+    : `<div class="alert alert-success" style="margin:0 0 16px">
+            ✅ Веригата е пълна — ${esc(_drTekst(_sbSabrano(p, (zemya || {}).id)))} от земята и всички обекти връзват.
+       </div>`;
+
+    const vazlozhiteli = s.obekti.length ? `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header" style="align-items:center">
+                <div>
+                    <div class="card-title">\u{1F464} Възложители по ЗУТ</div>
+                    <div class="card-subtitle">Не се въвеждат — всеки с вещно право към тази дата е възложител.</div>
+                </div>
+                <input type="text" class="form-input" style="width:130px" value="${esc(data)}"
+                       placeholder="дд.мм.гггг" onchange="sbData(this.value)">
+            </div>
+            ${vaz.length ? `<div style="font-size:13.5px;line-height:1.9">
+                ${vaz.map(v => `<div><strong>${esc(v.ime)}</strong>
+                    <span style="color:var(--muted)">— ${v.prava.map(pr =>
+                        `${_drTekst(pr.dyal)} от ${esc(_sbImeObekt(s, pr.obekt))}`).join(' · ')}</span></div>`).join('')}
+            </div>` : `<div style="font-size:13px;color:var(--muted)">
+                Към ${esc(data)} никой не държи вещно право — виж находките горе.</div>`}
+        </div>` : '';
+
+    return glava + vazlozhiteli + _sbTablici(p);
+}
+
+function _sbTablici(p) {
+    const esc = _s2esc, s = _sbDanni(p);
+    const red = (h, redove, butonIme, butonFn) => `
+        <details class="card" style="margin-bottom:12px" ${redove ? '' : 'open'}>
+            <summary style="cursor:pointer;font-weight:600;font-size:14px">${h}</summary>
+            <div style="margin-top:12px;font-size:13px;line-height:1.9">
+                ${redove || '<span style="color:var(--muted)">няма</span>'}
+            </div>
+            <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="${butonFn}">${butonIme}</button>
+        </details>`;
+
+    const lica = s.lica.map(l => `<div>${esc(l.ime)}
+        <span style="color:var(--muted)">· ${esc(l.vid || 'физическо')}${l.egn ? ' · ' + esc(l.egn) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</span>
+        <button class="btn btn-ghost btn-sm" onclick="sbMahni('lica','${l.id}')">×</button></div>`).join('');
+
+    const obekti = s.obekti.map(o => {
+        const sab = _sbSabrano(p, o.id);
+        return `<div>${esc(o.identifikator || o.opisanie)}
+            <span style="color:var(--muted)">· ${esc(o.vid || '')}${o.opisanie && o.identifikator ? ' · ' + esc(o.opisanie) : ''}</span>
+            <span style="color:${_drEdno(sab) ? '#2e6b32' : '#b45309'}">· събрани ${_drTekst(sab)}</span>
+            <button class="btn btn-ghost btn-sm" onclick="sbMahni('obekti','${o.id}')">×</button></div>`;
+    }).join('');
+
+    const sabitia = [...s.sabitia]
+        .sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)))
+        .map(e => `<div>${esc(e.data)} · ${esc(e.vid)} · <strong>${esc(_drTekst(_dr(e.dyal) || { n: 0, d: 1 }))}</strong>
+            от ${esc(e.ot ? _sbImeLice(s, e.ot) : '—')} на ${esc(_sbImeLice(s, e.na))}
+            <span style="color:var(--muted)">· ${esc(_sbImeObekt(s, e.obekt))}${e.dokument ? ' · ' + esc(e.dokument) : ''}</span>
+            <button class="btn btn-ghost btn-sm" onclick="sbMahni('sabitia','${e.id}')">×</button></div>`).join('');
+
+    return red(`\u{1F464} Лица (${s.lica.length})`, lica, '+ Добави лице', 'sbDobaviLice()')
+         + red(`\u{1F3E0} Обекти (${s.obekti.length})`, obekti, '+ Добави обект', 'sbDobaviObekt()')
+         + red(`\u{1F4DC} Събития (${s.sabitia.length})`, sabitia, '+ Добави събитие', 'sbDobaviSabitie()');
+}
+
+// ── въвеждането ────────────────────────────────────────────────────────────
+// Засега на ръка. Четенето на нотариален акт от АИ-то идва след това и ще пълни
+// същите три таблици — номерът на акта остава ръчен (вж. _KES_NARAKA).
+function _sbZapishi(p, kakvo) { _s2ZapishiTiho(p, 'Собственост: ' + kakvo); _prerisuvai(); }
+
+function sbData(v) { const p = _zhivObekt(); if (p) { p._sb_data = v.trim(); _prerisuvai(); } }
+
+function sbZapochni() {
+    const p = _zhivObekt(); if (!p) return;
+    const s = _sbDanni(p);
+    s.obekti.push({ id: _sbNovId(), vid: 'земя', identifikator: p.pi || '', opisanie: 'поземлен имот' });
+    _sbZapishi(p, 'земята е първият обект');
+}
+
+function sbDobaviLice() {
+    const p = _zhivObekt(); if (!p) return;
+    const ime = (prompt('Име на лицето (или фирма):') || '').trim();
+    if (!ime) return;
+    const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(ime);
+    const egn = (prompt(yur ? 'ЕИК (по избор):' : 'ЕГН (по избор):') || '').trim();
+    _sbDanni(p).lica.push({ id: _sbNovId(), ime, vid: yur ? 'юридическо' : 'физическо', egn });
+    _sbZapishi(p, `лице „${ime}“`);
+}
+
+function sbDobaviObekt() {
+    const p = _zhivObekt(); if (!p) return;
+    const vid = (prompt('Вид: земя · сграда · самостоятелен обект · право на строеж', 'самостоятелен обект') || '').trim();
+    if (!vid) return;
+    const ident = (prompt('Идентификатор по КККР (вписва се на ръка):') || '').trim();
+    const opis = (prompt('Описание — апартамент 15, гараж 3…:') || '').trim();
+    if (!ident && !opis) return;
+    _sbDanni(p).obekti.push({ id: _sbNovId(), vid, identifikator: ident, opisanie: opis });
+    _sbZapishi(p, `обект „${ident || opis}“`);
+}
+
+function sbDobaviSabitie() {
+    const p = _zhivObekt(); if (!p) return;
+    const s = _sbDanni(p);
+    if (!s.obekti.length) return alert('Първо добави обект.');
+    if (!s.lica.length) return alert('Първо добави лице.');
+    const izbor = (spisak, podkana) => {
+        const red = spisak.map((x, i) => `${i + 1}. ${x.tekst}`).join(String.fromCharCode(10));
+        const o = prompt(podkana + String.fromCharCode(10, 10) + red);
+        if (o === null) return undefined;
+        const i = parseInt(o, 10) - 1;
+        return spisak[i] ? spisak[i].id : null;
+    };
+    const obekt = izbor(s.obekti.map(o => ({ id: o.id, tekst: _sbImeObekt(s, o.id) })), 'За кой обект?');
+    if (obekt === undefined || obekt === null) return;
+    const vid = (prompt('Вид на събитието:' + String.fromCharCode(10, 10) + _SB_VID.join(', '),
+                        'покупко-продажба') || '').trim();
+    if (!vid) return;
+    const lica = s.lica.map(l => ({ id: l.id, tekst: l.ime }));
+    const ot = vid === 'първоначално' ? null : izbor(lica, 'От кого? (празно = от никого)');
+    if (ot === undefined) return;
+    const na = izbor(lica, 'На кого?');
+    if (!na) return;
+    const dyal = (prompt('Дял — ДРОБ, не процент: 1/1, 1/2, 1/6', '1/1') || '').trim();
+    if (!_dr(dyal)) return alert('Дялът трябва да е дроб: 1/2, 1/6, 1.');
+    const data = (prompt('Дата (дд.мм.гггг):') || '').trim();
+    const dokument = (prompt('Документ — НА № …, том, рег. №, нотариус:') || '').trim();
+    s.sabitia.push({ id: _sbNovId(), obekt, vid, ot, na, dyal, data, dokument });
+    _sbZapishi(p, `${vid} ${dyal} · ${data}`);
+}
+
+function sbMahni(tablica, id) {
+    const p = _zhivObekt(); if (!p) return;
+    const s = _sbDanni(p);
+    if (!confirm('Да го махна ли?')) return;
+    s[tablica] = s[tablica].filter(x => x.id !== id);
+    _sbZapishi(p, 'махнат ред');
+}
+
 
 function renderProektPage() {
     const p = _obektIliIzbor('proekt-content', 'proekt', 'Изберете обекта');
