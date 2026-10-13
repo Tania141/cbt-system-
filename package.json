@@ -1,0 +1,12 @@
+{
+  "name": "akt-sistem",
+  "version": "1.0.0",
+  "private": true,
+  "description": "АКТ СИСТЕМ — PWA за строителен надзор. Тук са само пробите; самото приложение е index.html и се сервира статично.",
+  "scripts": {
+    "test": "node probi/vsichko.js"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
