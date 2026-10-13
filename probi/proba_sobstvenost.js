@@ -188,6 +188,66 @@ o3.forEach(x => console.log('  ok  ' + x));
 l3.forEach(x => console.log('  ЛО  ' + x));
 
 
-const vsichki = lo.length + l2.length + (typeof l3 === 'undefined' ? 0 : l3.length);
+
+
+// ── приемането на прочетен акт ─────────────────────────────────────────────
+const K = new Function(
+    "const _s2esc=x=>String(x??'');let _zapisi=[];\n"
+    + parche('const _nod =', '// ── данните')
+    + parche('const _SB_VID =', 'function _sbDanni')
+    + grab('_sbDanni') + '\n'
+    + parche('const _sbLice =', '// ── сметката')
+    + [grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbNahodki')].join('\n')
+    + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
+    + 'let _tekusht=null;const _zhivObekt=()=>_tekusht;'
+    + 'const _sbZapishi=(p,k)=>_zapisi.push(k);const _prerisuvai=()=>{};\n'
+    + grab('sbPriemi')
+    + '\nreturn {_sbDanni,sbPriemi,set:(p)=>{_tekusht=p},_sbSabrano,_sbNahodki,zapisi:()=>_zapisi};')();
+
+const o4 = [], l4 = [];
+const y = (x, c, kak) => (c ? o4 : l4).push(x + (c ? '' : '  → ' + kak));
+
+const p5 = { pi: '68134.4354.781' };
+K._sbDanni(p5);
+K.set(p5);
+p5._sb_procheteno = {
+    fajl: 'na-112.pdf', vid: 'нотариален акт', nomer: '112', tom: 'III',
+    registar: '4512', delo: '98/2009', data: '12.05.2009', notarius: 'Петров',
+    lica: [{ ime: 'Иван Георгиев Петров', vid: 'физическо', egn_eik: '7001011234' },
+           { ime: 'Мария Иванова Петрова', vid: 'физическо' }],
+    obekti: [{ identifikator: '68134.4354.781', opisanie: 'поземлен имот', vid: 'земя' }],
+    prehvarliania: [
+        { vid: 'покупко-продажба', ot: 'Иван Георгиев Петров', na: 'Мария Иванова Петрова',
+          dyal: '1/2', obekt: '68134.4354.781', citat: '…продава…' }],
+};
+K.sbPriemi();
+const s5 = p5.sobstvenost;
+y('лицата са добавени', s5.lica.length === 2, s5.lica.length);
+y('обектът е добавен веднъж', s5.obekti.length === 1, s5.obekti.length);
+y('събитието е добавено', s5.sabitia.length === 1, s5.sabitia.length);
+y('дялът е запазен като дроб', s5.sabitia[0].dyal === '1/2', s5.sabitia[0].dyal);
+y('документът е сглобен', /№ 112.*том III.*рег\. № 4512/.test(s5.sabitia[0].dokument), s5.sabitia[0].dokument);
+y('цитатът се пази', s5.sabitia[0].citat === '…продава…');
+y('прочетеното е изчистено след приемане', !p5._sb_procheteno);
+
+// втори акт със СЪЩОТО лице — не се дублира
+p5._sb_procheteno = {
+    fajl: 'na-200.pdf', vid: 'нотариален акт', nomer: '200', data: '01.03.2015',
+    lica: [{ ime: '  иван георгиев петров ' }, { ime: 'Строй ЕООД', vid: 'юридическо' }],
+    obekti: [{ identifikator: '68134.4354.781' }],
+    prehvarliania: [{ vid: 'покупко-продажба', ot: 'иван георгиев петров',
+                      na: 'Строй ЕООД', dyal: '1/2', obekt: '68134.4354.781' }],
+};
+K.sbPriemi();
+y('същото лице не се създава втори път (пада регистърът на буквите)',
+  p5.sobstvenost.lica.length === 3, p5.sobstvenost.lica.map(l => l.ime));
+y('същият обект не се създава втори път', p5.sobstvenost.obekti.length === 1, p5.sobstvenost.obekti.length);
+y('двете събития са там', p5.sobstvenost.sabitia.length === 2);
+
+o4.forEach(x => console.log('  ok  ' + x));
+l4.forEach(x => console.log('  ЛО  ' + x));
+
+
+const vsichki = [lo, l2, l3, l4].reduce((n, x) => n + (x ? x.length : 0), 0);
 console.log(vsichki ? '\n' + vsichki + ' проблема общо' : '\nи към документите — наред');
 process.exit(vsichki ? 1 : 0);

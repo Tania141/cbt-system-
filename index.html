@@ -5410,7 +5410,23 @@ function _sbHtml(p) {
                 Към ${esc(data)} никой не държи вещно право — виж находките горе.</div>`}
         </div>` : '';
 
-    return glava + vazlozhiteli + _sbTablici(p);
+    const chetene = `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:6px">\u{1F916} Прочети документ за собственост</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                Нотариален акт, договор, удостоверение за наследници, постановление.
+                Четецът търси прехвърлянията — кой на кого какъв дял; кодът проверява сбора.
+            </p>
+            <input type="file" id="sb-fajl" class="form-input" style="margin-bottom:8px"
+                   accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,.tif,.tiff" onchange="sbCheti()">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label for="sb-stranici" style="font-size:12.5px;color:var(--muted)">Страници (по избор):</label>
+                <input type="text" id="sb-stranici" class="form-input" style="width:150px" placeholder="напр. 1-4, 20">
+                <span style="font-size:11.5px;color:var(--muted)">за дълъг PDF с много актове — по-малко токени</span>
+            </div>
+            <div id="sb-hod" style="font-size:12.5px;color:var(--muted);margin-top:8px"></div>
+        </div>`;
+    return glava + _sbChetenoHtml(p) + chetene + vazlozhiteli + _sbTablici(p);
 }
 
 function _sbTablici(p) {
@@ -5451,6 +5467,137 @@ function _sbTablici(p) {
     return red(`\u{1F464} Лица (${s.lica.length})`, lica, '+ Добави лице', 'sbDobaviLice()')
          + red(`\u{1F3E0} Обекти (${s.obekti.length})`, obekti, '+ Добави обект', 'sbDobaviObekt()')
          + red(`\u{1F4DC} Събития (${s.sabitia.length})`, sabitia, '+ Добави събитие', 'sbDobaviSabitie()');
+}
+
+// ── четенето на акт ───────────────────────────────────────────────────────
+// Четецът не търси „кой е собственикът“ — търси ПРЕХВЪРЛЯНЕ: кой на кого какъв
+// дял. Прочетеното не влиза само; стои като предложение, докато операторът го
+// приеме. Номерът на акта се вписва на ръка (вж. _KES_NARAKA — същото правило).
+
+function _sbChetenoHtml(p) {
+    const esc = _s2esc, ch = p._sb_procheteno;
+    if (!ch) return '';
+    const bel = ch.belezhki || [];
+    const red = (et, st) => st ? `<div><span style="color:var(--muted)">${et}:</span> ${esc(st)}</div>` : '';
+    return `
+        <div class="card" style="margin-bottom:16px;border-color:var(--gold)">
+            <div class="card-title" style="margin-bottom:6px">\u{1F4D6} Прочетено от „${esc(ch.fajl || '')}“</div>
+            <div style="font-size:13px;line-height:1.8">
+                ${red('Вид', ch.vid)}
+                <div style="color:#8a6400;background:#fffbef;border-left:3px solid #d99a00;
+                            padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0">
+                    <strong>[___] Номер, том, регистър и нотариус се вписват на ръка.</strong><br>
+                    <span style="font-size:12.5px">АИ-то прочете:
+                        ${esc([ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
+                               ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
+                               ch.notarius].filter(Boolean).join(', ') || '(нищо)')}</span>
+                </div>
+                ${red('Дата', ch.data)}
+                ${(ch.lica || []).length ? `<div style="margin-top:6px"><strong>Лица</strong>
+                    ${ch.lica.map(l => `<div>· ${esc(l.ime)}${l.egn_eik ? ' · ' + esc(l.egn_eik) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</div>`).join('')}</div>` : ''}
+                ${(ch.obekti || []).length ? `<div style="margin-top:6px"><strong>Обекти</strong>
+                    ${ch.obekti.map(o => `<div>· ${esc(o.identifikator || o.opisanie)}${o.identifikator && o.opisanie ? ' · ' + esc(o.opisanie) : ''}</div>`).join('')}</div>` : ''}
+                ${(ch.prehvarliania || []).length ? `<div style="margin-top:6px"><strong>Прехвърляния</strong>
+                    ${ch.prehvarliania.map(x => `<div>· ${esc(x.vid || '')} · <strong>${esc(x.dyal || '?')}</strong>
+                        от ${esc(x.ot || '—')} на ${esc(x.na || '?')}
+                        <span style="color:var(--muted)">· ${esc(x.obekt || '')}</span></div>`).join('')}</div>`
+                 : '<div style="margin-top:6px;color:var(--red)">Няма прочетено прехвърляне.</div>'}
+            </div>
+            ${bel.length ? `<div class="alert alert-warning" style="margin:10px 0 0"><div>
+                <strong>Кодът казва</strong>
+                <div style="font-size:12.5px;margin-top:4px;line-height:1.7">
+                    ${bel.map(b => `<div>· ${esc(b)}</div>`).join('')}</div></div></div>` : ''}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                <button class="btn btn-primary" onclick="sbPriemi()">Приеми в регистъра</button>
+                <button class="btn btn-ghost" onclick="sbOtkazhi()">Откажи</button>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin:8px 0 0">
+                Лицата и обектите, които ги няма, се добавят. Номерът на акта го впиши ти —
+                той влиза дословно в документите.
+            </p>
+        </div>`;
+}
+
+async function sbCheti() {
+    const p = _zhivObekt();
+    const vhod = document.getElementById('sb-fajl');
+    const hod = document.getElementById('sb-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!p || !f) return;
+    if (/\.doc$/i.test(f.name)) { hod.textContent = 'Стар .doc — запиши го като .docx или PDF.'; return; }
+    hod.textContent = `Чета „${f.name}“…`;
+    try {
+        const r = await apiCall('/api/sobstvenost/chete', 'POST', {
+            pi: p.pi,
+            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            stranici: (document.getElementById('sb-stranici') || {}).value || '',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+        });
+        if (r.greshka) { hod.textContent = `⚠️ ${r.greshka}`; return; }
+        p._sb_procheteno = r.dokument;
+        hod.textContent = '';
+        _prerisuvai();
+    } catch (e) {
+        hod.textContent = `❌ ${e.message}`;
+    }
+}
+
+function sbOtkazhi() {
+    const p = _zhivObekt(); if (!p) return;
+    delete p._sb_procheteno;
+    _prerisuvai();
+}
+
+// Приемането е сверяване по име: лице или обект, което вече го има, не се
+// създава втори път — иначе един и същ Иван става двама и веригата се къса.
+function sbPriemi() {
+    const p = _zhivObekt(); if (!p) return;
+    const ch = p._sb_procheteno; if (!ch) return;
+    const s = _sbDanni(p);
+    const klyuch = x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    const lice = (ime, dop) => {
+        if (!klyuch(ime)) return null;
+        let l = s.lica.find(x => klyuch(x.ime) === klyuch(ime));
+        if (!l) { l = { id: _sbNovId(), ime: String(ime).trim(), vid: 'физическо' }; s.lica.push(l); }
+        if (dop) { if (dop.vid) l.vid = dop.vid; if (dop.egn_eik) l.egn = l.egn || dop.egn_eik;
+                   if (dop.pochinal) l.pochinal = l.pochinal || dop.pochinal; }
+        return l.id;
+    };
+    const obekt = (opis) => {
+        if (!klyuch(opis)) return (s.obekti[0] || {}).id || null;
+        let o = s.obekti.find(x => klyuch(x.identifikator) === klyuch(opis)
+                                || klyuch(x.opisanie) === klyuch(opis));
+        if (!o) {
+            o = { id: _sbNovId(), vid: 'самостоятелен обект', identifikator: '', opisanie: String(opis).trim() };
+            const ot = (ch.obekti || []).find(x => klyuch(x.identifikator) === klyuch(opis)
+                                                || klyuch(x.opisanie) === klyuch(opis));
+            if (ot) { o.identifikator = ot.identifikator || ''; o.opisanie = ot.opisanie || o.opisanie;
+                      o.vid = ot.vid || o.vid; }
+            s.obekti.push(o);
+        }
+        return o.id;
+    };
+
+    for (const l of ch.lica || []) lice(l.ime, l);
+    for (const o of ch.obekti || []) obekt(o.identifikator || o.opisanie);
+
+    const dokument = [ch.vid, ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
+                      ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
+                      ch.notarius && 'нотариус ' + ch.notarius].filter(Boolean).join(', ');
+    let n = 0;
+    for (const x of ch.prehvarliania || []) {
+        if (!x.na) continue;
+        s.sabitia.push({
+            id: _sbNovId(), obekt: obekt(x.obekt), vid: x.vid || 'покупко-продажба',
+            ot: x.ot ? lice(x.ot) : null, na: lice(x.na),
+            dyal: (x.dyal || '').trim(), data: ch.data || '',
+            dokument, ot_chetene: ch.fajl || '', citat: x.citat || '',
+        });
+        n++;
+    }
+    delete p._sb_procheteno;
+    _sbZapishi(p, `прочетени ${n} прехвърляния от „${ch.fajl || ''}“`);
 }
 
 // ── въвеждането ────────────────────────────────────────────────────────────
