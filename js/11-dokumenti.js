@@ -10,13 +10,6 @@
 
 
 
-function getGeodezist(consultant) {
-    if (!consultant) return '';
-    const geo = consultant.employees?.find(e => e.specialization === 'Геодезия');
-    return geo ? geo.name : '';
-}
-
-
 // ═══════════════════════════════════════════════════════════
 //  GENERATE DOCUMENTS — via Python REST API (.docx)
 // ═══════════════════════════════════════════════════════════

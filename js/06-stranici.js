@@ -9,23 +9,6 @@
 // ═══════════════════════════════════════════════════════════
 // Празните казват честно какво чакат и откъде ще дойде. По-добре от „скоро“.
 
-function _predstoi(kutiya, p, stranica, zaglavie, redove, otkade) {
-    const esc = _s2esc;
-    document.getElementById(kutiya).innerHTML = _lentaObekt(p, stranica)
-        + (stranica === 'imot' || stranica === 'sobstvenost' ? '' : _lentaStroezhi(p))
-        + `<div class="card">
-            <div class="card-title" style="margin-bottom:10px">${esc(zaglavie)}</div>
-            <p style="font-size:13px;color:var(--slate);margin-bottom:12px">Тук ще живее:</p>
-            <ul style="margin:0 0 14px 18px;font-size:13.5px;line-height:1.9;color:var(--ink)">
-                ${redove.map(r => `<li>${esc(r)}</li>`).join('')}
-            </ul>
-            <div style="padding:11px 14px;background:var(--surface);border:1px solid var(--border-light);
-                        border-radius:9px;font-size:12.5px;color:var(--slate);line-height:1.6">
-                ${esc(otkade)}
-            </div>
-        </div>`;
-}
-
 // Имотът е ВХОДЪТ: тук са всичките строежи, а под всеки — основните му
 // документи. Клик върху строеж влиза в неговите проверки. (Операторът, 02.10.2026)
 function renderImotPage() {

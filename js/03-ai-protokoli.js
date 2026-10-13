@@ -192,14 +192,6 @@ const PREDNAZNACHENIA = [['жилищна','Жилищна сграда'],['см
     ['телекомуникации','Телекомуникации'],['подземни','Подземни мрежи'],
     ['култура','Културна ценност'],['оръжия','Оръжия, боеприпаси'],['друго','Друго']];
 
-// Отваря паспорта на обекта за редакция. „Редактирай“ сравнява id строго, а
-// id-то е число за местно създадените и текст (ПИ) за заредените от сървъра —
-// затова обектът се намира тук и се подава с истинския си вид.
-function kamPasport(id) {
-    const pr = appData.projects.find(x => String(x.id) === String(id));
-    if (pr) editPassport(pr.id);
-}
-
 function izborObektHtml(stranica) {
     const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     const tekusht = appData.currentProject?.id;
@@ -999,36 +991,6 @@ async function generateDocCombined() {
             '<span style="font-size:12px;color:var(--red)">❌ ' + err.message + '</span>';
         showAlert('error', '❌ Грешка: ' + err.message);
     }
-}
-
-function shortName2(fullName) {
-    // Връща само 2 имена: първо и последно
-    if (!fullName) return '';
-    const clean = fullName.replace(/^(инж\.|арх\.|д-р\.?)\s*/i, '').trim();
-    const parts = clean.split(/\s+/);
-    if (parts.length >= 2) return parts[0] + ' ' + parts[parts.length - 1];
-    return clean;
-}
-
-function getSelectedVozlagatel(extra) {
-    // Взима избрания представител от dropdown или custom поле
-    const sel = document.getElementById('extra-vozlagatel_idx');
-    if (!sel) return extra.vozlagatel_pred || '';
-
-    const idx = sel.value;
-    if (idx === 'custom') {
-        return document.getElementById('extra-vozlagatel_pred')?.value?.trim() || '';
-    }
-    if (idx === '-1') return '';
-
-    const clients = window._clients || [];
-    const client = clients[parseInt(idx)];
-    if (!client) return '';
-
-    // За ЮЛ — взимаме представителя/управителя
-    if (client.type === 'ЮЛ') return client.rep || client.name || '';
-    // За ФЛ — самото лице
-    return client.name || '';
 }
 
 // ── Кой подписва долу: общ чеклист за трите входа към генериране ──────────────

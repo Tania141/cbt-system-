@@ -153,13 +153,6 @@ function updateNavBadge() {
 // в „Имотът“, а редактирането и триенето са си на картата.
 
 
-function detailRow(label, value) {
-    return `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-light)">
-        <span style="font-size:12px;color:var(--muted);min-width:130px;flex-shrink:0">${label}</span>
-        <span style="font-size:13px;font-weight:600;color:var(--ink)">${value || '—'}</span>
-    </div>`;
-}
-
 function closeModal(id) {
     document.getElementById(id).classList.remove('open');
 }
@@ -675,8 +668,6 @@ function kamStranica(id, stranica) {
     navigateTo(stranica);
     saveData();
 }
-
-function kamGenerirane(id) { kamStranica(id, 'nadzor'); }
 
 // ── Страниците „Оценка на съответствието“ и „Изходни документи“ ─────────────
 // Всяка пише САМО своята част от обекта и праща към сървъра целия обект:

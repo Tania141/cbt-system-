@@ -158,46 +158,6 @@ function updateApiIndicator() {
     if (txt) txt.textContent = appData.apiUrl ? 'API: свързан' : 'API: не е конфигуриран';
 }
 
-async function generateDocumentViaApi(projectId, docType) {
-    const project = appData.projects.find(p => p.id === projectId);
-    if (!project) return;
-    if (!appData.apiUrl) {
-        showAlert('error', 'Моля, конфигурирайте API URL в Настройки → Python API!');
-        return;
-    }
-    try {
-        showAlert('info', `⏳ Генериране на ${docType} чрез Python API...`);
-        const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
-        const payload = buildPassportRows(project, consultant, {});
-        const url = (appData.apiUrl || '').replace(/\/$/, '');
-        const token = getToken();
-        const r = await fetch(`${url}/api/generate/${docType}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-            body: JSON.stringify({ passport: payload, pi: project.pi })
-        });
-        if (!r.ok) {
-            const err = await r.json().catch(() => ({ error: r.statusText }));
-            throw new Error(err.error || `HTTP ${r.status}`);
-        }
-        const blob = await r.blob();
-        const filename = `${docType}_${project.pi}.docx`;
-        const dlUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = dlUrl; a.download = filename; a.click();
-        URL.revokeObjectURL(dlUrl);
-        if (!project.generatedDocs) project.generatedDocs = [];
-        project.generatedDocs.push({ type: docType, date: new Date().toISOString() });
-        addHistory('generate', project.pi, `${docType} генериран чрез API`);
-        saveData();
-        filterPassports();
-        showAlert('success', `✅ ${docType} генериран и изтеглен успешно!`);
-    } catch(e) {
-        showAlert('error', `❌ Грешка при генериране: ${e.message}`);
-    }
-}
-
-
 const specializations = [
     'Архитектура','Конструктивна','ВиК','Електро','ОВК и ЕЕ',
     'Геодезия','Инженерна геология и хидрогеология',

@@ -15,30 +15,10 @@ function formatDate(dateStr) {
 }
 
 
-function formatDate2(isoStr) {
-    if (!isoStr) return '';
-    const d = new Date(isoStr);
-    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
-}
-
 function formatDateTime(isoStr) {
     if (!isoStr) return '';
     const d = new Date(isoStr);
     return `${formatDate(d.toISOString().split('T')[0])} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-}
-
-function getTwoNames(fullName) {
-    if (!fullName) return '';
-    return fullName.trim().split(/\s+/).slice(0,2).join(' ');
-}
-
-function downloadHTML(filename, content) {
-    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 // ═══════════════════════════════════════════════════════════
