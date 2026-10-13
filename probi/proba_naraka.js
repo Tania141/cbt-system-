@@ -1,5 +1,5 @@
 // Ръчните полета: няма бутон „потвърди предложеното“.
-const fs = require('fs'); const s = fs.readFileSync('C:/project/cloude/index.html', 'utf8');
+const fs = require('fs'); const s = fs.readFileSync(__dirname + '/../app.js', 'utf8');
 function grab(n){const i=s.indexOf('function '+n+'(');if(i<0)throw new Error('няма '+n);
   let k=s.indexOf('{',i),b=0;for(;k<s.length;k++){if(s[k]==='{')b++;else if(s[k]==='}'){b--;if(!b)return s.slice(i,k+1);}}}
 function konst(n){const i=s.indexOf('const '+n+' = ');const j=s.indexOf('\n};',i);return s.slice(i,j+3);}
