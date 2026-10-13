@@ -5111,14 +5111,32 @@ function preimenuvajStroezh(i) {
 
 // ── дроби ──────────────────────────────────────────────────────────────────
 const _nod = (a, b) => (b ? _nod(b, a % b) : Math.abs(a));
-function _dr(txt) {                       // „1/6“, „3/4“, „1“ → {n, d}
-    const t = String(txt ?? '').trim().replace(',', '.');
+// „1/6“, „3/4“, „1“, а също „8,38%“ и „2,169%“.
+// Процентите СЕ ПРИЕМАТ (13.10.2026): в нотариален акт за идеални части в
+// комплекс законният текст наистина пише „8,38 %“, а не дроб. Пазят се като
+// ТОЧНА дроб (8,38% → 419/5000), за да не се трупа закръгление.
+function _dr(txt) {
+    const t = String(txt ?? '').trim().replace(',', '.').replace(/\s+/g, '');
     if (!t) return null;
-    const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
+    const m = t.match(/^(\d+)\/(\d+)$/);
     if (m) { const d = +m[2]; return d ? _drSvi({ n: +m[1], d }) : null; }
+    const pr = t.match(/^(\d+(?:\.\d+)?)%$/);
+    if (pr) {
+        const [cyalo, drob = ''] = pr[1].split('.');
+        const znam = 100 * Math.pow(10, drob.length);
+        return _drSvi({ n: +(cyalo + drob), d: znam });
+    }
     if (/^\d+$/.test(t)) return { n: +t, d: 1 };
-    return null;                          // проценти и десетични не се приемат
+    if (/^\d+\.\d+$/.test(t)) {          // „0.5“ — приема се, но не се насърчава
+        const [c, d2] = t.split('.');
+        return _drSvi({ n: +(c + d2), d: Math.pow(10, d2.length) });
+    }
+    return null;
 }
+
+// Процентите в актовете са закръглени: 2,169% × 46 не прави точно 100%.
+// Затова „цяло“ значи „до една хилядна“, когато дяловете идват от проценти.
+const _drBlizoEdno = f => Math.abs(f.n / f.d - 1) < 0.001;
 const _drSvi = f => { const g = _nod(f.n, f.d) || 1; return { n: f.n / g, d: f.d / g }; };
 const _drSabi = (a, b) => _drSvi({ n: a.n * b.d + b.n * a.d, d: a.d * b.d });
 const _drIzvadi = (a, b) => _drSvi({ n: a.n * b.d - b.n * a.d, d: a.d * b.d });
@@ -5204,49 +5222,61 @@ function _sbVazlozhiteli(p, data) {
 
 // ── находките ──────────────────────────────────────────────────────────────
 // Кодът съди. Показва се САМО което не връзва — от сто акта обикновено три.
+// Кодът съди — но само за това, което има значение. Актът за магазин в голям
+// комплекс изброява гаражи, снек бар и кафе, за да ги ИЗКЛЮЧИ от сделката;
+// да се иска верига за всеки от тях е шум. (Операторът, 13.10.2026: 28
+// забележки, от които значение имат две.) Проверява се КОРЕНЪТ — обектът, в
+// който се строи — и нищо друго.
 function _sbNahodki(p) {
     const s = _sbDanni(p);
+    const koren = _sbKoren(p);
     const out = [];
-    for (const o of s.obekti) {
-        const salda = _sbSmetka(p, o.id);
-        const sabrano = _sbSabrano(p, o.id);
-        if (!s.sabitia.some(e => e.obekt === o.id)) {
-            out.push({ vid: 'prazno', obekt: o.id,
-                tekst: `${_sbImeObekt(s, o.id)} — няма нито едно събитие.` });
-        } else if (!_drEdno(sabrano)) {
+    if (koren) {
+        const salda = _sbSmetka(p, koren.id);
+        const sabrano = _sbSabrano(p, koren.id);
+        const ime = _sbImeObekt(s, koren.id);
+        if (!s.sabitia.some(e => e.obekt === koren.id)) {
+            out.push({ vid: 'prazno', obekt: koren.id,
+                tekst: `${ime} — няма нито едно събитие. Качи акта, с който е придобит.` });
+        } else if (!_drBlizoEdno(sabrano)) {
             const lipsva = _drIzvadi({ n: 1, d: 1 }, sabrano);
-            out.push({ vid: 'nepalno', obekt: o.id,
-                tekst: `${_sbImeObekt(s, o.id)} — събрани ${_drTekst(sabrano)}, `
-                     + `липсва ${_drTekst(lipsva)}.` });
+            out.push({ vid: 'nepalno', obekt: koren.id,
+                tekst: `${ime} — събрани ${_drTekst(sabrano)}, липсва ${_drTekst(lipsva)}.` });
         }
+        // Минус у някого, който НИЩО не е придобивал в регистъра, не е дефект —
+        // той е краят на веригата нагоре. Строителят продава магазина, без
+        // неговото придобиване да е вписано, и това е нормално: събраното вече
+        // е 1/1 и назад не се копае. Дефект е само когато е придобил нещо и е
+        // прехвърлил ПОВЕЧЕ от него. (Сан Стефано, 13.10.2026)
+        const pridobival = new Set(s.sabitia.filter(e => e.obekt === koren.id && e.na).map(e => e.na));
         for (const [lice, f] of salda)
-            if (f.n < 0) out.push({ vid: 'minus', obekt: o.id,
+            if (f.n < 0 && pridobival.has(lice)) out.push({ vid: 'minus', obekt: koren.id,
                 tekst: `${_sbImeImeBezopasno(s, lice)} е прехвърлил ${_drTekst({ n: -f.n, d: f.d })} `
-                     + `повече, отколкото е имал в ${_sbImeObekt(s, o.id)}.` });
-    }
-    // Покойник, който още държи дял. Аритметиката НЕ го хваща: сборът си остава
-    // 1/1 и всичко изглежда наред. Пробата го показа (13.10.2026) — трима
-    // наследници по 1/6, вписани двама, а Иван остава с 1/6 и е починал.
-    for (const l of s.lica) {
-        if (!l.pochinal) continue;
-        for (const o of s.obekti) {
-            const f = _sbSmetka(p, o.id).get(l.id);
-            if (f && f.n > 0) out.push({ vid: 'pochinal', lice: l.id, obekt: o.id,
+                     + `повече, отколкото е имал в ${ime}.` });
+        for (const l of s.lica) {
+            if (!l.pochinal) continue;
+            const f = salda.get(l.id);
+            if (f && f.n > 0) out.push({ vid: 'pochinal', lice: l.id, obekt: koren.id,
                 tekst: `${_sbImeImeBezopasno(s, l.id)} е починал на ${l.pochinal}, `
-                     + `а още държи ${_drTekst(f)} от ${_sbImeObekt(s, o.id)} — липсва наследяване.` });
+                     + `а още държи ${_drTekst(f)} от ${ime} — липсва наследяване.` });
         }
     }
-    for (const e of s.sabitia) {
+    // Събитията се проверяват винаги: сбъркан дял или липсващ получател е
+    // дефект в самия запис, независимо кой е коренът.
+    const vazhni = koren ? s.sabitia.filter(e => e.obekt === koren.id) : [];
+    for (const e of vazhni) {
         if (!e.ot && e.vid !== 'първоначално')
             out.push({ vid: 'otnikade', sabitie: e.id,
-                tekst: `${_sbImeImeBezopasno(s, e.na)} придобива в `
-                     + `${_sbImeObekt(s, e.obekt)} без да е посочено от кого (${e.data}).` });
+                tekst: `${_sbImeImeBezopasno(s, e.na)} придобива без да е посочено от кого (${e.data}).` });
         if (!_dr(e.dyal))
             out.push({ vid: 'dyal', sabitie: e.id,
-                tekst: `Дялът „${e.dyal || ''}“ в ${e.data} не е дроб — пиши 1/2, не 50%.` });
+                tekst: `Дялът „${e.dyal || ''}“ в ${e.data} не се чете — пиши дроб (1/2) или процент (8,38%).` });
     }
-    return out;
+    // Еднакви изречения не се повтарят.
+    const vidyani = new Set();
+    return out.filter(n => !vidyani.has(n.tekst) && vidyani.add(n.tekst));
 }
+
 const _sbImeImeBezopasno = (s, id) => _s2esc(_sbImeLice(s, id));
 
 // ── към документите ───────────────────────────────────────────────────────
@@ -5315,7 +5345,7 @@ function _sbSastoyanie(p) {
     if (!koren) return { gotovo: false, tekst: 'още не е започната — веригата тръгва от обекта, в който се строи' };
     const sab = _sbSabrano(p, koren.id);
     const nah = _sbNahodki(p).filter(n => !n.obekt || n.obekt === koren.id);
-    if (_drEdno(sab) && !nah.length)
+    if (_drBlizoEdno(sab) && !nah.length)
         return { gotovo: true, tekst: `${_sbImeObekt(s, koren.id)} — събрана 1/1, веригата връзва` };
     return { gotovo: false, tekst: nah.length ? nah[0].tekst
         : `${_sbImeObekt(s, koren.id)} — събрани ${_drTekst(sab)}` };
@@ -5380,7 +5410,8 @@ function _sbHtml(p) {
             </div>
         </div></div>`
     : `<div class="alert alert-success" style="margin:0 0 16px">
-            ✅ Веригата е пълна — ${esc(_drTekst(_sbSabrano(p, (zemya || {}).id)))} от земята и всички обекти връзват.
+            ✅ Веригата е пълна — събрана е цялата собственост върху
+            ${esc(_sbImeObekt(s, (_sbKoren(p) || {}).id))}.
        </div>`;
 
     const vazlozhiteli = s.obekti.length ? `
@@ -5449,7 +5480,7 @@ function _sbTablici(p) {
         const sab = _sbSabrano(p, o.id);
         return `<div>${esc(o.identifikator || o.opisanie)}
             <span style="color:var(--muted)">· ${esc(o.vid || '')}${o.opisanie && o.identifikator ? ' · ' + esc(o.opisanie) : ''}</span>
-            <span style="color:${_drEdno(sab) ? '#2e6b32' : '#b45309'}">· събрани ${_drTekst(sab)}</span>
+            <span style="color:${_drBlizoEdno(sab) ? '#2e6b32' : '#b45309'}">· събрани ${_drTekst(sab)}</span>
             <label style="margin-left:8px;font-size:11.5px;color:var(--muted);cursor:pointer"
                    title="Копае се назад само докато ТОЗИ обект се събере до 1/1">
                 <input type="radio" name="sb-koren" ${koren && koren.id === o.id ? 'checked' : ''}
@@ -5579,8 +5610,17 @@ function sbPriemi() {
         return o.id;
     };
 
+    // Лицата — всички: те са страните по акта.
     for (const l of ch.lica || []) lice(l.ime, l);
-    for (const o of ch.obekti || []) obekt(o.identifikator || o.opisanie);
+    // Обектите — САМО тези, в които има прехвърляне. Актът изброява и чужди
+    // обекти, за да ги изключи от сделката („всички останали обекти в
+    // комплекса“); те не са обекти на този регистър. (13.10.2026)
+    const zasegnati = new Set((ch.prehvarliania || [])
+        .map(x => klyuch(x.obekt)).filter(Boolean));
+    for (const o of ch.obekti || []) {
+        const k1 = klyuch(o.identifikator), k2 = klyuch(o.opisanie);
+        if (zasegnati.has(k1) || zasegnati.has(k2)) obekt(o.identifikator || o.opisanie);
+    }
 
     const dokument = [ch.vid, ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
                       ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
