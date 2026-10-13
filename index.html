@@ -1355,19 +1355,6 @@
             <span class="nav-icon">⚙️</span> Настройки
         </button>
 
-        <div class="sidebar-section-label" style="margin-top:16px;color:var(--muted)">
-            Стари — ще отпаднат
-        </div>
-        <button class="nav-item" onclick="navigateTo('dokumenti')" id="nav-dokumenti" style="opacity:.7">
-            <span class="nav-icon">📎</span> Изходни данни и РС
-        </button>
-        <button class="nav-item" onclick="navigateTo('generate')" id="nav-generate" style="opacity:.7">
-            <span class="nav-icon">📄</span> Актове и протоколи
-        </button>
-        <button class="nav-item" onclick="navigateTo('ai-protocols')" id="nav-ai-protocols" style="opacity:.7">
-            <span class="nav-icon">🤖</span> AI протоколи
-        </button>
-
         <div class="sidebar-footer">АКТ СИСТЕМ v6 · 2026</div>
     </nav>
 
@@ -1420,27 +1407,6 @@
         </div>
 
         <!-- ═══════════ GENERATE ═══════════ -->
-        <div class="page" id="page-generate">
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">Генериране на документи</h1>
-                    <p class="page-subtitle">HTML документи за печат / Excel паспорт за Python</p>
-                </div>
-            </div>
-            <div id="generate-content"></div>
-        </div>
-
-        <!-- ═══════════ AI ПРОТОКОЛИ ═══════════ -->
-        <div class="page" id="page-ai-protocols">
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">AI Протоколи</h1>
-                    <p class="page-subtitle">Генериране с верификация срещу РС и одобрен проект</p>
-                </div>
-            </div>
-            <div id="od-ai-karta"></div>
-            <div id="ai-protocols-content"></div>
-        </div>
 
         <!-- ═══════════ HISTORY ═══════════ -->
         <div class="page" id="page-history">
@@ -1633,17 +1599,6 @@
                 </div>
             </div>
             <div id="osip-content" style="max-width:900px"></div>
-        </div>
-
-        <!-- ═══════════ ИЗХОДНИ ДОКУМЕНТИ ═══════════ -->
-        <div class="page" id="page-dokumenti">
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">Изходни данни, съгласувания и РС</h1>
-                    <p class="page-subtitle">Обектът, показателите, документите и разрешението за строеж</p>
-                </div>
-            </div>
-            <div id="dokumenti-content" style="max-width:900px"></div>
         </div>
 
         <!-- ═══════════ НОВИЯТ СКЕЛЕТ (02.10.2026) ═══════════ -->
@@ -2533,7 +2488,6 @@ function navigateTo(page) {
     // Render on navigate
     if (page === 'passports') { filterPassports(); populateFilterDropdowns(); }
     else if (page === 'new-passport') renderPassportForm(null);
-    else if (page === 'generate') renderGenerateSection();
     else if (page === 'osip') renderOsipPage();
     else if (page === 'imot') renderImotPage();
     else if (page === 'sobstvenost') renderSobstvenostPage();
@@ -2541,8 +2495,6 @@ function navigateTo(page) {
     else if (page === 'dokumentite') renderDokumentitePage();
     else if (page === 'nadzor') renderNadzorPage();
     else if (page === 'kakav') renderKakavPage();
-    else if (page === 'dokumenti') renderDokumentiPage();
-    else if (page === 'ai-protocols') renderAiProtocols();
     else if (page === 'history') renderHistory();
     else if (page === 'zk') renderZK();
     else if (page === 'consultants') renderConsultants();
@@ -2950,7 +2902,7 @@ function _priznaciKarta(p) {
                     <div class="card-subtitle">От записаните изходни данни. От тях зависят разделите на
                         доклада, нормативният списък и изискваните документи.</div>
                 </div>
-                <button class="btn btn-secondary btn-sm" onclick="kamStranica('${p.id}','dokumenti')">✏️ Промени в изходните данни</button>
+                <button class="btn btn-secondary btn-sm" onclick="kamStranica('${p.id}','dokumentite')">✏️ Промени в изходните данни</button>
             </div>
             <div style="display:grid;grid-template-columns:160px 1fr;gap:6px 12px;font-size:13px">
                 ${red('Вид', vid)}
@@ -5230,16 +5182,13 @@ function renderDokumentitePage() {
             <div id="s2-hod" style="margin-top:10px;font-size:12px"></div>
             <div id="s2-rezultat" style="margin-top:12px"></div>
         </div>
-        <div class="card" style="margin-top:16px">
-            <div class="card-title" style="margin-bottom:8px">🗂️ Предстои тук</div>
-            <ul style="margin:0 0 0 18px;font-size:13px;line-height:1.9;color:var(--slate)">
-                <li>Нотариалният акт, договорите, лицензите и проектантите — прочетени В НАЧАЛОТО</li>
-                <li>Всеки документ знае момента си: не му е времето · очаква се сега · налично</li>
-                <li>Сверява се веднъж; протоколите само показват оттам</li>
-            </ul>
-        </div>`;
+        <details class="card" style="margin-top:16px">
+            <summary style="cursor:pointer;font-weight:600;font-size:14px">📜 Разрешение за строеж и изходни съгласувания</summary>
+            <div id="dokumenti-content" style="margin-top:12px"></div>
+        </details>`;
     try { const c = localStorage.getItem('s2_chetec'); if (c) document.getElementById('s2-chetec').value = c; } catch (e) {}
     if (p.sloy2?.od?.dokumenti?.length) sloy2Sravni();
+    renderDokumentiPage();          // вече рисува ВЪТРЕ в „Документите“
 }
 
 
@@ -5400,10 +5349,30 @@ async function renderNadzorPage() {
             izklyucheni: st.izklyucheni_momenti || [],
         });
         if (r.greshka) throw new Error(r.greshka);
-        kutiya.innerHTML = glava + _nadzorHtml(st, r);
+        kutiya.innerHTML = glava + _nadzorHtml(st, r) + _nadzorSastavyaneHtml();
+        renderGenerateSection();
+        renderAiProtocols();
     } catch (e) {
         kutiya.innerHTML = glava + `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
     }
+}
+
+// Съставянето на документи живее тук (13.10.2026): надзорът казва КОЙ документ
+// е на ред, а дотук се ходеше в отделна страница, за да се състави. Прибрано, за
+// да не се тича по менюто.
+function _nadzorSastavyaneHtml() {
+    return `
+        <details class="card" style="margin-top:16px">
+            <summary style="cursor:pointer;font-weight:600;font-size:14px">📄 Съставяне на актове и протоколи</summary>
+            <div id="generate-content" style="margin-top:12px"></div>
+        </details>
+        <details class="card" style="margin-top:12px">
+            <summary style="cursor:pointer;font-weight:600;font-size:14px">🤖 Съставяне с АИ — сверено срещу РС и проекта</summary>
+            <div style="margin-top:12px">
+                <div id="od-ai-karta"></div>
+                <div id="ai-protocols-content"></div>
+            </div>
+        </details>`;
 }
 
 // По тези признаци системата решава кои актове изобщо се съставят — операторът
@@ -5569,7 +5538,7 @@ async function renderKakavPage() {
                     Още няма прочетени записки за този обект.
                 </p>
                 <button class="btn btn-primary btn-sm" style="margin-top:10px"
-                        onclick="navigateTo('ai-protocols')">📐 Към четенето на записките</button>
+                        onclick="navigateTo('proekt')">📐 Към четенето на записките</button>
             </div>`;
         return;
     }
@@ -6808,8 +6777,9 @@ function clearAiSession() {
     };
     window.selectedProtocol = null;
     window.attachedDocs = [];
-    document.getElementById('ai-result-section').style.display = 'none';
-    navigateTo('ai-protocols');
+    const _r = document.getElementById('ai-result-section');
+    if (_r) _r.style.display = 'none';
+    navigateTo('nadzor');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -7892,7 +7862,7 @@ function renderPassportForm(projectId) {
             </p>
             ${isEdit ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="kamStranica('${project.id}','osip')">📐 Оценка на съответствието →</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="kamStranica('${project.id}','dokumenti')">📎 Изходни данни, съгласувания и РС →</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="kamStranica('${project.id}','dokumentite')">📎 Изходни данни, съгласувания и РС →</button>
             </div>` : `<p style="font-size:12px;color:var(--muted);margin:0">Първо запази паспорта — после изходните данни и оценката се водят за него.</p>`}
         </div>
 
@@ -8278,7 +8248,7 @@ function kamStranica(id, stranica) {
     saveData();
 }
 
-function kamGenerirane(id) { kamStranica(id, 'generate'); }
+function kamGenerirane(id) { kamStranica(id, 'nadzor'); }
 
 // ── Страниците „Оценка на съответствието“ и „Изходни документи“ ─────────────
 // Всяка пише САМО своята част от обекта и праща към сървъра целия обект:
@@ -8364,8 +8334,8 @@ function _zapishiTiho_ilisave(p) {
 function _prerisuvai() {
     const stranica = [...document.querySelectorAll('.page')].find(x => x.classList.contains('active'));
     const id = (stranica && stranica.id || '').replace('page-', '');
-    ({ kakav: renderKakavPage, 'ai-protocols': renderAiProtocols, dokumenti: renderDokumentiPage,
-       osip: renderOsipPage, generate: renderGenerateSection, proekt: renderProektPage,
+    ({ kakav: renderKakavPage,
+       osip: renderOsipPage, proekt: renderProektPage,
        imot: renderImotPage, sobstvenost: renderSobstvenostPage,
        dokumentite: renderDokumentitePage, nadzor: renderNadzorPage }[id] || (() => {}))();
 }
@@ -8610,12 +8580,12 @@ function zapishiOsip() {
 }
 
 function renderDokumentiPage() {
-    const p = _obektIliIzbor('dokumenti-content', 'dokumenti',
+    const p = _obektIliIzbor('dokumenti-content', 'dokumentite',
         'Изберете обекта, чиито изходни данни се вписват');
     if (!p) return;
     // Тук полетата се пишат — затова резюмето само за четене не се показва.
     const permit = p.permit || {};
-    document.getElementById('dokumenti-content').innerHTML = _lentaObekt(p, 'dokumenti') + `
+    document.getElementById('dokumenti-content').innerHTML = `
         <div class="card">
             <div class="card-title" style="margin-bottom:8px">📎 Изходни данни и съгласувания</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
@@ -8895,7 +8865,7 @@ function _renderGenerateSectionOsnova() {
                 <div class="empty-icon">📄</div>
                 <div class="empty-title">Изберете проект</div>
                 <div class="empty-text">Изберете обекта, за който ще се генерират актове и протоколи</div>
-                ${izborObektHtml('generate')}
+                ${izborObektHtml('nadzor')}
             </div>`;
         return;
     }
@@ -8916,7 +8886,7 @@ function _renderGenerateSectionOsnova() {
                     <div class="card-subtitle">ПИ: ${project.pi} — ${project.stroej}</div>
                 </div>
                 <div style="display:flex;gap:8px">
-                    ${izborObektHtml('generate')}
+                    ${izborObektHtml('nadzor')}
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:12px">
