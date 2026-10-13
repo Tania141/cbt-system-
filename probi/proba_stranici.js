@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
+const { stranicaSVgradenKod } = require('./kod');
 
 // Пътят може да се подаде, за да се пробва и счупено копие:
 //   node probi/proba_stranici.js  <път до html>
@@ -74,15 +75,7 @@ async function pusni() {
     vc.on('jsdomError', e => greshki.push('jsdom: ' + (e.message || e)));
     vc.on('error', (...a) => greshki.push('конзола: ' + a.join(' ')));
 
-    // jsdom не сваля външни скриптове (и не бива — пробата да не ходи в
-    // мрежата). app.js се вкарва на мястото си, както браузърът би го
-    // заредил. (Стъпка 1 от подреждането, 13.10.2026)
-    const app = fs.readFileSync(path.join(path.dirname(HTML), 'app.js'), 'utf8');
-    const html = fs.readFileSync(HTML, 'utf8')
-        .replace('<script src="app.js"></script>', () => '<script>' + app + '</script>');
-    if (html.includes('src="app.js"')) throw new Error('app.js не беше вкаран в страницата');
-
-    const dom = new JSDOM(html, {
+    const dom = new JSDOM(stranicaSVgradenKod(HTML), {
         runScripts: 'dangerously', url: 'http://localhost/', pretendToBeVisual: true,
         virtualConsole: vc, beforeParse(w) {
             // Обектът влиза през localStorage — така, както влиза при истинска

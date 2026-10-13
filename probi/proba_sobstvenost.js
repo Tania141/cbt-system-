@@ -1,7 +1,7 @@
 // Регистърът на собствеността: дроби, сметка, находки, възложители, четене.
 // Една кухня за всички проби — функциите се вадят от index.html както са.
-const fs = require('fs');
-const s = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+const { kod } = require('./kod');
+const s = kod();
 
 function grab(n) {
     const i = s.indexOf('function ' + n + '(');
