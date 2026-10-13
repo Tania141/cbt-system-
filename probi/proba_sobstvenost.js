@@ -132,6 +132,62 @@ u('преди учредяването представителят е само 
 
 o2.forEach(x => console.log('  ok  ' + x));
 l2.forEach(x => console.log('  ЛО  ' + x));
-const vsichki = lo.length + l2.length;
+
+
+// ── коренът и чеклистът ────────────────────────────────────────────────────
+const H = new Function(
+    "const _s2esc=x=>String(x??'');\n"
+    + parche('const _nod =', '// ── данните')
+    + parche('const _SB_VID =', 'function _sbDanni')
+    + grab('_sbDanni') + '\n'
+    + parche('const _sbLice =', '// ── сметката')
+    + [grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbNahodki')].join('\n')
+    + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
+    + parche('const _SB_REDOVE =', 'function _sbKoren')
+    + [grab('_sbKoren'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist')].join('\n')
+    + '\nreturn {_sbDanni,_sbKoren,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE};')();
+
+const o3 = [], l3 = [];
+const w = (x, c, kak) => (c ? o3 : l3).push(x + (c ? '' : '  → ' + kak));
+
+// преустройство: земя + магазин, строи се В МАГАЗИНА
+const p4 = { pi: '1' };
+const s4 = H._sbDanni(p4);
+s4.lica.push({ id: 'm', ime: 'Магазинер' });
+s4.obekti.push({ id: 'zem', vid: 'земя', identifikator: '1' },
+               { id: 'mag', vid: 'самостоятелен обект', opisanie: 'магазин 2' });
+s4.sabitia.push({ id: '1', obekt: 'mag', data: '01.01.2009', vid: 'покупко-продажба', ot: null, na: 'm', dyal: '1/1', vid_: '' });
+s4.sabitia[0].vid = 'първоначално';
+
+w('без избор коренът е земята', H._sbKoren(p4).id === 'zem', H._sbKoren(p4).id);
+w('без избор състоянието не е готово', !H._sbSastoyanie(p4).gotovo);
+s4.koren = 'mag';
+w('избраният корен се ползва', H._sbKoren(p4).id === 'mag', H._sbKoren(p4).id);
+w('магазинът е събран 1/1 → готово', H._sbSastoyanie(p4).gotovo, H._sbSastoyanie(p4).tekst);
+
+// чеклистът
+const r4 = { grupi: [
+    { moment: 'ОСИП', dokumenti: [
+        { dokument: 'Документ за собственост на имота', sastoyanie: 'очаква се' },
+        { dokument: 'Нотариален акт за учредено право на строеж', sastoyanie: 'очаква се' },
+        { dokument: 'Виза за проектиране', sastoyanie: 'очаква се' }] },
+    { moment: 'Протокол 2', dokumenti: [
+        { dokument: 'Документ за собственост или документ за учредено право на строеж', sastoyanie: 'очаква се' },
+        { dokument: 'Протокол за строителна линия', sastoyanie: 'очаква се' }] }] };
+H._sbPodmeniCheklist(p4, r4);
+const imena = r4.grupi.flatMap(g => g.dokumenti.map(d => d.dokument));
+w('трите реда ги няма', !H._SB_REDOVE.some(x => imena.includes(x)), imena);
+w('добавен е един ред „Собственост“', imena.filter(x => /^Собственост/.test(x)).length === 1, imena);
+w('той е на първия момент, в който е имало такъв ред',
+  /^Собственост/.test(r4.grupi[0].dokumenti[0].dokument), r4.grupi[0].dokumenti[0].dokument);
+w('щом веригата връзва, редът е „налично“',
+  r4.grupi[0].dokumenti[0].sastoyanie === 'налично', r4.grupi[0].dokumenti[0].sastoyanie);
+w('останалите редове не са пипнати', imena.includes('Виза за проектиране') && imena.includes('Протокол за строителна линия'));
+
+o3.forEach(x => console.log('  ok  ' + x));
+l3.forEach(x => console.log('  ЛО  ' + x));
+
+
+const vsichki = lo.length + l2.length + (typeof l3 === 'undefined' ? 0 : l3.length);
 console.log(vsichki ? '\n' + vsichki + ' проблема общо' : '\nи към документите — наред');
 process.exit(vsichki ? 1 : 0);

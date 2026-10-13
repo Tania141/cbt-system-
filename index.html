@@ -5289,6 +5289,60 @@ function _sbPredstavitel(p, data) {
     return _sbDveImena(_sbImeLice(s, izbran.lice));
 }
 
+// ── чеклистът ─────────────────────────────────────────────────────────────
+// Тези редове ги има в чеклиста по моменти, но на тях вече отговаря регистърът.
+// Операторът, 13.10.2026: „четенето на НА и проверките да бъде само в
+// Собственост — така ще освободим доста чек от листата“. Затова вместо три
+// въпроса, на които се отговаря с едно и също, остава ЕДИН ред, който казва
+// докъде е стигнала веригата и праща натам.
+const _SB_REDOVE = [
+    'Документ за собственост на имота',
+    'Нотариален акт за учредено право на строеж',
+    'Документ за собственост или документ за учредено право на строеж',
+];
+
+// Коренът: обектът, В КОЙТО СЕ СТРОИ. При ново строителство е земята, при
+// преустройство — самият апартамент или магазин. Неговата 1/1 се събира, не
+// историята на цялата сграда.
+function _sbKoren(p) {
+    const s = _sbDanni(p);
+    return _sbObekt(s, s.koren) || s.obekti.find(o => o.vid === 'земя') || s.obekti[0] || null;
+}
+
+function _sbSastoyanie(p) {
+    const s = _sbDanni(p);
+    const koren = _sbKoren(p);
+    if (!koren) return { gotovo: false, tekst: 'още не е започната — веригата тръгва от обекта, в който се строи' };
+    const sab = _sbSabrano(p, koren.id);
+    const nah = _sbNahodki(p).filter(n => !n.obekt || n.obekt === koren.id);
+    if (_drEdno(sab) && !nah.length)
+        return { gotovo: true, tekst: `${_sbImeObekt(s, koren.id)} — събрана 1/1, веригата връзва` };
+    return { gotovo: false, tekst: nah.length ? nah[0].tekst
+        : `${_sbImeObekt(s, koren.id)} — събрани ${_drTekst(sab)}` };
+}
+
+// Подменя редовете в отговора на /api/nadzor, преди той да се рисува.
+function _sbPodmeniCheklist(p, r) {
+    const sast = _sbSastoyanie(p);
+    let slozhen = false;
+    for (const g of r.grupi || []) {
+        const beshe = g.dokumenti.length;
+        g.dokumenti = g.dokumenti.filter(d => !_SB_REDOVE.includes(d.dokument));
+        if (beshe === g.dokumenti.length) continue;
+        if (slozhen) continue;                 // един ред за целия чеклист
+        slozhen = true;
+        g.dokumenti.unshift({
+            dokument: 'Собственост — веригата от нотариални актове',
+            uslovie: 'винаги',
+            vliza_v: ['ОСИП', 'Протокол 2', 'Акт 15', 'ОД'],
+            sastoyanie: sast.gotovo ? 'налично' : 'очаква се',
+            ot_registara: true,
+            podskazka: sast.tekst,
+        });
+    }
+    return r;
+}
+
 // ── екранът ────────────────────────────────────────────────────────────────
 const _sbDnes = () => new Date().toLocaleDateString('bg-BG').replace(/\s/g, '');
 
@@ -5374,11 +5428,16 @@ function _sbTablici(p) {
         <span style="color:var(--muted)">· ${esc(l.vid || 'физическо')}${l.egn ? ' · ' + esc(l.egn) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</span>
         <button class="btn btn-ghost btn-sm" onclick="sbMahni('lica','${l.id}')">×</button></div>`).join('');
 
+    const koren = _sbKoren(p);
     const obekti = s.obekti.map(o => {
         const sab = _sbSabrano(p, o.id);
         return `<div>${esc(o.identifikator || o.opisanie)}
             <span style="color:var(--muted)">· ${esc(o.vid || '')}${o.opisanie && o.identifikator ? ' · ' + esc(o.opisanie) : ''}</span>
             <span style="color:${_drEdno(sab) ? '#2e6b32' : '#b45309'}">· събрани ${_drTekst(sab)}</span>
+            <label style="margin-left:8px;font-size:11.5px;color:var(--muted);cursor:pointer"
+                   title="Копае се назад само докато ТОЗИ обект се събере до 1/1">
+                <input type="radio" name="sb-koren" ${koren && koren.id === o.id ? 'checked' : ''}
+                       onchange="sbKoren('${o.id}')"> тук се строи</label>
             <button class="btn btn-ghost btn-sm" onclick="sbMahni('obekti','${o.id}')">×</button></div>`;
     }).join('');
 
@@ -5398,6 +5457,15 @@ function _sbTablici(p) {
 // Засега на ръка. Четенето на нотариален акт от АИ-то идва след това и ще пълни
 // същите три таблици — номерът на акта остава ръчен (вж. _KES_NARAKA).
 function _sbZapishi(p, kakvo) { _s2ZapishiTiho(p, 'Собственост: ' + kakvo); _prerisuvai(); }
+
+// Коренът: при ново строителство е земята, при преустройство — самият
+// апартамент или магазин. Иначе системата иска земята на цяла жилищна сграда,
+// за да смениш предназначението на един магазин. (Операторът, 13.10.2026)
+function sbKoren(id) {
+    const p = _zhivObekt(); if (!p) return;
+    _sbDanni(p).koren = id;
+    _sbZapishi(p, 'строи се в ' + _sbImeObekt(_sbDanni(p), id));
+}
 
 function sbPredstavitel(lice) {
     const p = _zhivObekt(); if (!p) return;
@@ -5554,6 +5622,7 @@ function _pitaneOpashka(st, r) {
     for (const g of r.grupi) {
         for (const d of g.dokumenti) {
             if (d.sastoyanie === 'не му е времето') continue;
+            if (d.ot_registara && d.sastoyanie === 'налично') continue;
             const ime = d.dokument;
             if (otmetnati.has(ime) || nyama.has(ime) || neotnasya.has(ime)) continue;
             out.push({ ...d, moment: g.moment });
@@ -5577,6 +5646,18 @@ function _pitaneHtml(st, r) {
     }
     const d = opashka[0];
     const k = encodeURIComponent(d.dokument);
+    // Собствеността не се отговаря с „имам го“ — тя има свой екран и своя
+    // сметка. Тук само се казва докъде е стигнала.
+    if (d.ot_registara) return `
+        <div class="card" style="margin-bottom:16px;border-color:var(--gold)">
+            <div style="font-size:11.5px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase">
+                ${esc(d.moment)} · остават ${opashka.length}
+            </div>
+            <div style="font-size:19px;font-weight:700;margin:6px 0 2px">${esc(d.dokument)}</div>
+            <div style="font-size:13px;color:var(--slate);margin-top:4px">${esc(d.podskazka || '')}</div>
+            <button class="btn btn-primary" style="margin-top:12px"
+                    onclick="navigateTo('sobstvenost')">Отвори „Собственост“</button>
+        </div>`;
     return `
         <div class="card" style="margin-bottom:16px;border-color:var(--gold)">
             <div style="font-size:11.5px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase">
@@ -5689,6 +5770,7 @@ async function renderNadzorPage() {
             izklyucheni: st.izklyucheni_momenti || [],
         });
         if (r.greshka) throw new Error(r.greshka);
+        _sbPodmeniCheklist(obekt, r);
         kutiya.innerHTML = glava + _nadzorHtml(st, r) + _nadzorSastavyaneHtml();
         renderGenerateSection();
         renderAiProtocols();
@@ -8837,6 +8919,7 @@ async function _osipDokumenti(p) {
             izklyucheni: st.izklyucheni_momenti || [],
         });
         if (r.greshka) throw new Error(r.greshka);
+        _sbPodmeniCheklist(p, r);
         kutiya.innerHTML = _nadzorHtml({ ...st, tekusht_moment: 'ОСИП' }, r, true);
     } catch (e) {
         kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
