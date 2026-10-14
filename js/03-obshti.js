@@ -50,8 +50,10 @@ function smeniObekt(id, stranica) {
     appData.currentProject = appData.projects.find(p => String(p.id) === String(id)) || null;
     // Първо екранът, после записът: изборът трябва да се види, дори ако
     // запомнянето му в браузъра не мине.
-    ({ ai: renderAiProtocols, osip: renderOsipPage, dokumenti: renderDokumentiPage,
-       kakav: renderKakavPage, zk: renderZkGen,
+    // Имената тук се четат ВЕДНАГА, не при викане: изтрита функция в този
+    // списък гърми при всяка смяна на обект. (14.10.2026: „renderAiProtocols“
+    // остана тук, след като екранът ѝ отпадна.)
+    ({ osip: renderOsipPage, kakav: renderKakavPage, zk: renderZkGen,
        imot: renderImotPage, sobstvenost: renderSobstvenostPage, proekt: renderProektPage,
        dokumentite: renderDokumentitePage, nadzor: renderNadzorPage }[stranica]
         || renderGenerateSection)();

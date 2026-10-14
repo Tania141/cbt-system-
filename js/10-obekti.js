@@ -972,6 +972,7 @@ async function renderOsipPage() {
         'Изберете обекта, чиято оценка на съответствието се попълва');
     if (!p) return;
     _renderOsipOsnova(p);
+    _osipBelejki(p);
     _osipDokumenti(p);
 }
 
@@ -1003,6 +1004,47 @@ async function _osipDokumenti(p) {
     }
 }
 
+// Фазата се чете от записките и се потвърждава в „Проверки“. Дотук я имаше и
+// тук като празно поле — операторът избираше на едното място и гледаше
+// другото. („когато избера вярната фаза, това поле не го записва“)
+function _osipFaza(p) {
+    const st = typeof _stroezh === 'function' ? _stroezh(p) : p;
+    const f = ((st || {}).fakti || {}).faza;
+    return f && ['potvardeno', 'popraveno'].includes(f.sastoyanie) ? String(f.stoynost || '').trim() : '';
+}
+
+// Цитатът и цифрата НЕ се сливат: „Категория“ е дословният текст за раздел А,
+// цифрата е отделно поле. Тук само се сверяват — цитат „пета“ при потвърдена
+// „четвърта“ е разминаване, което иначе влиза в доклада мълчаливо.
+const _KAT_DUMI = ['', 'първа', 'втора', 'трета', 'четвърта', 'пета'];
+
+function _osipKategoriaBelejka(p) {
+    const st = typeof _stroezh === 'function' ? _stroezh(p) : p;
+    const f = ((st || {}).fakti || {}).kategoria;
+    const potv = f && ['potvardeno', 'popraveno'].includes(f.sastoyanie)
+        ? String(f.stoynost || '').trim().toLowerCase() : '';
+    const citat = (((p || {}).osip || {}).kategoria || '').toLowerCase();
+    if (!potv) return `<span style="color:#8a6400">[___] Категорията не е потвърдена в „Проверки“.</span>`;
+    const duma = _KAT_DUMI.includes(potv) ? potv : (_KAT_DUMI[Number(potv)] || potv);
+    if (citat && !citat.includes(duma))
+        return `<span style="color:var(--red)">⚠️ В „Проверки“ е потвърдена
+            <strong>${_s2esc(duma)}</strong> категория, а цитатът не я съдържа — единият е грешен.</span>`;
+    return `<span style="color:#2e6b32">✓ В „Проверки“ е потвърдена ${_s2esc(duma)} категория.</span>`;
+}
+
+function _osipBelejki(p) {
+    const fz = document.getElementById('fp-faza-belejka');
+    if (fz) {
+        const v = _osipFaza(p);
+        fz.innerHTML = v
+            ? `<span style="color:#2e6b32">✓ От потвърденото в „Проверки“. Промяна тук важи само за доклада.</span>`
+            : `<span style="color:#8a6400">[___] Фазата не е потвърдена в „Проверки“ — потвърди я там,
+               за да важи навсякъде.</span>`;
+    }
+    const kt = document.getElementById('fp-kat-belejka');
+    if (kt) kt.innerHTML = _osipKategoriaBelejka(p);
+}
+
 function _renderOsipOsnova(p) {
     // Картата „Обектът — вид и признаци“ е махната оттук (13.10.2026):
     // тя живее в „Проверки“ и две копия означаваха два различни отговора.
@@ -1032,6 +1074,7 @@ function _renderOsipOsnova(p) {
                             намира разпоредбата и сверява описанието на строежа с нея
                         </span>
                     </div>
+                    <div id="fp-kat-belejka" style="font-size:11px;margin-top:6px"></div>
                     <div id="kat-rezultat" style="margin-top:10px"></div>
                 </div>
                 <div class="form-group">
@@ -1050,7 +1093,9 @@ function _renderOsipOsnova(p) {
                 <div class="form-group">
                     <label class="form-label">Фаза на проекта</label>
                     <input type="text" id="fp-osip-faza" class="form-input" list="osip-faza-list"
-                           placeholder="Технически проект (ТП)" value="${(p.osip||{}).faza||''}">
+                           placeholder="Технически проект (ТП)"
+                           value="${_osipFaza(p) || (p.osip||{}).faza || ''}">
+                    <div id="fp-faza-belejka" style="font-size:11px;margin-top:4px"></div>
                     <datalist id="osip-faza-list">
                         <option value="Технически проект (ТП)"></option>
                         <option value="Работен проект (РП)"></option>
