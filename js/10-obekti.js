@@ -312,7 +312,17 @@ function renderPassportForm(projectId) {
 
         <!-- СТРОИТЕЛ -->
         <div class="card" data-faza="stroitelstvo">
-            <div class="card-title" style="margin-bottom:16px">🏗️ Строител</div>
+            <div class="card-title" style="margin-bottom:6px">🏗️ Строител</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                Петте полета са от един документ — договора за строителство.
+                Качи го и четецът ще ги предложи; ти ги потвърждаваш.
+            </p>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+                <input type="file" id="fp-dogovor-fajl" class="form-input" style="flex:1;min-width:220px;font-size:13px"
+                       accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,.tif,.tiff" onchange="chetiDogovorStroitel()">
+                <span style="font-size:11.5px;color:var(--muted)">договор за строителство</span>
+            </div>
+            <div id="fp-dogovor-hod" style="font-size:12.5px;margin-bottom:10px"></div>
             <div class="form-grid">
                 <div class="form-group">
                     <label class="form-label">Фирма</label>
@@ -466,6 +476,70 @@ function _vazlozhiteliKartaHtml(project) {
                 Ръчният списък отдолу е скрит, докато регистърът дава отговор.
             </p>
         </div>`;
+}
+
+// Договорът за строителство дава петте полета наведнъж. Четецът вече вади
+// „участници“ с роля — остава да ги сложим в празните полета. Запълненото не
+// се пипа, а каквото липсва, се казва: системата не налучква.
+// (Одитът на полетата, 14.10.2026)
+const _DOGOVOR_POLETA = [
+    ['fp-builder-company', 'строител', 'ime', 'фирмата'],
+    ['fp-builder-eik', 'строител', 'eik', 'ЕИК'],
+    ['fp-builder-address', 'строител', 'adres', 'адреса'],
+    ['fp-builder-manager', 'строител', 'predstavlyavan_ot', 'управителя'],
+    ['fp-builder-tech', 'технически ръководител', 'ime', 'техническия ръководител'],
+];
+
+const _dogovorTekst = v => (v && typeof v === 'object' ? v.stoynost : v) || '';
+
+async function chetiDogovorStroitel() {
+    const vhod = document.getElementById('fp-dogovor-fajl');
+    const hod = document.getElementById('fp-dogovor-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!f) return;
+    if (/\.doc$/i.test(f.name)) { hod.textContent = 'Стар .doc — запиши го като .docx или PDF.'; return; }
+    hod.innerHTML = `<span style="color:var(--muted)">Чета „${_s2esc(f.name)}“…</span>`;
+    try {
+        const r = await apiCall('/api/sloy2/chete', 'POST', {
+            agenda: 'od', edin: true,
+            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+        });
+        if (r.greshka) { hod.innerHTML = `<span style="color:var(--red)">⚠️ ${_s2esc(r.greshka)}</span>`; return; }
+        hod.innerHTML = _dogovorNapalni(r.dokument || {}, f.name);
+    } catch (e) {
+        hod.innerHTML = `<span style="color:var(--red)">❌ ${_s2esc(e.message)}</span>`;
+    }
+}
+
+function _dogovorNapalni(dok, imeFajl) {
+    const uch = dok.uchastnici || [];
+    const vzeti = [], lipsvat = [], zaeti = [];
+    for (const [id, rolya, pole, kakvo] of _DOGOVOR_POLETA) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const red = uch.find(u => _dogovorTekst(u.rolya) === rolya || u.rolya === rolya);
+        const v = String(_dogovorTekst(red && red[pole])).trim();
+        if (!v) { lipsvat.push(kakvo); continue; }
+        if (el.value.trim()) { if (el.value.trim() !== v) zaeti.push(`${kakvo}: в договора пише „${v}“`); continue; }
+        el.value = v;
+        vzeti.push(kakvo);
+    }
+    // Чужд документ: няма нито един участник с роля „строител“. Без тази
+    // проверка скица, качена по погрешка, излиза като „договор без ЕИК“.
+    const imaStroitel = uch.some(u => _dogovorTekst(u.rolya) === 'строител' || u.rolya === 'строител');
+    if (!imaStroitel && !vzeti.length) return `<div style="color:var(--muted)">
+        В „${_s2esc(imeFajl)}“ няма посочен строител — това не изглежда като договор за строителство.</div>`;
+    const nomer = [_dogovorTekst(dok.nomer) && '№ ' + _dogovorTekst(dok.nomer),
+                   _dogovorTekst(dok.data)].filter(Boolean).join(' от ');
+    return `
+        ${vzeti.length ? `<div style="color:#2e6b32">✓ От „${_s2esc(imeFajl)}“${nomer ? ' (' + _s2esc(nomer) + ')' : ''}:
+            попълнени ${vzeti.map(_s2esc).join(', ')}. <strong>Провери ги</strong> преди да запишеш.</div>` : ''}
+        ${zaeti.length ? `<div style="color:#8a6400;margin-top:3px">⚠️ Различава се от написаното —
+            ${zaeti.map(_s2esc).join('; ')}. Поправи на ръка, ако договорът е прав.</div>` : ''}
+        ${lipsvat.length ? `<div style="color:#8a6400;margin-top:3px">[___] Договорът не казва:
+            ${lipsvat.map(_s2esc).join(', ')} — впиши ги на ръка.</div>` : ''}
+        `;
 }
 
 function addClientRow() {
