@@ -176,7 +176,6 @@ async function renderNadzorPage() {
         _sbPodmeniCheklist(obekt, r);
         kutiya.innerHTML = glava + _nadzorHtml(st, r) + _nadzorSastavyaneHtml();
         renderGenerateSection();
-        renderAiProtocols();
     } catch (e) {
         kutiya.innerHTML = glava + `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
     }
@@ -192,11 +191,8 @@ function _nadzorSastavyaneHtml() {
             <div id="generate-content" style="margin-top:12px"></div>
         </details>
         <details class="card" style="margin-top:12px">
-            <summary style="cursor:pointer;font-weight:600;font-size:14px">🤖 Съставяне с АИ — сверено срещу РС и проекта</summary>
-            <div style="margin-top:12px">
-                <div id="od-ai-karta"></div>
-                <div id="ai-protocols-content"></div>
-            </div>
+            <summary style="cursor:pointer;font-weight:600;font-size:14px">🤖 Окончателен доклад с АИ</summary>
+            <div style="margin-top:12px"><div id="od-ai-karta"></div></div>
         </details>`;
 }
 
@@ -1489,9 +1485,10 @@ function buildPassportRows(project, consultant, extra) {
     add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
 
     // Представител на Възложителя за подписи. В протокол 2 се пише само ЕДНО
-    // име — избраният представител; регистърът го дава, ако е пълнен.
-    const vozPodpis = document.getElementById('vozlagatel-podpis')?.value?.trim()
-        || (otRegistar.length ? _sbPredstavitel(project, extra.data_dokument || '') : '');
+    // име — избраният представител. Дотук имаше и поле в екрана „АИ протоколи“;
+    // той отпадна (14.10.2026) и остана единственият извор — регистърът.
+    const vozPodpis = otRegistar.length
+        ? _sbPredstavitel(project, extra.data_dokument || '') : '';
     add('Възложител_1и3', vozPodpis);
     add('Възложител_2имена', vozPodpis);
 
@@ -1534,107 +1531,6 @@ function fileToBase64(file) {
         r.onerror = () => rej(new Error('Грешка при четене на файл'));
         r.readAsDataURL(file);
     });
-}
-
-function copyAiResult() {
-    const text = document.getElementById('ai-result-body').textContent;
-    navigator.clipboard.writeText(text).then(() => showAlert('success', 'Копирано в клипборда!'));
-}
-
-function renderChatHistory() {
-    const el = document.getElementById('ai-chat-history');
-    if (!el || !window.aiSession) return;
-    const history = window.aiSession.conversationHistory || [];
-    // Показваме само предишните размени (без последния assistant отговор)
-    const prev = history.slice(0, -2);
-    if (!prev.length) { el.innerHTML = ''; return; }
-    el.innerHTML = prev.map(m => {
-        const isUser = m.role === 'user';
-        const shortText = m.content.length > 300 ? m.content.substring(0, 300) + '...' : m.content;
-        return `<div style="margin-bottom:10px;padding:10px 14px;border-radius:var(--r-sm);
-            background:${isUser ? 'var(--surface-2)' : 'var(--surface)'};
-            border-left:3px solid ${isUser ? 'var(--gold)' : 'var(--teal, #2dd4bf)'}">
-            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">
-                ${isUser ? '👤 ТИ' : '🤖 AI'}
-            </div>
-            <div style="font-size:12px;white-space:pre-wrap;opacity:0.8">${shortText}</div>
-        </div>`;
-    }).join('');
-}
-
-async function sendChatMessage() {
-    const input = document.getElementById('ai-chat-input');
-    const status = document.getElementById('ai-chat-status');
-    const userMessage = input?.value?.trim();
-    if (!userMessage) { showAlert('error', 'Напиши съобщение преди да изпратиш!'); return; }
-
-    const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
-    if (!railwayUrl) { showAlert('error', 'Railway URL не е въведен!'); return; }
-
-    // Добавяме потребителското съобщение към историята
-    window.aiSession.conversationHistory.push({ role: 'user', content: userMessage });
-
-    input.value = '';
-    input.disabled = true;
-    status.textContent = 'AI обработва...';
-
-    try {
-        // Изпращаме цялата история към Railway
-        const token = getToken();
-        const response = await fetch(railwayUrl + '/api/ai/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-            },
-            body: JSON.stringify({
-                messages: window.aiSession.conversationHistory
-            })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'HTTP ' + response.status);
-        }
-
-        const data = await response.json();
-        const resultText = data.result || '';
-
-        // Добавяме AI отговора
-        window.aiSession.conversationHistory.push({ role: 'assistant', content: resultText });
-        window.aiSession.lastResult = resultText;
-
-        // Обновяваме UI
-        document.getElementById('ai-result-body').textContent = resultText;
-        renderChatHistory();
-        document.getElementById('ai-result-body').scrollIntoView({ behavior: 'smooth' });
-        showAlert('success', 'AI отговори!');
-
-    } catch (err) {
-        showAlert('error', 'Грешка: ' + err.message);
-        // Премахваме последното потребителско съобщение при грешка
-        window.aiSession.conversationHistory.pop();
-    } finally {
-        input.disabled = false;
-        status.textContent = '';
-    }
-}
-
-
-function clearAiSession() {
-    if (!confirm('Изчисти целия разговор и започни отново?')) return;
-    window.aiSession = {
-        selectedProtocol: null,
-        attachedDocs: [],
-        conversationHistory: [],
-        lastResult: null,
-        extraFields: {}
-    };
-    window.selectedProtocol = null;
-    window.attachedDocs = [];
-    const _r = document.getElementById('ai-result-section');
-    if (_r) _r.style.display = 'none';
-    navigateTo('nadzor');
 }
 
 // ═══════════════════════════════════════════════════════════

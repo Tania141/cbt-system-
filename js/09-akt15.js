@@ -1,3 +1,9 @@
+// Стандартният текст за състоянието около строежа. Операторът, 14.10.2026:
+// дървесността и състоянието имат готови формулировки — пишат се само когато
+// случаят е различен. Стоеше в „АИ протоколи“; премести се тук, когато онзи
+// екран отпадна.
+const SASTOYANIE_DEFAULT = 'пътните и тротоарни настилки по прилежащата улица са в добро състояние, съседните имоти няма да бъдат засягани от бъдещото строителство';
+
 // АКТ СИСТЕМ · 09-akt15.js
 // Акт 15 за сграда; търсачката в КИИП
 //
@@ -7,64 +13,6 @@
 
 //  АКТ 15 (СГРАДА)
 // ═══════════════════════════════════════════════════════════
-
-window._akt15Selected = false;
-window._akt15Files = [];
-
-function selectAkt15() {
-    // Deselect regular protocol cards
-    Object.keys(AI_PROTOCOL_PROMPTS).forEach(k => {
-        const card = document.getElementById(`proto-card-${k}`);
-        if (card) card.style.borderColor = 'var(--border)';
-    });
-    window.selectedProtocol = null;
-    document.getElementById('protocol-form-section').style.display = 'none';
-    document.getElementById('ai-result-section').style.display = 'none';
-
-    // Акт 15 (сграда) използва общия модал (с верификация на дати и тестов режим)
-    showAkt15Form();
-}
-
-function handleAkt15Files(files) {
-    Array.from(files).forEach(file => {
-        if (file.size > 10 * 1024 * 1024) { showAlert('error', `Файлът ${file.name} е над 10MB`); return; }
-        if (!file.type.includes('pdf')) { showAlert('error', `Само PDF файлове: ${file.name}`); return; }
-        window._akt15Files.push(file);
-    });
-    renderAkt15Files();
-}
-
-function handleAkt15Drop(event) {
-    event.preventDefault();
-    event.currentTarget.style.borderColor = 'var(--border)';
-    handleAkt15Files(event.dataTransfer.files);
-}
-
-function renderAkt15Files() {
-    const el = document.getElementById('akt15-files-list');
-    if (!window._akt15Files.length) { el.innerHTML = ''; return; }
-    el.innerHTML = window._akt15Files.map((f, i) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-2);border-radius:var(--r-sm);margin-bottom:6px">
-            <span style="font-size:13px">📄 ${f.name} <span style="color:var(--muted)">(${(f.size/1024).toFixed(0)} KB)</span></span>
-            <button class="btn btn-ghost btn-sm" onclick="window._akt15Files.splice(${i},1);renderAkt15Files()">✕</button>
-        </div>`).join('');
-}
-
-function copyAkt15Result() {
-    const el = document.getElementById('akt15-result-body');
-    const text = el?.innerText || el?.textContent || '';
-    if (!text.trim()) { showAlert('error', 'Няма текст за копиране'); return; }
-    navigator.clipboard.writeText(text).then(() => showAlert('success', 'Текстът е копиран в клипборда!'));
-}
-
-function clearAkt15() {
-    document.getElementById('akt15-result-body').innerHTML = '';
-    document.getElementById('akt15-result-section').style.display = 'none';
-    document.getElementById('akt15-vozlozhiteli').value = '';
-    window._akt15Files = [];
-    renderAkt15Files();
-    document.getElementById('akt15-status').textContent = '';
-}
 
 // ═══════════════════════════════════════════════════════════
 //  КОТИТЕ ИДВАТ ОТ ПОТВЪРДЕНОТО (14.10.2026)
@@ -571,66 +519,6 @@ function addToHistory(type, pi, description) {
     appData.history.unshift({ type, pi, description, date: new Date().toISOString() });
     saveData();
     kachiIstoriaSledMalko();
-}
-
-function renderVozlagatelSelector(project) {
-    const el = document.getElementById('vozlagatel-rep-section');
-    if (!el) return;
-    const clients = project?.clients || (project?.client ? [project.client] : []);
-    if (!clients.length) {
-        el.innerHTML = '<p style="font-size:13px;color:var(--muted)">Няма въведени възложители в паспорта.</p>';
-        return;
-    }
-    // Генерираме опции
-    const options = clients.map((c, i) => {
-        const label = c.type === 'ЮЛ'
-            ? `${c.name} (${c.rep || 'управител'})`
-            : shortNameTwo(c.name);
-        return `<option value="${i}">${label}</option>`;
-    }).join('');
-
-    el.innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group">
-                <label class="form-label">Избери възложител за подписване</label>
-                <select id="vozlagatel-rep-select" class="form-select" onchange="updateVozlagatelPodpis(this.value, ${JSON.stringify(clients).replace(/"/g, '&quot;')})">
-                    ${options}
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Подпис (2 имена — автоматично)</label>
-                <input type="text" id="vozlagatel-podpis" class="form-input" 
-                    value="${shortNameTwo(clients[0]?.name || '')}"
-                    placeholder="напр. Сл. Славков">
-            </div>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:4px">
-            За ФЛ — автоматично се взимат първо и последно име. За ЮЛ — управителят.
-        </p>`;
-}
-
-function shortNameTwo(fullName) {
-    if (!fullName) return '';
-    // Премахваме титли
-    const clean = fullName.replace(/^(инж\.|арх\.|д-р|проф\.)\s*/i, '').trim();
-    const parts = clean.split(/\s+/);
-    if (parts.length >= 2) {
-        // Първа буква от първо + пълно последно
-        return parts[0][0] + '. ' + parts[parts.length - 1];
-    }
-    return clean;
-}
-
-function updateVozlagatelPodpis(idx, clients) {
-    const c = clients[parseInt(idx)];
-    if (!c) return;
-    const input = document.getElementById('vozlagatel-podpis');
-    if (!input) return;
-    if (c.type === 'ЮЛ' && c.rep) {
-        input.value = shortNameTwo(c.rep);
-    } else {
-        input.value = shortNameTwo(c.name);
-    }
 }
 
 function formatDateInput(input) {
