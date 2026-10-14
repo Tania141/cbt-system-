@@ -564,14 +564,28 @@ function _kesHtml(p, r) {
     const prazni = vsichki - potv - predl - sporni;
     const zaPotvarzhdavane = _KES_POLETA.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').map(([k]) => k);
 
-    const kolona = (grupa, zaglavie, poyasnenie) => `
-        <div class="card" style="margin:0">
-            <div class="card-title" style="margin-bottom:4px;font-size:13px">${zaglavie}</div>
+    // Двете групи бяха една до друга в равни колони, а са 36 срещу 10 полета:
+    // дясната свършваше веднага и се губеше, макар да е по-важната — от нея
+    // зависи кои актове изобщо се съставят. Сега са една под друга, всяка на
+    // цялата ширина, с толкова стълба, колкото се събират. (14.10.2026)
+    const grupa = (ime, zaglavie, poyasnenie) => {
+        const poleta = _KES_POLETA.filter(([, , g]) => g === ime)
+            .filter(([k]) => k !== 'zahranvan_obekt' || f[k]);
+        const chakat = poleta.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').length;
+        return `
+        <div class="card" style="margin:0 0 16px">
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+                <div class="card-title" style="margin:0;font-size:13px">${zaglavie}</div>
+                <span style="font-size:11.5px;color:var(--muted)">${poleta.length} полета${
+                    chakat ? ` · <strong style="color:#8a6522">${chakat} чакат ✔</strong>` : ''}</span>
+            </div>
             <p style="font-size:11.5px;color:var(--muted);margin-bottom:12px">${poyasnenie}</p>
-            ${_KES_POLETA.filter(([, , g]) => g === grupa)
-                 .filter(([k]) => k !== 'zahranvan_obekt' || f[k])
-                 .map(([k]) => _kesPoleHtml(k, f[k])).join('')}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+                        gap:0 20px;align-items:start">
+                ${poleta.map(([k]) => _kesPoleHtml(k, f[k])).join('')}
+            </div>
         </div>`;
+    };
 
     return `
         <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -590,10 +604,10 @@ function _kesHtml(p, r) {
             Записките не се връзват на ${r.razminavania.length}
             ${r.razminavania.length === 1 ? 'място' : 'места'} — спорните полета по-долу остават празни,
             докато не избереш коя част е права.</div>` : ''}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
-            ${kolona('proekt', '📐 От проекта', 'Прочетено от записките по частите. Всяка стойност носи цитата си.')}
-            ${kolona('drugo', '📄 От документите и на ръка', 'Проектът не ги казва — идват от разрешението, от нотариалния акт или от теб.')}
-        </div>
+        ${grupa('drugo', '📄 От документите и на ръка',
+            'Проектът не ги казва — идват от разрешението, от нотариалния акт или от теб. От тях зависи кои актове се съставят.')}
+        ${grupa('proekt', '📐 От проекта',
+            'Прочетено от записките по частите. Всяка стойност носи цитата си.')}
         <p style="font-size:12px;color:var(--muted);margin-top:12px">
             Сивото чака теб: клик на ✔ го прави твое и то влиза в документите.
             Поправката бие всичко, а прочетеното се помни.
