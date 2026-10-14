@@ -71,7 +71,7 @@ const KONSULTANT = { id: 1, name: 'СиБиТи Консулт ЕООД', eik: '
     t('стандартният текст за дървесността го има',
       /няма дървесна растителност/.test(std.darvesenost), std.darvesenost);
     t('стандартният текст за мерките по ПБЗ го има',
-      /координатора по безопасност/.test(std.merki_pbz), std.merki_pbz);
+      /одобрени проекти с действащото законодателство/.test(std.merki_pbz), std.merki_pbz);
 
     const bel = (w.document.getElementById('p2-koti-belejka') || {}).textContent || '';
     t('казва колко е взето от Проверки', /5 стойности са взети/.test(bel), bel.trim().slice(0, 80));
