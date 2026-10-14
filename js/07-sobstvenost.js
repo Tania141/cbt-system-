@@ -510,6 +510,14 @@ function sbOtkazhi() {
     _prerisuvai();
 }
 
+// „1/1“ на трима души значи по 1/3 на всеки. Делението е точно, защото
+// дяловете са дроби. Нечетим дял се оставя както е — операторът ще го поправи.
+function _drDeli(tekst, n) {
+    const f = _dr(tekst);
+    if (!f || n < 2) return String(tekst || '').trim();
+    return _drTekst(_drSvi({ n: f.n, d: f.d * n }));
+}
+
 // Приемането е сверяване по име: лице или обект, което вече го има, не се
 // създава втори път — иначе един и същ Иван става двама и веригата се къса.
 function sbPriemi() {
@@ -517,6 +525,11 @@ function sbPriemi() {
     const ch = p._sb_procheteno; if (!ch) return;
     const s = _sbDanni(p);
     const klyuch = x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    // Четецът понякога слага няколко лица в едно поле („Иван…, Мария…“), макар
+    // указанието да иска по един ред на човек. Едно лице от две имена чупи
+    // цялата верига, затова се разделят тук. (ЖИТЕН, 14.10.2026)
+    const imena = v => String(v || '').split(/\s*(?:,|;| и )\s*/)
+        .map(x => x.trim()).filter(x => x.length > 2);
 
     const lice = (ime, dop) => {
         if (!klyuch(ime)) return null;
@@ -558,14 +571,22 @@ function sbPriemi() {
                       ch.notarius && 'нотариус ' + ch.notarius].filter(Boolean).join(', ');
     let n = 0;
     for (const x of ch.prehvarliania || []) {
-        if (!x.na) continue;
-        s.sabitia.push({
-            id: _sbNovId(), obekt: obekt(x.obekt), vid: x.vid || 'покупко-продажба',
-            ot: x.ot ? lice(x.ot) : null, na: lice(x.na),
-            dyal: (x.dyal || '').trim(), data: ch.data || '',
-            dokument, ot_chetene: ch.fajl || '', citat: x.citat || '',
-        });
-        n++;
+        const poluchateli = imena(x.na);
+        if (!poluchateli.length) continue;
+        const dava = imena(x.ot);
+        // Няколко получателя в един ред значи общо придобиване: дялът се дели.
+        const dyal = _drDeli(x.dyal, poluchateli.length);
+        for (const na of poluchateli) {
+            s.sabitia.push({
+                id: _sbNovId(), obekt: obekt(x.obekt), vid: x.vid || 'покупко-продажба',
+                ot: dava.length === 1 ? lice(dava[0]) : null,
+                ot_mnozhina: dava.length > 1 ? dava.map(d => lice(d)) : undefined,
+                dyal, data: ch.data || '',
+                na: lice(na),
+                dokument, ot_chetene: ch.fajl || '', citat: x.citat || '',
+            });
+            n++;
+        }
     }
     delete p._sb_procheteno;
     _sbZapishi(p, `прочетени ${n} прехвърляния от „${ch.fajl || ''}“`);

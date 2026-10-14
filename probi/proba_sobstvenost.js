@@ -19,7 +19,7 @@ const F = new Function(
     + parche('const _sbLice =', '// ── сметката')
     + parche('const _SB_REDOVE =', 'function _sbKoren')
     + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
-    + [grab('_dopalniCheklist'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
@@ -163,6 +163,36 @@ F.sbPriemi();
 t('същото лице не се създава втори път', p4.sobstvenost.lica.length === 3, p4.sobstvenost.lica.map(l => l.ime));
 t('същият обект не се създава втори път', p4.sobstvenost.obekti.length === 1);
 t('двете събития са там', p4.sobstvenost.sabitia.length === 2);
+
+// ── 6б. случаят ЖИТЕН: няколко имена в едно поле ──────────────────────────
+// Четецът сложи „Даниела…, Павел…“ в едно „na“. Едно лице от две имена чупи
+// цялата верига. (14.10.2026)
+const pj = nov();
+const CHETVARMATA = 'Трендафил Ангелов Трайков, Теодора Цветкова Трайкова, Катя Иванова Бъчварова, Асен Иванов Бъчваров';
+pj._sb_procheteno = {
+    fajl: 'НА.PDF', vid: 'договор за покупко-продажба', nomer: '166', tom: 'III',
+    registar: '10350', delo: '480/2019', data: '09.07.2019', notarius: 'Росица Рашева',
+    lica: CHETVARMATA.split(', ').map(ime => ({ ime }))
+        .concat([{ ime: 'Даниела Валентинова Занева' }, { ime: 'Павел Валериев Христов' }]),
+    obekti: [{ identifikator: '29430.4713.49', opisanie: 'поземлен имот в с. Житен', vid: 'земя' }],
+    prehvarliania: [
+        { vid: 'първоначално', ot: '', na: CHETVARMATA, dyal: '1/1', obekt: '29430.4713.49' },
+        { vid: 'покупко-продажба', ot: CHETVARMATA,
+          na: 'Даниела Валентинова Занева, Павел Валериев Христов', dyal: '1/1', obekt: '29430.4713.49' }],
+};
+F.sbPriemi();
+const sj = pj.sobstvenost;
+t('шест лица, не две слепени', sj.lica.length === 6, sj.lica.map(l => l.ime));
+t('четиримата придобиват по 1/4', sj.sabitia.filter(e => e.dyal === '1/4').length === 4,
+  sj.sabitia.map(e => e.dyal));
+t('двамата купувачи получават по 1/2', sj.sabitia.filter(e => e.dyal === '1/2').length === 2);
+t('шест събития общо', sj.sabitia.length === 6, sj.sabitia.length);
+sj.koren = sj.obekti[0].id;
+t('веригата връзва — няма находки', F._sbNahodki(pj).length === 0, F._sbNahodki(pj));
+t('днешните собственици са двамата купувачи',
+  F._sbVazlozhiteli(pj, '').map(x => x.ime).sort().join(' / ')
+    === 'Даниела Валентинова Занева / Павел Валериев Христов',
+  F._sbVazlozhiteli(pj, '').map(x => x.ime));
 
 // ── 7. случаят „Сан Стефано“: проценти и изброени чужди обекти ────────────
 // Операторът, 13.10.2026: 28 забележки, от които значение имат две.
