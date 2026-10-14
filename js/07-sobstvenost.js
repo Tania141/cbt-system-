@@ -574,15 +574,19 @@ function sbPriemi() {
         const poluchateli = imena(x.na);
         if (!poluchateli.length) continue;
         const dava = imena(x.ot);
-        // Няколко получателя в един ред значи общо придобиване: дялът се дели.
-        const dyal = _drDeli(x.dyal, poluchateli.length);
-        for (const na of poluchateli) {
+        // Четирима продават на двама: това са ОСЕМ движения по 1/8, не едно.
+        // Събитието е винаги между ДВЕ лица — иначе салдото не се смята.
+        // (ЖИТЕН, 14.10.2026)
+        const dvoyki = dava.length
+            ? dava.flatMap(ot => poluchateli.map(na => [ot, na]))
+            : poluchateli.map(na => [null, na]);
+        const dyal = _drDeli(x.dyal, dvoyki.length);
+        const obektId = obekt(x.obekt);
+        for (const [ot, na] of dvoyki) {
             s.sabitia.push({
-                id: _sbNovId(), obekt: obekt(x.obekt), vid: x.vid || 'покупко-продажба',
-                ot: dava.length === 1 ? lice(dava[0]) : null,
-                ot_mnozhina: dava.length > 1 ? dava.map(d => lice(d)) : undefined,
+                id: _sbNovId(), obekt: obektId, vid: x.vid || 'покупко-продажба',
+                ot: ot ? lice(ot) : null, na: lice(na),
                 dyal, data: ch.data || '',
-                na: lice(na),
                 dokument, ot_chetene: ch.fajl || '', citat: x.citat || '',
             });
             n++;

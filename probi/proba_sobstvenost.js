@@ -185,8 +185,10 @@ const sj = pj.sobstvenost;
 t('шест лица, не две слепени', sj.lica.length === 6, sj.lica.map(l => l.ime));
 t('четиримата придобиват по 1/4', sj.sabitia.filter(e => e.dyal === '1/4').length === 4,
   sj.sabitia.map(e => e.dyal));
-t('двамата купувачи получават по 1/2', sj.sabitia.filter(e => e.dyal === '1/2').length === 2);
-t('шест събития общо', sj.sabitia.length === 6, sj.sabitia.length);
+// Четирима продават на двама = осем движения по 1/8, за да връзва салдото.
+t('продажбата е осем движения по 1/8', sj.sabitia.filter(e => e.dyal === '1/8').length === 8,
+  sj.sabitia.map(e => e.dyal));
+t('дванайсет събития общо', sj.sabitia.length === 12, sj.sabitia.length);
 sj.koren = sj.obekti[0].id;
 t('веригата връзва — няма находки', F._sbNahodki(pj).length === 0, F._sbNahodki(pj));
 t('днешните собственици са двамата купувачи',
