@@ -66,6 +66,65 @@ function clearAkt15() {
     document.getElementById('akt15-status').textContent = '';
 }
 
+// ═══════════════════════════════════════════════════════════
+//  КОТИТЕ ИДВАТ ОТ ПОТВЪРДЕНОТО (14.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Дотук котите се въвеждаха на ръка на три места — тук, в Протокол 2 и в АИ
+// протоколите. Разминат ли се, документите си противоречат и никой не вижда.
+// Сега се четат от проекта и се потвърждават ВЕДНЪЖ, в „Проверки“.
+//
+// Полето остава: операторът го вижда и може да го промени за този документ.
+// Променено тук, то НЕ се връща назад — потвърденото се пипа само в Проверки.
+
+// Кое поле на модала от кой признак се пълни.
+const _KOTI_POLETA = {
+    'p2-kota-izkop': 'kota_izkop', 'p2-kota-cokul': 'kota_cokul',
+    'p2-kota-korniz': 'korniz_post', 'p2-kota-bilo': 'kota_bilo',
+    'p2-reper-nomer': 'reper_nomer', 'p2-reper-kota': 'reper_kota',
+};
+// В Акт 15 „a15-kota-*“ НЕ са коти, а ДАТИ на заверка на нивата
+// („Ниво изкоп — заверен на дд.мм.гггг“). Одитът беше сбъркал реда; те
+// отиват при датите, които системата знае и пита. (14.10.2026)
+
+// Само ПОТВЪРДЕНОТО влиза в документ. Предложено, но непотвърдено, не се слага
+// — иначе операторът подписва нещо, което не е виждал.
+function _kotaPotvardena(klyuch) {
+    const obekt = _zhivObekt();
+    if (!obekt) return null;
+    const f = (_stroezh(obekt).fakti || {})[klyuch];
+    if (!f || !['potvardeno', 'popraveno'].includes(f.sastoyanie)) return null;
+    const v = String(f.stoynost || '').trim();
+    return v || null;
+}
+
+// Пълни празните полета на отворения модал. Не пипа вече написаното.
+function _napalniKoti(prefiks) {
+    let napalneni = 0, lipsvat = [];
+    for (const [id, klyuch] of Object.entries(_KOTI_POLETA)) {
+        if (!id.startsWith(prefiks)) continue;
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const v = _kotaPotvardena(klyuch);
+        if (v && !el.value.trim()) { el.value = v; napalneni++; }
+        else if (!v) lipsvat.push(_KES_IME[klyuch] || klyuch);
+    }
+    return { napalneni, lipsvat };
+}
+
+// Ред под полетата: откъде са дошли и какво още липсва.
+function _kotiBelejka(kutiyaId, r) {
+    const kutiya = document.getElementById(kutiyaId);
+    if (!kutiya) return;
+    if (!r.napalneni && !r.lipsvat.length) { kutiya.innerHTML = ''; return; }
+    kutiya.innerHTML = `
+        ${r.napalneni ? `<div style="font-size:12px;color:#2e6b32">
+            ✓ ${r.napalneni} ${r.napalneni === 1 ? 'стойност е взета' : 'стойности са взети'}
+            от потвърденото в „Проверки“ — промяната тук важи само за този документ.</div>` : ''}
+        ${r.lipsvat.length ? `<div style="font-size:12px;color:#8a6400;margin-top:3px">
+            [___] Непотвърдено в „Проверки“: ${r.lipsvat.map(_s2esc).join(', ')} —
+            впиши тук или го потвърди там, за да важи навсякъде.</div>` : ''}`;
+}
+
 function showAkt15Form() {
     if (!appData.currentProject) {
         showAlert('error', 'Изберете активен проект преди да генерирате Акт 15!');
@@ -84,6 +143,7 @@ function showProtokol2Form() {
         return;
     }
     document.getElementById('p2-modal-status').innerHTML = '';
+    _kotiBelejka('p2-koti-belejka', _napalniKoti('p2-'));
     const btn = document.getElementById('p2-generate-btn');
     btn.disabled = false;
     btn.textContent = '📥 Генерирай Протокол 2 (.docx)';
