@@ -158,6 +158,41 @@ function updateApiIndicator() {
     if (txt) txt.textContent = appData.apiUrl ? 'API: свързан' : 'API: не е конфигуриран';
 }
 
+// ═══════════════════════════════════════════════════════════
+//  ОФИЦИАЛНИТЕ РЕГИСТРИ (14.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Изведени от сайтовете на ДНСК и КИИП с registri/napravi.py и сервирани до
+// приложението. Данните остаряват — затова всеки файл носи датата, на която е
+// изведен, и тя се показва.
+//
+// Операторът: проверява се при вписване и при Акт 15; ако нещо не се намери —
+// БЕЛЕЖКА, не спиране. Регистърът може да изостава, документът не чака.
+
+const _registri = {};
+
+async function registar(ime) {
+    if (_registri[ime] !== undefined) return _registri[ime];
+    try {
+        const r = await fetch(`registri/${ime}.json`);
+        _registri[ime] = r.ok ? await r.json() : null;
+    } catch (e) {
+        _registri[ime] = null;
+    }
+    return _registri[ime];
+}
+
+// Имената в регистрите са с главни букви, с различни интервали и съкращения.
+const _regZn = s => String(s || '').toUpperCase()
+    .replace(/[„“"'`.,]/g, '')
+    .replace(/\bЕООД\b|\bООД\b|\bАД\b|\bЕАД\b|\bСД\b|\bКД\b/g, '')
+    .replace(/\s+/g, ' ').trim();
+
+// „27.07.2028“ → дата, с която може да се сравнява.
+function _regData(t) {
+    const m = String(t || '').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+}
+
 const specializations = [
     'Архитектура','Конструктивна','ВиК','Електро','ОВК и ЕЕ',
     'Геодезия','Инженерна геология и хидрогеология',

@@ -632,19 +632,12 @@ function formatDateInput(input) {
 let kiipData = null;
 let kiipLoading = false;
 
+// Старият адрес даваше 404 — търсачката не работеше, без да личи.
+// Сега чете изведения регистър до приложението. (14.10.2026)
 async function loadKiipData() {
     if (kiipData) return kiipData;
-    if (kiipLoading) return null;
-    kiipLoading = true;
-    try {
-        const res = await fetch('https://tania141.github.io/cbt-system-/kiip.json');
-        kiipData = await res.json();
-        console.log('КИИП регистър зареден:', kiipData.length, 'записа');
-    } catch(e) {
-        console.warn('КИИП не е зареден:', e.message);
-        kiipData = [];
-    }
-    kiipLoading = false;
+    const r = await registar('kiip');
+    kiipData = (r && r.redove) || [];
     return kiipData;
 }
 
@@ -666,10 +659,10 @@ async function kiipSearch(i, query) {
     const isNum = /^\d+$/.test(query);
     let results = [];
     if (isNum) {
-        results = data.filter(e => e.ppp.startsWith(query)).slice(0, 10);
+        results = data.filter(e => e.nomer.startsWith(query)).slice(0, 10);
     } else {
         const words = query.split(/\s+/).filter(w => w.length >= 2);
-        results = data.filter(e => words.every(w => e.name.includes(w))).slice(0, 10);
+        results = data.filter(e => words.every(w => e.ime.includes(w))).slice(0, 10);
     }
 
     if (!results.length) {
@@ -678,13 +671,18 @@ async function kiipSearch(i, query) {
         return;
     }
 
+    // Частите се показват: проектант по ВиК не върши работа за част Електро,
+    // а дотук в списъка нямаше откъде да се види.
     dropdown.innerHTML = results.map(r => `
-        <div onclick="selectKiipEntry(${i}, '${r.ppp}', '${r.name.replace(/'/g, "\\'")}', this)"
+        <div onclick="selectKiipEntry(${i}, '${r.nomer}', '${r.ime.replace(/'/g, "\\'")}', this)"
              style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)"
              onmouseenter="this.style.background='var(--surface-2)'"
              onmouseleave="this.style.background=''">
-            <span style="font-weight:700;color:var(--gold)">${r.ppp}</span>
-            <span style="margin-left:8px">${r.name}</span>
+            <span style="font-weight:700;color:var(--gold)">${r.nomer}</span>
+            <span style="margin-left:8px">${r.ime}</span>
+            <span style="margin-left:8px;color:var(--muted);font-size:12px">${
+                (r.chasti || []).map(c => c.chast + (c.pp === 'ОПП' ? ' (ОПП)' : '')).join(' · ')
+            }</span>
         </div>`).join('');
     dropdown.style.display = 'block';
 }

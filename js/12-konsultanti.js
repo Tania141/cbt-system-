@@ -167,6 +167,55 @@ function deleteConsultant(id) {
     showAlert('success', 'Консултантът е изтрит.');
 }
 
+// ═══════════════════════════════════════════════════════════
+//  КОНСУЛТАНТЪТ СРЕЩУ РЕГИСТЪРА НА ДНСК (14.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Удостоверението по чл. 166 е СРОЧНО. Изтекло удостоверение прави надзора
+// неправоспособен, а това не личи никъде в документа.
+//
+// Операторът: ако фирмата не се намери — бележка, не спиране. Регистърът може
+// да изостава (нова фирма, скорошна промяна), документът не чака.
+
+async function sveriKonsultant(konsultant, data) {
+    const reg = await registar('dnsk');
+    if (!reg || !reg.redove) return { sastoyanie: 'nyama-registar' };
+    const ime = _regZn(konsultant && konsultant.name);
+    if (!ime) return { sastoyanie: 'nyama-ime' };
+    const red = reg.redove.find(r => _regZn(r.ime) === ime)
+        || reg.redove.find(r => _regZn(r.ime).includes(ime) || ime.includes(_regZn(r.ime)));
+    if (!red) return { sastoyanie: 'ne-e-nameren', izvedeno: reg.izvedeno_na };
+    const do_ = _regData(red.validen_do);
+    const kam = _regData(data) || new Date();
+    return {
+        sastoyanie: !do_ ? 'bez-srok' : (do_ >= kam ? 'validno' : 'izteklo'),
+        red, izvedeno: reg.izvedeno_na, kam: data || '',
+    };
+}
+
+function sveriKonsultantHtml(r) {
+    const esc = _s2esc;
+    const malko = 'font-size:11.5px;margin-top:4px';
+    if (r.sastoyanie === 'nyama-registar')
+        return `<div style="${malko};color:var(--muted)">Регистърът на ДНСК не е зареден.</div>`;
+    if (r.sastoyanie === 'nyama-ime') return '';
+    if (r.sastoyanie === 'ne-e-nameren')
+        return `<div style="${malko};color:#8a6400">⚠️ Не е намерен в регистъра на ДНСК
+            (изведен на ${esc(r.izvedeno)}) — провери; регистърът може да изостава.</div>`;
+    const u = r.red;
+    if (r.sastoyanie === 'izteklo')
+        return `<div style="${malko};color:var(--red)">⚠️ Удостоверение ${esc(u.nomer)} е
+            <strong>изтекло на ${esc(u.validen_do)}</strong>${r.kam ? ' — към ' + esc(r.kam) : ''}.</div>`;
+    return `<div style="${malko};color:#2e6b32">✓ ДНСК ${esc(u.nomer)} · валидно до
+        ${esc(u.validen_do)}${u.upravitel ? ' · управител ' + esc(u.upravitel) : ''}</div>`;
+}
+
+// Рисува бележката там, където я поиска екранът — след като регистърът слезе.
+async function pokazhiSverkaDNSK(kutiyaId, konsultant, data) {
+    const kutiya = document.getElementById(kutiyaId);
+    if (!kutiya) return;
+    kutiya.innerHTML = sveriKonsultantHtml(await sveriKonsultant(konsultant, data));
+}
+
 function renderConsultants() {
     const container = document.getElementById('consultants-list');
     if (!container) return;
@@ -190,10 +239,14 @@ function renderConsultants() {
             </div>
             <div class="consultant-card-body">
                 ${c.manager ? `<div style="font-size:12px;color:var(--slate);margin-bottom:8px">Управител: <strong>${c.manager}</strong></div>` : ''}
+                <div id="dnsk-${c.id}"></div>
                 <div>${(c.employees||[]).map(e => `<span class="emp-chip">${e.name} <span class="spec">· ${e.specialization}</span></span>`).join('')}</div>
             </div>
         </div>
     `).join('');
+
+    // Сверката е отделна: регистърът слиза по мрежата и не бива да бави списъка.
+    for (const c of appData.consultants) pokazhiSverkaDNSK('dnsk-' + c.id, c, '');
 }
 
 

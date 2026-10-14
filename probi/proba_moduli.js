@@ -56,6 +56,23 @@ for (const f of vklyucheni) {
 }
 t('никоя функция не е определена два пъти в един модул', vatre.length === 0, vatre);
 
+// Смесена азбука в име или низ-ключ. Кирилското „о“ и латинското „o“ си
+// приличат, а не са едно и също: „iztekло“ работи, докато някой не го
+// напише наново с латински букви и всичко тихо спре да съвпада. Хващано е
+// вече четири пъти в този проект.
+const smeseni = [];
+for (const f of vklyucheni) {
+    const telo = fs.readFileSync(path.join(JS, f), 'utf8');
+    // имена на променливи и функции
+    for (const m of telo.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$А-Яа-я]*)/g))
+        if (/[А-Яа-я]/.test(m[1]) && /[A-Za-z]/.test(m[1])) smeseni.push(f + ': ' + m[1]);
+    // кратки низове-ключове в единични кавички
+    for (const m of telo.matchAll(/'([A-Za-zА-Яа-я_-]{3,24})'/g))
+        if (/[А-Яа-я]/.test(m[1]) && /[A-Za-z]/.test(m[1])) smeseni.push(f + ": '" + m[1] + "'");
+}
+t('няма смесена кирилица и латиница в имена и ключове',
+  smeseni.length === 0, [...new Set(smeseni)]);
+
 t('app.js вече го няма', !fs.existsSync(path.join(JS, '..', 'app.js')));
 
 dobri.forEach(x => console.log('  ok  ' + x));
