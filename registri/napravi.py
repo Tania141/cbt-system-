@@ -60,7 +60,8 @@ def _data(v):
 # ── КИИП ────────────────────────────────────────────────────────────────────
 # Редът е: рег. № · име (може на два реда) · регионална колегия · секция · ПП
 _RED = re.compile(
-    r'^(\d{4,6})\s+(.+?)\s+(София град|София област|[А-ЯЁ][а-яё]+(?:\s[А-ЯЁ][а-яё]+)?)\s+'
+    r'^(\d{4,6}[А-Я]{0,3})\s+(.+?)\s+'
+    r'(София град|София област|ЦУ|[А-ЯЁ][а-яё]+\.?[А-ЯЁа-яё]*(?:\s[А-ЯЁ][а-яё]+)?)\s+'
     r'([A-ZА-Я]{2,10})\s+(ППП|ОПП|ТК)\s*$')
 
 SEKCII = {
@@ -107,6 +108,47 @@ def _ime(s):
     return re.sub(r'\s+', u' ', s).strip()
 
 
+# ── Технически контрол ──────────────────────────────────────────────────────
+# Друга таблица: № по ред · № по регистър на ПП · име · № по регистър на ТК ·
+# секция · регионална колегия. Заглавията казват за коя част важи.
+# Съкращението на колегията е с точки и тирета: „Вел.Т“, „Сф-гр“, „Ст.З“.
+_TK = re.compile(
+    r'^(\d+)\s+(\d{4,6}[А-Я]{0,3})\s+(.+?)\s+(\d{3,5})\s+([А-Я]{2,10})\s+([А-Яа-я.\-]{1,10})\s*$')
+
+_TK_CHASTI = [
+    (u'в транспортното строителство', u'Конструктивна — транспортно строителство'),
+    (u'на хидротехнически съоръжения', u'Конструктивна — хидротехнически съоръжения'),
+    (u'Конструктивна', u'Конструктивна'),
+]
+
+
+def _tk_chast(zaglavie):
+    for klyuch, ime in _TK_CHASTI:
+        if klyuch in zaglavie:
+            return ime
+    return zaglavie.strip()
+
+
+def tehnicheski_kontrol(pat):
+    from pypdf import PdfReader
+    r = PdfReader(pat)
+    buf = u'\n'.join((p.extract_text() or u'') for p in r.pages)
+    chast = u''
+    out = []
+    for red in buf.split(u'\n'):
+        red = red.strip()
+        if red.startswith(u'Част "'):
+            chast = _tk_chast(red)
+            continue
+        m = _TK.match(red)
+        if not m:
+            continue
+        _, nomer_pp, ime, nomer_tk, sekcia, rk = m.groups()
+        out.append({'nomer_pp': nomer_pp, 'ime': _ime(ime).upper(), 'nomer_tk': nomer_tk,
+                    'sekcia': sekcia, 'chast': chast, 'rk': rk})
+    return out
+
+
 # ── записване ───────────────────────────────────────────────────────────────
 
 def zapishi(ime, redove, iztochnik):
@@ -129,9 +171,18 @@ if __name__ == '__main__':
     else:
         print(u'няма .xlsx с „консултант“ в името')
 
+    # 1_ са с ограничена правоспособност, 2_ с пълна; 3_ е техническият контрол.
     p = [os.path.join(papka, f) for f in fajlove
-         if f.lower().endswith('.pdf') and re.match(r'^[234]_', f)]
+         if f.lower().endswith('.pdf') and re.match(r'^[12]_', f)]
     if p:
-        zapishi('kiip', kiip(sorted(p)), u'КИИП — ППП, ОПП и технически контрол')
+        zapishi('kiip', kiip(sorted(p)), u'КИИП — проектанти с пълна и ограничена правоспособност')
     else:
-        print(u'няма PDF от КИИП (очакват се файлове, започващи с 2_, 3_ или 4_)')
+        print(u'няма PDF с проектанти (очакват се файлове, започващи с 1_ или 2_)')
+
+    tk = [os.path.join(papka, f) for f in fajlove
+          if f.lower().endswith('.pdf') and f.startswith('3_')]
+    if tk:
+        zapishi('tk', tehnicheski_kontrol(tk[0]),
+                u'КИИП — лица, упражняващи технически контрол')
+    else:
+        print(u'няма PDF с техническия контрол (очаква се файл, започващ с 3_)')

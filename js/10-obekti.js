@@ -973,6 +973,7 @@ async function renderOsipPage() {
     if (!p) return;
     _renderOsipOsnova(p);
     _osipBelejki(p);
+    pokazhiSverkaTK();
     _osipDokumenti(p);
 }
 
@@ -1043,6 +1044,52 @@ function _osipBelejki(p) {
     }
     const kt = document.getElementById('fp-kat-belejka');
     if (kt) kt.innerHTML = _osipKategoriaBelejka(p);
+}
+
+// Техническият контрол по част „Конструктивна“ има свой регистър и свой
+// номер — различен от номера на проектантската правоспособност. Операторът
+// пишеше и двете на ръка; тук се сверяват. (14.10.2026)
+async function sveriTK(ime, nomer) {
+    const reg = await registar('tk');
+    if (!reg || !reg.redove) return { sastoyanie: 'nyama-registar' };
+    const zn = s => String(s || '').toUpperCase().replace(/[^А-ЯA-Z ]/g, '').replace(/\s+/g, ' ').trim();
+    const imeZn = zn(ime);
+    const po_nomer = nomer ? reg.redove.filter(r => r.nomer_tk === String(nomer).trim()) : [];
+    const po_ime = imeZn ? reg.redove.filter(r => zn(r.ime) === imeZn) : [];
+    if (!imeZn && !po_nomer.length) return { sastoyanie: 'prazno' };
+    if (po_nomer.length && po_ime.length) {
+        const sashtiyat = po_nomer.some(a => po_ime.some(b => a.nomer_tk === b.nomer_tk));
+        return { sastoyanie: sashtiyat ? 'savpada' : 'razminava',
+                 po_nomer: po_nomer[0], po_ime: po_ime[0], izvedeno: reg.izvedeno_na };
+    }
+    if (po_ime.length) return { sastoyanie: 'samo-ime', po_ime: po_ime[0], izvedeno: reg.izvedeno_na };
+    if (po_nomer.length) return { sastoyanie: 'samo-nomer', po_nomer: po_nomer[0], izvedeno: reg.izvedeno_na };
+    return { sastoyanie: 'ne-e-nameren', izvedeno: reg.izvedeno_na };
+}
+
+async function pokazhiSverkaTK() {
+    const kutiya = document.getElementById('fp-tk-belejka');
+    if (!kutiya) return;
+    const ime = (document.getElementById('fp-osip-tk') || {}).value || '';
+    const nomer = (document.getElementById('fp-osip-tk-reg') || {}).value || '';
+    const r = await sveriTK(ime, nomer);
+    const esc = _s2esc, malko = 'font-size:11px;margin-top:4px';
+    const html = {
+        'nyama-registar': `<span style="color:var(--muted)">Регистърът на ТК не е зареден.</span>`,
+        'prazno': '',
+        'savpada': () => `<span style="color:#2e6b32">✓ В регистъра на ТК: ${esc(r.po_ime.ime)}
+            · № ${esc(r.po_ime.nomer_tk)} · ${esc(r.po_ime.chast)}</span>`,
+        'razminava': () => `<span style="color:var(--red)">⚠️ № ${esc(r.po_nomer.nomer_tk)} е на
+            <strong>${esc(r.po_nomer.ime)}</strong>, а вписаното лице е с № ${esc(r.po_ime.nomer_tk)}
+            — единият е грешен.</span>`,
+        'samo-ime': () => `<span style="color:#8a6400">⚠️ Лицето е в регистъра с
+            № <strong>${esc(r.po_ime.nomer_tk)}</strong> (${esc(r.po_ime.chast)}) — впиши този номер.</span>`,
+        'samo-nomer': () => `<span style="color:#8a6400">⚠️ № ${esc(r.po_nomer.nomer_tk)} е на
+            <strong>${esc(r.po_nomer.ime)}</strong> — провери името.</span>`,
+        'ne-e-nameren': () => `<span style="color:#8a6400">⚠️ Не е намерен в регистъра на ТК
+            (изведен на ${esc(r.izvedeno)}) — провери.</span>`,
+    }[r.sastoyanie];
+    kutiya.innerHTML = `<div style="${malko}">${typeof html === 'function' ? html() : (html || '')}</div>`;
 }
 
 function _renderOsipOsnova(p) {
@@ -1121,7 +1168,9 @@ function _renderOsipOsnova(p) {
                 <div class="form-group">
                     <label class="form-label">ТК — рег. №</label>
                     <input type="text" id="fp-osip-tk-reg" class="form-input" placeholder="0319"
+                           oninput="pokazhiSverkaTK()"
                            value="${(p.osip||{}).tkReg||''}">
+                <div id="fp-tk-belejka"></div>
                 </div>
             </div>
         </div>

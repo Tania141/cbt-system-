@@ -262,8 +262,28 @@ function _sbSastoyanie(p) {
         : `${_sbImeObekt(s, koren.id)} — събрани ${_drTekst(sab)}` };
 }
 
+// Регистърът на ДНСК казва, че ФИРМАТА е вписана, но не кои лица са в нея.
+// Операторът, 14.10.2026: „може да се изисква сканиран актуален списък на
+// Консултанта и лиценз“ — затова редът се добавя към ОСИП. Той доказва, че
+// човекът, който подписва акта, е правоспособен.
+const _DOP_REDOVE = [
+    { moment: 'ОСИП',
+      dokument: 'Актуален списък на правоспособните лица на консултанта и лиценз',
+      uslovie: 'винаги', vliza_v: ['ОСИП', 'Акт 15', 'ОД'] },
+];
+
+function _dopalniCheklist(r) {
+    for (const red of _DOP_REDOVE) {
+        const g = (r.grupi || []).find(x => x.moment === red.moment);
+        if (!g || g.dokumenti.some(d => d.dokument === red.dokument)) continue;
+        g.dokumenti.push({ ...red, sastoyanie: g.minal === false ? 'не му е времето' : 'очаква се' });
+    }
+    return r;
+}
+
 // Подменя редовете в отговора на /api/nadzor, преди той да се рисува.
 function _sbPodmeniCheklist(p, r) {
+    _dopalniCheklist(r);
     const sast = _sbSastoyanie(p);
     let slozhen = false;
     for (const g of r.grupi || []) {

@@ -18,7 +18,8 @@ const F = new Function(
     + grab('_sbDanni') + '\n'
     + parche('const _sbLice =', '// ── сметката')
     + parche('const _SB_REDOVE =', 'function _sbKoren')
-    + [grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
+    + [grab('_dopalniCheklist'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
@@ -126,6 +127,11 @@ t('добавен е един ред „Собственост“', redove.filte
 t('щом веригата връзва, редът е „налично“', r.grupi[0].dokumenti[0].sastoyanie === 'налично');
 t('останалите редове не са пипнати',
   redove.includes('Виза за проектиране') && redove.includes('Протокол за строителна линия'));
+// Регистърът на ДНСК казва, че фирмата е вписана, но не кои лица са в нея.
+t('добавен е редът за актуалния списък на консултанта',
+  redove.some(x => /Актуален списък на правоспособните лица/.test(x)), redove);
+t('добавя се само веднъж', (() => { F._sbPodmeniCheklist(p3, r);
+  return r.grupi.flatMap(g => g.dokumenti).filter(d => /Актуален списък/.test(d.dokument)).length === 1; })());
 
 // ── 6. приемане на прочетен акт ───────────────────────────────────────────
 const p4 = nov();
