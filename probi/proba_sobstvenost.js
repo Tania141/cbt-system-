@@ -19,11 +19,12 @@ const F = new Function(
     + parche('const _sbLice =', '// ── сметката')
     + parche('const _SB_REDOVE =', 'function _sbKoren')
     + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
-    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
-    + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=()=>{};const _prerisuvai=()=>{};\n'
+    + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=()=>{};const _prerisuvai=()=>{};'
+    + 'const showAlert=()=>{};\n'
     + grab('sbPriemi')
     + '\nreturn {_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
     + '_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
@@ -168,6 +169,23 @@ F.sbPriemi();
 t('актът носи ПОПРАВЕНИЯ номер',
   /№ 186/.test(p4b.sobstvenost.sabitia[0].dokument), p4b.sobstvenost.sabitia[0].dokument);
 t('старият номер го няма', !/166/.test(p4b.sobstvenost.sabitia[0].dokument));
+// Второ натискане на „Приеми“ не бива да удвоява веригата.
+// (Операторът, 14.10.2026: „когато натисна приеми, ги трупа всички“.)
+const predi = p4b.sobstvenost.sabitia.length;
+p4b._sb_procheteno = JSON.parse(JSON.stringify({
+    fajl: 'НА.PDF', vid: 'нотариален акт', nomer: '186', tom: 'III', registar: '10350',
+    delo: '480/2019', data: '09.07.2019', notarius: 'Росица Рашева',
+    lica: [{ ime: 'Иван Петров' }, { ime: 'Мария Иванова' }],
+    obekti: [{ identifikator: '29430.4713.49', vid: 'земя' }],
+    prehvarliania: [{ vid: 'покупко-продажба', ot: 'Иван Петров', na: 'Мария Иванова',
+                      dyal: '1/1', obekt: '29430.4713.49' }],
+}));
+F.set(p4b);
+F.sbPriemi();
+t('второто приемане не удвоява', p4b.sobstvenost.sabitia.length === predi,
+  [predi, p4b.sobstvenost.sabitia.length]);
+t('и лицата не се удвояват', p4b.sobstvenost.lica.length === 2, p4b.sobstvenost.lica.length);
+
 F.set(p4);          // следващата проба продължава със своя обект
 
 p4._sb_procheteno = {

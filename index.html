@@ -2026,7 +2026,20 @@
 
 
 
-<!-- Service worker registration disabled -->
+<!-- Service worker registration disabled.
+     Стар service worker от по-ранна версия продължава да сервира от кеша и
+     Ctrl+F5 не винаги го бие: операторът виждаше вчерашния екран, при
+     положение че сървърът даваше новия файл. (14.10.2026) -->
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(spisak => {
+        if (!spisak.length) return;
+        Promise.all(spisak.map(r => r.unregister()))
+            .then(() => caches.keys ? caches.keys().then(k => Promise.all(k.map(x => caches.delete(x)))) : null)
+            .then(() => location.reload());
+    }).catch(() => {});
+}
+</script>
 
 </body>
 </html>

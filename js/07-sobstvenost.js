@@ -543,6 +543,15 @@ function _drDeli(tekst, n) {
 
 // Приемането е сверяване по име: лице или обект, което вече го има, не се
 // създава втори път — иначе един и същ Иван става двама и веригата се къса.
+// Две събития са едно и също, когато съвпадат по обект, вид, страни, дял и
+// дата. Номерът на документа НЕ влиза: същият акт, препрочетен с поправен
+// номер, пак е същото прехвърляне.
+function _sbEdnakvi(a, b) {
+    return a.obekt === b.obekt && a.vid === b.vid && a.ot === b.ot && a.na === b.na
+        && String(a.dyal).trim() === String(b.dyal).trim()
+        && String(a.data || '').trim() === String(b.data || '').trim();
+}
+
 function sbPriemi() {
     const p = _zhivObekt(); if (!p) return;
     const ch = p._sb_procheteno; if (!ch) return;
@@ -592,7 +601,7 @@ function sbPriemi() {
     const dokument = [ch.vid, ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
                       ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
                       ch.notarius && 'нотариус ' + ch.notarius].filter(Boolean).join(', ');
-    let n = 0;
+    let n = 0, veche = 0;
     for (const x of ch.prehvarliania || []) {
         const poluchateli = imena(x.na);
         if (!poluchateli.length) continue;
@@ -606,17 +615,26 @@ function sbPriemi() {
         const dyal = _drDeli(x.dyal, dvoyki.length);
         const obektId = obekt(x.obekt);
         for (const [ot, na] of dvoyki) {
-            s.sabitia.push({
+            const sabitie = {
                 id: _sbNovId(), obekt: obektId, vid: x.vid || 'покупко-продажба',
                 ot: ot ? lice(ot) : null, na: lice(na),
                 dyal, data: ch.data || '',
                 dokument, ot_chetene: ch.fajl || '', citat: x.citat || '',
-            });
+            };
+            // Второ натискане на „Приеми“ не бива да удвоява веригата.
+            // (Операторът, 14.10.2026: „когато натисна приеми, ги трупа всички“.)
+            if (s.sabitia.some(e => _sbEdnakvi(e, sabitie))) { veche++; continue; }
+            s.sabitia.push(sabitie);
             n++;
         }
     }
     delete p._sb_procheteno;
-    _sbZapishi(p, `прочетени ${n} прехвърляния от „${ch.fajl || ''}“`);
+    _sbZapishi(p, veche
+        ? `${n} нови прехвърляния от „${ch.fajl || ''}“ · ${veche} вече ги имаше`
+        : `прочетени ${n} прехвърляния от „${ch.fajl || ''}“`);
+    if (veche) showAlert(n ? 'warning' : 'success', n
+        ? `Добавени ${n} нови; ${veche} вече бяха в регистъра и не се удвоиха.`
+        : `Нищо ново — всичките ${veche} прехвърляния вече бяха в регистъра.`);
 }
 
 // ── въвеждането ────────────────────────────────────────────────────────────
