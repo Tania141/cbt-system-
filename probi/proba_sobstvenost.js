@@ -17,22 +17,30 @@ const F = new Function(
     + parche('const _SB_VID =', 'function _sbDanni')
     + grab('_sbDanni') + '\n'
     + parche('const _sbLice =', '// ── сметката')
+    + parche('const _EGN =', 'function _skritoEgn')
     + parche('const _SB_REDOVE =', 'function _sbKoren')
     + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
-    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + [grab('_skritoEgn'), grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=()=>{};const _prerisuvai=()=>{};'
     + 'const showAlert=()=>{};\n'
     + grab('sbPriemi')
-    + '\nreturn {_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
+    + '\nreturn {_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
     + '_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
     + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,sbPopravi,set:p=>{_t=p}};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
 const nov = () => { const p = { pi: '1' }; F._sbDanni(p); F.set(p); return p; };
+
+// ── 0. ЕГН не се показва ──────────────────────────────────────────────────
+// Операторът, 14.10.2026: „четецът НЕ ТРЯБВА да показва ЕГН“.
+t('ЕГН се скрива', F._skritoEgn('7212096441') === '••••••••••', F._skritoEgn('7212096441'));
+t('ЕИК на фирма се показва', F._skritoEgn('204024246') === '204024246');
+t('празното си остава празно', F._skritoEgn('') === '');
+t('друг текст не се пипа', F._skritoEgn('гр. София') === 'гр. София');
 
 // ── 1. дроби ───────────────────────────────────────────────────────────────
 t('1/2 се чете', F._drTekst(F._dr('1/2')) === '1/2');

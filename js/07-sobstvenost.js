@@ -304,6 +304,22 @@ function _sbPodmeniCheklist(p, r) {
     return r;
 }
 
+// ЕГН-то не се показва. Операторът, 14.10.2026: „четецът НЕ ТРЯБВА да показва
+// ЕГН“. То е лично данно: веднъж на екрана, то тръгва по снимки от екрана, по
+// споделени прозорци и по чужди очи — и нито едно от тези места не е под
+// наш контрол.
+//
+// Тук е спряно САМО показването. Дали изобщо да се чете и дали да се пази е
+// по-голям въпрос и се решава отделно.
+const _EGN = /^\d{10}$/;
+
+function _skritoEgn(v) {
+    const t = String(v || '').trim();
+    if (!t) return '';
+    if (_EGN.test(t)) return '••••••••••';        // ЕГН
+    return t;                                      // ЕИК на фирма — не е лично данно
+}
+
 // ── екранът ────────────────────────────────────────────────────────────────
 const _sbDnes = () => new Date().toLocaleDateString('bg-BG').replace(/\s/g, '');
 
@@ -403,7 +419,7 @@ function _sbTablici(p) {
         </details>`;
 
     const lica = s.lica.map(l => `<div>${esc(l.ime)}
-        <span style="color:var(--muted)">· ${esc(l.vid || 'физическо')}${l.egn ? ' · ' + esc(l.egn) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</span>
+        <span style="color:var(--muted)">· ${esc(l.vid || 'физическо')}${l.egn ? ' · ' + esc(_skritoEgn(l.egn)) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</span>
         <button class="btn btn-ghost btn-sm" onclick="sbMahni('lica','${l.id}')">×</button></div>`).join('');
 
     const koren = _sbKoren(p);
@@ -479,7 +495,7 @@ function _sbChetenoHtml(p) {
                     </div>
                 </div>
                 ${(ch.lica || []).length ? `<div style="margin-top:6px"><strong>Лица</strong>
-                    ${ch.lica.map(l => `<div>· ${esc(l.ime)}${l.egn_eik ? ' · ' + esc(l.egn_eik) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</div>`).join('')}</div>` : ''}
+                    ${ch.lica.map(l => `<div>· ${esc(l.ime)}${l.egn_eik ? ' · ' + esc(_skritoEgn(l.egn_eik)) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</div>`).join('')}</div>` : ''}
                 ${(ch.obekti || []).length ? `<div style="margin-top:6px"><strong>Обекти</strong>
                     ${ch.obekti.map(o => `<div>· ${esc(o.identifikator || o.opisanie)}${o.identifikator && o.opisanie ? ' · ' + esc(o.opisanie) : ''}</div>`).join('')}</div>` : ''}
                 ${(ch.prehvarliania || []).length ? `<div style="margin-top:6px"><strong>Прехвърляния</strong>
