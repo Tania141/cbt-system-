@@ -1,0 +1,12 @@
+{
+  "name": "akt-sistem-probi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Пробите на АКТ СИСТЕМ. Стоят отделно от корена нарочно: package.json в корена кара Railway да строи сайта като Node приложение вместо статичен.",
+  "scripts": {
+    "test": "node vsichko.js"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

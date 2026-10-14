@@ -1,4 +1,6 @@
-node_modules/
+# Пробите живеят в probi/ и имат своя package.json НАРОЧНО: корен с package.json
+# кара Railway да строи сайта като Node приложение и деплоят пада. (14.10.2026)
+probi/node_modules/
 
 # Word файлове, които операторът попълва — не влизат в git
 *.docx
