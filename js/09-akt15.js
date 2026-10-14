@@ -73,6 +73,88 @@ function _kotiBelejka(kutiyaId, r) {
             впиши тук или го потвърди там, за да важи навсякъде.</div>` : ''}`;
 }
 
+// ═══════════════════════════════════════════════════════════
+//  ДАТИТЕ В АКТ 15 — СИСТЕМАТА ГИ ЗНАЕ, НО ПИТА (14.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Операторът: „Системата може да знае кога е съставен даден документ, но
+// понякога датите се променят, затова е необходимо да пита за дата.“
+//
+// Затова нищо не се попълва мълчаливо: полето идва попълнено, до него пише
+// откъде е, и операторът го вижда преди да подпише. Промяна ТУК важи само за
+// този документ — досието се пипа в паспорта.
+
+// Откъде се пълни всяко поле на модала.
+//   dd      — docDates на обекта (датите на съставените документи)
+//   zk      — регистърът на заповедните книги
+//   registar— регистърът на собствеността
+const _A15_IZVORI = [
+    ['a15-prot2-date',  'dd', 'protokol2',  'Протокол 2'],
+    ['a15-obr3-date',   'dd', 'obrazec3',   'Констативен акт обр. 3'],
+    ['a15-akt14-date',  'dd', 'akt14',      'Акт 14'],
+    ['a15-zk-number',   'zk', 'number',     'регистъра на заповедните книги'],
+    ['a15-zk-date',     'dd', 'zk_zaverka', 'заверката на заповедната книга'],
+    ['a15-akt7-br',     'dd', 'akt7.br',    'Актовете обр. 7'],
+    ['a15-akt7-ot',     'dd', 'akt7.ot',    'Актовете обр. 7'],
+    ['a15-akt7-do',     'dd', 'akt7.do',    'Актовете обр. 7'],
+    ['a15-upulnomoshnik', 'registar', '',   'регистъра на собствеността'],
+];
+
+// Актовете обр. 12 са по части: полето „арх“ иска частта „Архитектура“.
+const _A15_AKT12 = { arh: 'Архитектура', vik: 'ВиК', el: 'Електро', ovk: 'ОВК и ЕЕ' };
+
+function _a15Stoynost(obekt, vid, klyuch) {
+    const p = _stroezh(obekt);
+    if (vid === 'zk') return String((p.zk || obekt.zk || {})[klyuch] || '').trim();
+    if (vid === 'registar') {
+        return (typeof _sbPredstavitel === 'function' && (obekt.sobstvenost || p.sobstvenost))
+            ? _sbPredstavitel(obekt.sobstvenost ? obekt : p, '') : '';
+    }
+    const dd = p.docDates || obekt.docDates || {};
+    const [ime, pole] = klyuch.split('.');
+    const v = dd[ime];
+    if (v === undefined || v === null) return '';
+    return String(pole ? (v[pole] ?? '') : v).trim();
+}
+
+// Пълни празните полета. Не пипа написаното на ръка.
+function _a15Napalni() {
+    const obekt = _zhivObekt();
+    if (!obekt) return { vzeti: [], lipsvat: [] };
+    const p = _stroezh(obekt);
+    const vzeti = [], lipsvat = [];
+
+    for (const [id, vid, klyuch, otkade] of _A15_IZVORI) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const v = _a15Stoynost(obekt, vid, klyuch);
+        if (v && !el.value.trim()) { el.value = v; vzeti.push(otkade); }
+        else if (!v && !el.value.trim()) lipsvat.push(otkade);
+    }
+
+    const akt12 = (p.docDates || {}).akt12 || {};
+    for (const [kratko, chast] of Object.entries(_A15_AKT12)) {
+        const rec = akt12[chast] || {};
+        for (const pole of ['br', 'ot', 'do']) {
+            const el = document.getElementById(`a15-akt12-${kratko}-${pole}`);
+            if (!el || el.value.trim()) continue;
+            const v = String(rec[pole] || '').trim();
+            if (v) { el.value = v; vzeti.push('Акт 12 ' + chast); }
+        }
+    }
+    return { vzeti: [...new Set(vzeti)], lipsvat: [...new Set(lipsvat)] };
+}
+
+function _a15Belejka(r) {
+    const kutiya = document.getElementById('a15-dati-belejka');
+    if (!kutiya) return;
+    kutiya.innerHTML = `
+        ${r.vzeti.length ? `<div style="font-size:12px;color:#2e6b32">
+            ✓ Попълнено от досието: ${r.vzeti.map(_s2esc).join(', ')}.
+            <strong>Провери датите</strong> — понякога се променят; промяна тук важи само за този документ.</div>` : ''}
+        ${r.lipsvat.length ? `<div style="font-size:12px;color:#8a6400;margin-top:3px">
+            [___] Няма в досието: ${r.lipsvat.map(_s2esc).join(', ')} — впиши тук или ги впиши в паспорта.</div>` : ''}`;
+}
+
 function showAkt15Form() {
     if (!appData.currentProject) {
         showAlert('error', 'Изберете активен проект преди да генерирате Акт 15!');
@@ -83,6 +165,7 @@ function showAkt15Form() {
     document.getElementById('akt15-modal-result-body').innerHTML = '';
     document.getElementById('akt15-modal-loading').style.display = 'none';
     document.getElementById('modal-akt15').classList.add('open');
+    _a15Belejka(_a15Napalni());
 }
 
 function showProtokol2Form() {
