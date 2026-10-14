@@ -28,5 +28,23 @@ function formatDateTime(isoStr) {
 document.getElementById('current-date').textContent = new Date().toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 
+// Кога е кодът, който браузърът наистина е заредил. Без този белег „обновено
+// ли е“ е гадаене: операторът виждаше вчерашния екран, докато сървърът даваше
+// новия файл, и нямаше как да се различи. (14.10.2026)
+async function pokazhiKogaEKodat() {
+    const kutiya = document.getElementById('kod-ot');
+    if (!kutiya) return;
+    try {
+        const r = await fetch('js/13-kraj.js', { method: 'HEAD', cache: 'no-store' });
+        const d = new Date(r.headers.get('last-modified') || Date.now());
+        kutiya.textContent = 'код от ' + d.toLocaleDateString('bg-BG')
+            + ' ' + d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' });
+        kutiya.title = 'Ако това не се мени след обновяване, браузърът дава стар файл.';
+    } catch (e) {
+        kutiya.textContent = '2026';
+    }
+}
+pokazhiKogaEKodat();
+
 // Load everything
 loadData();
