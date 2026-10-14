@@ -1,3 +1,13 @@
+// Стандартните текстове на Протокол 2 — дадени от оператора на 14.10.2026.
+// Пишат се само когато случаят е различен; затова са по подразбиране, а не
+// празно поле, което всеки път се чука наново.
+const P2_STANDARTNI = {
+    darvesenost: 'В обхвата на строителната площадка няма дървесна растителност, '
+        + 'подлежаща на изкореняване или отсичане.',
+    merki_pbz: 'Да се изпълнява съгласуваният проект по част ПБЗ и предписанията '
+        + 'на координатора по безопасност и здраве.',
+};
+
 // Стандартният текст за състоянието около строежа. Операторът, 14.10.2026:
 // дървесността и състоянието имат готови формулировки — пишат се само когато
 // случаят е различен. Стоеше в „АИ протоколи“; премести се тук, когато онзи
@@ -29,6 +39,7 @@ const _KOTI_POLETA = {
     'p2-kota-izkop': 'kota_izkop', 'p2-kota-cokul': 'kota_cokul',
     'p2-kota-korniz': 'korniz_post', 'p2-kota-bilo': 'kota_bilo',
     'p2-reper-nomer': 'reper_nomer', 'p2-reper-kota': 'reper_kota',
+    'p2-opisanie-ploshtadka': 'opisanie_ploshtadka',
 };
 // В Акт 15 „a15-kota-*“ НЕ са коти, а ДАТИ на заверка на нивата
 // („Ниво изкоп — заверен на дд.мм.гггг“). Одитът беше сбъркал реда; те
@@ -217,10 +228,12 @@ async function runProtokol2Modal() {
         const reperKota = document.getElementById('p2-reper-kota')?.value?.trim() || '';
         const opisanie = document.getElementById('p2-opisanie-ploshtadka')?.value?.trim() || '';
 
+        // „Няма дървесност“ не значи празен ред в протокола — значи
+        // стандартната формулировка. (Операторът, 14.10.2026)
         const darvRadio = document.querySelector('input[name="p2-darv-radio"]:checked');
         const darvValue = (darvRadio?.value === 'има')
-            ? (document.getElementById('p2-darvesenost')?.value?.trim() || '')
-            : '';
+            ? (document.getElementById('p2-darvesenost')?.value?.trim() || P2_STANDARTNI.darvesenost)
+            : P2_STANDARTNI.darvesenost;
 
         const sastoyanieCustom = document.getElementById('p2-sastoyanie-custom')?.checked;
         const sastoyanieValue = sastoyanieCustom
@@ -239,6 +252,7 @@ async function runProtokol2Modal() {
             ['Reper_Kota',   reperKota],
             ['Darvesenost',  darvValue],
             ['Sastoyanie_Okolo', sastoyanieValue],
+            ['Merki_PBZ',    P2_STANDARTNI.merki_pbz],
         );
 
         const token = getToken();

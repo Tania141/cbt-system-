@@ -18,6 +18,7 @@ const OBEKT = {
         kota_cokul:  fakt('690.00'),
         korniz_post: fakt('9.80'),
         reper_nomer: fakt('РП-23'),
+        opisanie_ploshtadka: fakt('Теренът е равен, ограден с плътна ограда; достъп от ул. Бяло море.'),
         // kota_bilo и reper_kota нарочно липсват — да се види как се казва
         kota_bilo:   fakt('12.40', 'predlozheno'),   // предложено ≠ потвърдено
     },
@@ -63,9 +64,17 @@ const KONSULTANT = { id: 1, name: 'СиБиТи Консулт ЕООД', eik: '
     t('реперът идва от част Геодезия', v('p2-reper-nomer') === 'РП-23', v('p2-reper-nomer'));
     t('ПРЕДЛОЖЕНО, но непотвърдено, НЕ влиза', !v('p2-kota-bilo'), v('p2-kota-bilo'));
     t('липсващото остава празно', !v('p2-reper-kota'), v('p2-reper-kota'));
+    t('описанието на площадката идва от част Архитектура',
+      /Теренът е равен/.test(v('p2-opisanie-ploshtadka') || ''), v('p2-opisanie-ploshtadka'));
+    // `const` на горно ниво живее в глобалния лексикален обхват, не на window.
+    const std = w.eval('P2_STANDARTNI');
+    t('стандартният текст за дървесността го има',
+      /няма дървесна растителност/.test(std.darvesenost), std.darvesenost);
+    t('стандартният текст за мерките по ПБЗ го има',
+      /координатора по безопасност/.test(std.merki_pbz), std.merki_pbz);
 
     const bel = (w.document.getElementById('p2-koti-belejka') || {}).textContent || '';
-    t('казва колко е взето от Проверки', /4 стойности са взети/.test(bel), bel.trim().slice(0, 80));
+    t('казва колко е взето от Проверки', /5 стойности са взети/.test(bel), bel.trim().slice(0, 80));
     t('изброява непотвърденото с [___]', /\[___\]/.test(bel) && /Кота било/.test(bel), bel.trim().slice(0, 160));
 
     // Написаното на ръка не се подменя при повторно отваряне.
