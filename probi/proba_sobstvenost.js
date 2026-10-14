@@ -19,7 +19,7 @@ const F = new Function(
     + parche('const _sbLice =', '// ── сметката')
     + parche('const _SB_REDOVE =', 'function _sbKoren')
     + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
-    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
@@ -27,7 +27,7 @@ const F = new Function(
     + grab('sbPriemi')
     + '\nreturn {_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
     + '_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,set:p=>{_t=p}};')();
+    + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,sbPopravi,set:p=>{_t=p}};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -151,6 +151,24 @@ t('дялът е запазен както е прочетен', s4.sabitia[0].d
 t('документът е сглобен', /№ 112.*том III.*рег\. № 4512/.test(s4.sabitia[0].dokument), s4.sabitia[0].dokument);
 t('цитатът се пази', s4.sabitia[0].citat === '…продава…');
 t('прочетеното е изчистено след приемане', !p4._sb_procheteno);
+
+// Четецът сбърка номера (166 вместо 186) — поправката трябва да стигне до акта.
+const p4b = nov();
+p4b._sb_procheteno = {
+    fajl: 'НА.PDF', vid: 'нотариален акт', nomer: '166', tom: 'III', registar: '10350',
+    delo: '480/2019', data: '09.07.2019', notarius: 'Росица Рашева',
+    lica: [{ ime: 'Иван Петров' }, { ime: 'Мария Иванова' }],
+    obekti: [{ identifikator: '29430.4713.49', vid: 'земя' }],
+    prehvarliania: [{ vid: 'покупко-продажба', ot: 'Иван Петров', na: 'Мария Иванова',
+                      dyal: '1/1', obekt: '29430.4713.49' }],
+};
+F.sbPopravi('nomer', '186');
+t('поправката се пази в прочетеното', p4b._sb_procheteno.nomer === '186', p4b._sb_procheteno.nomer);
+F.sbPriemi();
+t('актът носи ПОПРАВЕНИЯ номер',
+  /№ 186/.test(p4b.sobstvenost.sabitia[0].dokument), p4b.sobstvenost.sabitia[0].dokument);
+t('старият номер го няма', !/166/.test(p4b.sobstvenost.sabitia[0].dokument));
+F.set(p4);          // следващата проба продължава със своя обект
 
 p4._sb_procheteno = {
     fajl: 'na-200.pdf', vid: 'нотариален акт', nomer: '200', data: '01.03.2015',

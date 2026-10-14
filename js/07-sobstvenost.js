@@ -436,6 +436,23 @@ function _sbTablici(p) {
 // дял. Прочетеното не влиза само; стои като предложение, докато операторът го
 // приеме. Номерът на акта се вписва на ръка (вж. _KES_NARAKA — същото правило).
 
+// Поле в картата на прочетеното: стойността идва от четеца, но се пипа.
+// Дотук пишеше „вписва се на ръка“, а нямаше КЪДЕ. (Операторът, 14.10.2026:
+// „къде поправям сбърканото от четеца“.)
+function _sbPoleHtml(klyuch, etiket, stoynost) {
+    const esc = _s2esc;
+    return `<label style="font-size:11.5px;color:var(--muted)">${esc(etiket)}
+        <input type="text" class="form-input" style="font-size:13px;margin-top:2px"
+               value="${esc(stoynost || '')}" oninput="sbPopravi('${klyuch}', this.value)">
+    </label>`;
+}
+
+// Поправката се пази веднага в прочетеното — приемането взима поправеното.
+function sbPopravi(klyuch, stoynost) {
+    const p = _zhivObekt();
+    if (p && p._sb_procheteno) p._sb_procheteno[klyuch] = stoynost;
+}
+
 function _sbChetenoHtml(p) {
     const esc = _s2esc, ch = p._sb_procheteno;
     if (!ch) return '';
@@ -447,14 +464,20 @@ function _sbChetenoHtml(p) {
             <div style="font-size:13px;line-height:1.8">
                 ${red('Вид', ch.vid)}
                 <div style="color:#8a6400;background:#fffbef;border-left:3px solid #d99a00;
-                            padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0">
-                    <strong>[___] Номер, том, регистър и нотариус се вписват на ръка.</strong><br>
-                    <span style="font-size:12.5px">АИ-то прочете:
-                        ${esc([ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
-                               ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
-                               ch.notarius].filter(Boolean).join(', ') || '(нищо)')}</span>
+                            padding:8px 10px;border-radius:0 6px 6px 0;margin:6px 0">
+                    <strong>[___] Номерът на акта се вписва на ръка.</strong>
+                    <div style="font-size:12px;margin:3px 0 8px">
+                        Сверѝ с документа — сбъркана цифра сочи ЧУЖД акт и не личи после никъде.
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+                        ${_sbPoleHtml('nomer', '№', ch.nomer)}
+                        ${_sbPoleHtml('tom', 'том', ch.tom)}
+                        ${_sbPoleHtml('registar', 'рег. №', ch.registar)}
+                        ${_sbPoleHtml('delo', 'дело', ch.delo)}
+                        ${_sbPoleHtml('data', 'дата', ch.data)}
+                        ${_sbPoleHtml('notarius', 'нотариус', ch.notarius)}
+                    </div>
                 </div>
-                ${red('Дата', ch.data)}
                 ${(ch.lica || []).length ? `<div style="margin-top:6px"><strong>Лица</strong>
                     ${ch.lica.map(l => `<div>· ${esc(l.ime)}${l.egn_eik ? ' · ' + esc(l.egn_eik) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</div>`).join('')}</div>` : ''}
                 ${(ch.obekti || []).length ? `<div style="margin-top:6px"><strong>Обекти</strong>
@@ -474,8 +497,8 @@ function _sbChetenoHtml(p) {
                 <button class="btn btn-ghost" onclick="sbOtkazhi()">Откажи</button>
             </div>
             <p style="font-size:11.5px;color:var(--muted);margin:8px 0 0">
-                Лицата и обектите, които ги няма, се добавят. Номерът на акта го впиши ти —
-                той влиза дословно в документите.
+                Лицата и обектите, които ги няма, се добавят. Прочетеното не влиза,
+                докато не натиснеш „Приеми“.
             </p>
         </div>`;
 }
