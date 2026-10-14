@@ -288,7 +288,9 @@ function renderPassportForm(projectId) {
         </div>
 
         <!-- ВЪЗЛОЖИТЕЛИ -->
-        <div class="card">
+        ${_vazlozhiteliKartaHtml(project)}
+        <div class="card" id="karta-vazlozhiteli-rachno"
+             style="${_otRegistara(project) ? 'display:none' : ''}">
             <div class="card-header" style="margin-bottom:16px">
                 <div class="card-title">👤 Възложители</div>
                 <button class="btn btn-secondary btn-sm" onclick="addClientRow()">➕ Добави възложител</button>
@@ -430,6 +432,40 @@ function rerenderClientRow(i) {
     if (el && window.tempClients && window.tempClients[i]) {
         el.outerHTML = clientRowHTML(window.tempClients[i], i);
     }
+}
+
+// Възложителят е РОЛЯ, не лице: всеки с вещно право е възложител по ЗУТ.
+// Затова списъкът не се пише — получава се от регистъра на собствеността.
+// Формата отдолу остава и се показва, докато регистърът е празен.
+function _otRegistara(project) {
+    return typeof vazlozhiteli === 'function' && vazlozhiteli(project).otkade === 'registar';
+}
+
+function _vazlozhiteliKartaHtml(project) {
+    if (!_otRegistara(project)) return '';
+    const esc = _s2esc;
+    const v = vazlozhiteli(project).spisak;
+    return `
+        <div class="card">
+            <div class="card-header" style="margin-bottom:12px">
+                <div>
+                    <div class="card-title">👤 Възложители</div>
+                    <div class="card-subtitle">Не се въвеждат: всеки с вещно право е възложител по ЗУТ.
+                        Идват от регистъра на собствеността.</div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="kamStranica('${project && project.id}','sobstvenost')">🔑 Към Собственост</button>
+            </div>
+            <div style="font-size:13.5px;line-height:1.9">
+                ${v.map(c => `<div>· <strong>${esc(c.name)}</strong>
+                    <span style="color:var(--muted)">${c.type === 'ЮЛ' ? 'ЮЛ' : 'ФЛ'}${c.eik ? ' · ' + esc(c.eik) : ''}
+                    · в документите: ${esc(c.dveImena)}</span></div>`).join('')}
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin-top:10px">
+                Съставът се мени във времето — всеки документ пита регистъра за СВОЯТА дата.
+                Ръчният списък отдолу е скрит, докато регистърът дава отговор.
+            </p>
+        </div>`;
 }
 
 function addClientRow() {

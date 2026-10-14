@@ -61,6 +61,19 @@ function smeniObekt(id, stranica) {
 // ── Protokol2Combined: AI-extract → editable fields → generate .docx ──────────
 
 // ── Кой подписва долу: общ чеклист за трите входа към генериране ──────────────
+// Възложителите на обекта и ОТКЪДЕ идват. Регистърът на собствеността бие
+// писаното на ръка: всяко възникнало вещно право е възложител по ЗУТ, а
+// регистърът знае кой кога го е придобил. Празен регистър значи „още не е
+// пълнен“ — тогава важи написаното в паспорта. (14.10.2026)
+function vazlozhiteli(project, data) {
+    if (typeof _sbKlienti === 'function' && project && project.sobstvenost) {
+        const ot = _sbKlienti(project, data || '');
+        if (ot.length) return { spisak: ot, otkade: 'registar' };
+    }
+    const rachni = (project && (project.clients || (project.client ? [project.client] : []))) || [];
+    return { spisak: rachni, otkade: rachni.length ? 'pasport' : 'nyama' };
+}
+
 function clientsOf(project) {
     return project?.clients || (project?.client ? [project.client] : []);
 }

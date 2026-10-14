@@ -1371,9 +1371,11 @@ function readAkt12Parts(containerId) {
 function renderSignersChecklist(containerId, project) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    const clients = clientsOf(project);
+    const v = typeof vazlozhiteli === 'function' ? vazlozhiteli(project) : { spisak: clientsOf(project), otkade: 'pasport' };
+    const clients = v.spisak;
     if (!clients.length) {
-        el.innerHTML = '<p style="font-size:12px;color:var(--muted)">Няма въведени възложители в паспорта.</p>';
+        el.innerHTML = `<p style="font-size:12px;color:var(--muted)">
+            Няма възложители — впиши нотариалния акт в „Собственост“ или ги въведи в паспорта.</p>`;
         return;
     }
     const upalnom = (project.upalnomoshten_predstavitel || '').trim();
@@ -1385,7 +1387,9 @@ function renderSignersChecklist(containerId, project) {
         </label>`;
     }).join('') + (upalnom
         ? `<p style="font-size:11px;color:var(--gold);margin-top:8px">⚠ В паспорта е зададен упълномощен представител (<strong>${upalnom}</strong>) — той подписва вместо всички и изборът по-горе се пренебрегва.</p>`
-        : '<p style="font-size:11px;color:var(--muted);margin-top:8px">Горе в документа винаги се изписват всички възложители. Тук избираш само кой подписва.</p>');
+        : `<p style="font-size:11px;color:var(--muted);margin-top:8px">
+             Горе в документа винаги се изписват всички възложители. Тук избираш само кой подписва.
+             ${v.otkade === 'registar' ? ' Списъкът е от регистъра на собствеността.' : ''}</p>`);
 }
 
 function readSigners(containerId) {
