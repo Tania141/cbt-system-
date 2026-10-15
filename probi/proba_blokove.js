@@ -10,12 +10,13 @@ const F = new Function(
     + parche(s, 'const _BL_SASTOYANIA', 'function _blHtml')
     + [grab(s, '_blHtml'), grab(s, '_blRedHtml'), grab(s, '_blFakt'),
        grab(s, 'blPotvardi'), grab(s, 'blPoprav'), grab(s, 'blOtmeni'),
-       grab(s, 'blVzemiNovoto'), grab(s, 'blOstaviMoeto')].join('\n')
+       grab(s, 'blVzemiNovoto'), grab(s, 'blOstaviMoeto'),
+       grab(s, '_blZaDokument'), grab(s, '_blChakat')].join('\n')
     + '\nlet _t=null,_otgovor=null;'
     + 'const _zhivObekt=()=>_t;const _stroezh=p=>p;const _s2Koy=()=>"оператор";'
     + 'const _s2ZapishiTiho=(p,k)=>_zapisi.push(k);const _prerisuvai=()=>{};'
     + 'const prompt=()=>_otgovor;'
-    + '\nreturn {_blSleej,_blHtml,_blVzemi,_blKlyuch,blPotvardi,blPoprav,blOtmeni,'
+    + '\nreturn {_blSleej,_blHtml,_blVzemi,_blKlyuch,_blZaDokument,_blChakat,blPotvardi,blPoprav,blOtmeni,'
     + 'blVzemiNovoto,blOstaviMoeto,set:p=>{_t=p},otgovor:v=>{_otgovor=v},zapisi:()=>_zapisi};');
 const B = F();
 
@@ -101,6 +102,24 @@ const o = (html.match(/<div/g) || []).length, z = (html.match(/<\/div>/g) || [])
 t(`баланс на div (${o}/${z})`, o === z);
 
 t('историята е писана', B.zapisi().length >= 4, B.zapisi());
+
+// ── към документа ─────────────────────────────────────────────────────────
+// Операторът, 15.10.2026: „излива се целият текст, както е по записка, в
+// съответния раздел“. Влиза САМО потвърденото.
+const NR = String.fromCharCode(10);
+const zaDok = B._blZaDokument(p);
+t('частта е заглавие', zaDok.split(NR)[0] === 'Част Архитектура', zaDok.split(NR)[0]);
+t('подзаглавието се пази', /Ситуационно решение/.test(zaDok));
+t('непотвърденото НЕ влиза', !/уличен водопровод/.test(zaDok), zaDok);
+t('чакащите се броят', B._blChakat(p) >= 1, B._blChakat(p));
+
+B.blPotvardi(encodeURIComponent(B._blKlyuch('ВиК', 'Водопровод')));
+const zaDok2 = B._blZaDokument(p);
+t('втората част се появява', /Част ВиК/.test(zaDok2), zaDok2);
+t('вече влиза и текстът ѝ', /уличен водопровод/.test(zaDok2), zaDok2);
+t('частите са подредени', zaDok2.indexOf('Част Архитектура') < zaDok2.indexOf('Част ВиК'));
+t('текстът е многоредов — шаблонът го разбива на абзаци',
+  zaDok2.split(NR).length >= 6, zaDok2.split(NR).length);
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

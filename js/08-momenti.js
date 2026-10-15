@@ -1064,6 +1064,36 @@ function _blRedHtml(k, b) {
         </div>`;
 }
 
+// Текстът за раздел В на комплексния доклад: целите записки, по части.
+// Операторът, 15.10.2026: „по-добре е да се излива целият текст, както е по
+// записка, в съответния раздел — не винаги има разделението, което посочваш“.
+//
+// Влиза САМО потвърденото. Непотвърден текст не бива да стига до документ,
+// който операторът подписва.
+function _blZaDokument(p) {
+    const vsichki = Object.values(_blVzemi(p))
+        .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno');
+    if (!vsichki.length) return '';
+    const poChasti = {};
+    for (const b of vsichki) (poChasti[b.chast || 'Друга част'] ||= []).push(b);
+    const redove = [];
+    for (const [chast, spisak] of Object.entries(poChasti)) {
+        redove.push('Част ' + chast);
+        for (const b of spisak) {
+            const zagl = String(b.podzaglavie || '').trim();
+            if (zagl) redove.push(zagl);
+            redove.push(String(b.tekst || '').trim());
+        }
+        redove.push('');
+    }
+    return redove.join(String.fromCharCode(10)).trim();
+}
+
+// Колко чакат потвърждение — за да се каже, преди да се генерира документ.
+function _blChakat(p) {
+    return Object.values(_blVzemi(p)).filter(b => b.sastoyanie === 'predlozheno').length;
+}
+
 function _blFakt(k64) {
     const obekt = _zhivObekt();
     if (!obekt) return {};
@@ -1679,6 +1709,16 @@ function buildPassportRows(project, consultant, extra) {
         }
     });
     add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
+
+    // Раздел В на комплексния доклад — описанията от записките, по части.
+    // Само потвърденото; непотвърдено не влиза в документ за подпис.
+    if (typeof _blZaDokument === 'function') {
+        const stroezh = typeof _stroezh === 'function' ? _stroezh(project) : project;
+        const tekst = _blZaDokument(stroezh);
+        if (tekst) add('ОСИП_В_Части', tekst);
+        const chakat = _blChakat(stroezh);
+        if (chakat) console.warn(`${chakat} текстови блока още чакат потвърждение`);
+    }
 
     // Представител на Възложителя за подписи. В протокол 2 се пише само ЕДНО
     // име — избраният представител. Дотук имаше и поле в екрана „АИ протоколи“;
