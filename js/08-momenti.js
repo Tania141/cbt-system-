@@ -875,7 +875,9 @@ async function zapiskiRezyume() {
               ime_na_stroezha: p.stroej || '',
               stari_identifikatori: _nashiteIdent(obekt) });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(r.greshka)}</div>`; return; }
-        kutiya.innerHTML = _zapiskiHtml(r);
+        const stroezh = _stroezh(obekt);
+        _blSleej(stroezh, r);
+        kutiya.innerHTML = _blHtml(stroezh) + _zapiskiHtml(r);
     } catch (e) {
         kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(e.message)}</div>`;
     }
@@ -961,6 +963,162 @@ function _zpRed(x) {
     return `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)">
         ${_s2esc(glava)}${chislo}${opis ? ` <span style="color:var(--muted)">(${_s2esc(opis)})</span>` : ''}${chast}
         ${citat}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ТЕКСТОВИТЕ БЛОКОВЕ ОТ ЗАПИСКИТЕ (15.10.2026)
+// ═══════════════════════════════════════════════════════════
+// Измерено от истински обект: окончателният доклад е 93 % преписан текст,
+// Акт 15 — 88 %. Описанията идват от записките и после се копират между
+// четирите документа на ръка.
+//
+// Блокът се пази на СТРОЕЖА, с ключ част + подзаглавие, за да преживее ново
+// четене. Състоянията са същите като при полетата: предложено → потвърдено
+// или поправено. Само потвърденото влиза в документ.
+
+const _BL_SASTOYANIA = { predlozheno: '', potvardeno: '\u2713 потвърден',
+                         popraveno: '\u270d поправен' };
+
+const _blKlyuch = (chast, podzaglavie) =>
+    (chast || '') + ' · ' + String(podzaglavie || '').trim().toLowerCase();
+
+function _blVzemi(p) { return (p.blokove = p.blokove || {}); }
+
+// Прочетеното се слива със запазеното: потвърденият текст НЕ се подменя от
+// ново четене — казва се, че записката вече дава друго.
+function _blSleej(p, r) {
+    const pazeni = _blVzemi(p);
+    for (const chast of r.blokove || []) {
+        for (const razdel of chast.razdeli || []) {
+            const k = _blKlyuch(chast.chast, razdel.podzaglavie);
+            const b = pazeni[k];
+            if (!b) {
+                pazeni[k] = { chast: chast.chast, podzaglavie: razdel.podzaglavie,
+                              tekst: razdel.tekst, prochetan: razdel.tekst,
+                              fajl: chast.fajl, stranica: razdel.stranica,
+                              sastoyanie: 'predlozheno' };
+            } else if (b.prochetan !== razdel.tekst) {
+                b.prochetan = razdel.tekst;
+                b.novo_chetene = b.sastoyanie === 'predlozheno' ? '' : razdel.tekst;
+                if (b.sastoyanie === 'predlozheno') b.tekst = razdel.tekst;
+            }
+        }
+    }
+    return pazeni;
+}
+
+function _blHtml(p) {
+    const esc = _s2esc;
+    const vsichki = Object.entries(_blVzemi(p));
+    if (!vsichki.length) return '';
+    const poChasti = {};
+    for (const [k, b] of vsichki) (poChasti[b.chast || 'Друга част'] ||= []).push([k, b]);
+    const chakat = vsichki.filter(([, b]) => b.sastoyanie === 'predlozheno').length;
+
+    return `
+        <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+                <div class="card-title" style="margin:0">\u{1F4DD} Текстът за документите</div>
+                <span style="font-size:11.5px;color:var(--muted)">${vsichki.length} блока${
+                    chakat ? ` \u00b7 <strong style="color:#8a6522">${chakat} чакат \u2713</strong>` : ''}</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:12px">
+                Това е описателният текст от записките. Влиза дословно в комплексния доклад,
+                а после — обърнат в сегашно време — в Акт 15, окончателния доклад и техническия
+                паспорт. Потвърденото не се преписва повече на ръка.
+            </p>
+            ${Object.entries(poChasti).map(([chast, spisak]) => `
+                <details class="card" style="margin:0 0 10px" ${
+                    spisak.some(([, b]) => b.sastoyanie === 'predlozheno') ? 'open' : ''}>
+                    <summary style="cursor:pointer;font-weight:600;font-size:13px">
+                        ${esc(chast)} <span style="font-weight:400;color:var(--muted)">\u00b7 ${spisak.length}</span>
+                    </summary>
+                    <div style="margin-top:10px">${spisak.map(([k, b]) => _blRedHtml(k, b)).join('')}</div>
+                </details>`).join('')}
+        </div>`;
+}
+
+function _blRedHtml(k, b) {
+    const esc = _s2esc, k64 = encodeURIComponent(k);
+    const potv = b.sastoyanie !== 'predlozheno';
+    const znak = _BL_SASTOYANIA[b.sastoyanie] || '';
+    return `
+        <div style="border-left:3px solid ${potv ? 'var(--green,#2e7d32)' : '#d8cfb8'};
+                    padding:7px 0 7px 12px;margin-bottom:10px">
+            <div style="font-size:11.5px;color:var(--muted)">
+                ${esc(b.podzaglavie || '(без заглавие)')}
+                ${b.fajl ? ` \u00b7 ${esc(b.fajl)}` : ''}${b.stranica ? `, стр. ${b.stranica}` : ''}
+                ${znak ? ` \u00b7 <span style="color:#2e6b32">${znak}</span>` : ''}
+            </div>
+            <div style="font-size:13px;line-height:1.65;white-space:pre-wrap;margin-top:3px">${esc(b.tekst)}</div>
+            ${b.novo_chetene ? `<div style="font-size:11.5px;color:#b45309;margin-top:4px">
+                \u26a0\ufe0f Ново четене дава друг текст. Виж го и реши.
+                <button class="btn btn-ghost btn-sm" onclick="blVzemiNovoto('${k64}')">Вземи новото</button>
+                <button class="btn btn-ghost btn-sm" onclick="blOstaviMoeto('${k64}')">Остави моето</button>
+            </div>` : ''}
+            <div style="margin-top:5px">
+                ${potv ? '' : `<button class="btn btn-primary btn-sm" onclick="blPotvardi('${k64}')">\u2713 Потвърди</button>`}
+                <button class="btn btn-ghost btn-sm" onclick="blPoprav('${k64}')">Поправи</button>
+                ${potv ? `<button class="btn btn-ghost btn-sm" onclick="blOtmeni('${k64}')">Отмени</button>` : ''}
+            </div>
+        </div>`;
+}
+
+function _blFakt(k64) {
+    const obekt = _zhivObekt();
+    if (!obekt) return {};
+    const p = _stroezh(obekt);
+    const k = decodeURIComponent(k64);
+    return { obekt, p, k, b: _blVzemi(p)[k] };
+}
+
+function blPotvardi(k64) {
+    const { obekt, p, b } = _blFakt(k64);
+    if (!b) return;
+    b.sastoyanie = 'potvardeno';
+    b.koy = _s2Koy(); b.koga = new Date().toISOString();
+    _s2ZapishiTiho(obekt, `Текст: потвърден „${b.podzaglavie}“`);
+    _prerisuvai();
+}
+
+function blPoprav(k64) {
+    const { obekt, b } = _blFakt(k64);
+    if (!b) return;
+    const nov = prompt(`${b.podzaglavie}:`, b.tekst);
+    if (nov === null) return;
+    b.tekst = nov.trim();
+    b.sastoyanie = 'popraveno';
+    b.koy = _s2Koy(); b.koga = new Date().toISOString();
+    b.novo_chetene = '';
+    _s2ZapishiTiho(obekt, `Текст: поправен „${b.podzaglavie}“`);
+    _prerisuvai();
+}
+
+function blOtmeni(k64) {
+    const { obekt, b } = _blFakt(k64);
+    if (!b) return;
+    b.sastoyanie = 'predlozheno';
+    b.tekst = b.prochetan || b.tekst;
+    _s2ZapishiTiho(obekt, `Текст: отменен „${b.podzaglavie}“`);
+    _prerisuvai();
+}
+
+function blVzemiNovoto(k64) {
+    const { obekt, b } = _blFakt(k64);
+    // Без предложение няма какво да се взима: иначе бутонът изтрива текста.
+    // (Пробата го намери, 15.10.2026.)
+    if (!b || !String(b.novo_chetene || '').trim()) return;
+    b.tekst = b.novo_chetene; b.novo_chetene = ''; b.sastoyanie = 'predlozheno';
+    _s2ZapishiTiho(obekt, `Текст: взето новото за „${b.podzaglavie}“`);
+    _prerisuvai();
+}
+
+function blOstaviMoeto(k64) {
+    const { obekt, b } = _blFakt(k64);
+    if (!b) return;
+    b.novo_chetene = '';
+    _s2ZapishiTiho(obekt, `Текст: оставено моето за „${b.podzaglavie}“`);
+    _prerisuvai();
 }
 
 function _zapiskiHtml(r) {
