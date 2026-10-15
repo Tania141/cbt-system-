@@ -66,6 +66,7 @@ function _sbDanni(p) {
     s.lica = s.lica || [];
     s.obekti = s.obekti || [];
     s.sabitia = s.sabitia || [];
+    if (typeof eEGN === 'function') _sbIzchistiEgn(s);
     return s;
 }
 const _sbLice = (s, id) => s.lica.find(x => x.id === id);
@@ -304,21 +305,20 @@ function _sbPodmeniCheklist(p, r) {
     return r;
 }
 
-// ЕГН-то не се показва. Операторът, 14.10.2026: „четецът НЕ ТРЯБВА да показва
-// ЕГН“. То е лично данно: веднъж на екрана, то тръгва по снимки от екрана, по
-// споделени прозорци и по чужди очи — и нито едно от тези места не е под
-// наш контрол.
+// ЕГН не се пази и не се показва. Операторът, 14–15.10.2026: „четецът НЕ
+// ТРЯБВА да показва ЕГН“ и „личните данни не трябва да се вписват“.
 //
-// Тук е спряно САМО показването. Дали изобщо да се чете и дали да се пази е
-// по-голям въпрос и се решава отделно.
-const _EGN = /^\d{10}$/;
-
-function _skritoEgn(v) {
-    const t = String(v || '').trim();
-    if (!t) return '';
-    if (_EGN.test(t)) return '••••••••••';        // ЕГН
-    return t;                                      // ЕИК на фирма — не е лично данно
+// Чистенето е при ВСЯКО отваряне на данните, не еднократно: така и вече
+// събраното изчезва, и нищо прокраднало се не оцелява до следващия път.
+function _sbIzchistiEgn(s) {
+    let mahnati = 0;
+    for (const l of s.lica || []) {
+        if (l.egn && eEGN(l.egn)) { delete l.egn; mahnati++; }
+    }
+    return mahnati;
 }
+
+const _skritoEgn = v => skriiEGN(v);
 
 // ── екранът ────────────────────────────────────────────────────────────────
 const _sbDnes = () => new Date().toLocaleDateString('bg-BG').replace(/\s/g, '');
@@ -583,7 +583,8 @@ function sbPriemi() {
         if (!klyuch(ime)) return null;
         let l = s.lica.find(x => klyuch(x.ime) === klyuch(ime));
         if (!l) { l = { id: _sbNovId(), ime: String(ime).trim(), vid: 'физическо' }; s.lica.push(l); }
-        if (dop) { if (dop.vid) l.vid = dop.vid; if (dop.egn_eik) l.egn = l.egn || dop.egn_eik;
+        if (dop) { if (dop.vid) l.vid = dop.vid;
+                   if (dop.egn_eik && !eEGN(dop.egn_eik)) l.egn = l.egn || dop.egn_eik;
                    if (dop.pochinal) l.pochinal = l.pochinal || dop.pochinal; }
         return l.id;
     };
@@ -687,7 +688,9 @@ function sbDobaviLice() {
     const ime = (prompt('Име на лицето (или фирма):') || '').trim();
     if (!ime) return;
     const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(ime);
-    const egn = (prompt(yur ? 'ЕИК (по избор):' : 'ЕГН (по избор):') || '').trim();
+    // За физическо лице не се пита ЕГН: лицето се разпознава по име и по
+    // нотариалния акт, а той е и по-силното доказателство. (15.10.2026)
+    const egn = yur ? (prompt('ЕИК (по избор):') || '').trim() : '';
     _sbDanni(p).lica.push({ id: _sbNovId(), ime, vid: yur ? 'юридическо' : 'физическо', egn });
     _sbZapishi(p, `лице „${ime}“`);
 }

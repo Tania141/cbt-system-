@@ -1414,6 +1414,26 @@ function readSigners(containerId) {
     return [...boxes].filter(b => b.checked).map(b => Number(b.dataset.signer));
 }
 
+// Последната врата: нищо с вид на ЕГН не тръгва към сървъра и към документа.
+// Шаблоните нямат такова поле, но това не пази от случайност — стойност,
+// въведена на грешен ред, минава тихо. (Операторът, 15.10.2026)
+function _bezEGN(redove) {
+    const mahnati = [];
+    const chisti = redove.map(([klyuch, stoynost]) => {
+        if (typeof eEGN === 'function' && eEGN(stoynost)) {
+            mahnati.push(klyuch);
+            return [klyuch, ''];
+        }
+        return [klyuch, stoynost];
+    });
+    if (mahnati.length) {
+        console.warn('ЕГН не се подава в документа:', mahnati.join(', '));
+        showAlert('warning', `Лично данно (ЕГН) не влиза в документа — провери „${
+            mahnati.slice(0, 3).join('“, „')}“.`);
+    }
+    return chisti;
+}
+
 function buildPassportRows(project, consultant, extra) {
     // Конвертира project обекта в масив от редове за API-я
     const rows = [];
@@ -1539,7 +1559,7 @@ function buildPassportRows(project, consultant, extra) {
         add('Проектант_' + (i+1) + '_ППП', p.ppp);
     });
 
-    return rows;
+    return _bezEGN(rows);
 }
 
 function fileToBase64(file) {

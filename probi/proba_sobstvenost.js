@@ -17,17 +17,18 @@ const F = new Function(
     + parche('const _SB_VID =', 'function _sbDanni')
     + grab('_sbDanni') + '\n'
     + parche('const _sbLice =', '// ── сметката')
-    + parche('const _EGN =', 'function _skritoEgn')
+    + parche('const _EGN_TEGLA =', 'const specializations')
+    + [grab('_sbIzchistiEgn'), 'const _skritoEgn = v => skriiEGN(v);'].join('\n') + '\n'
     + parche('const _SB_REDOVE =', 'function _sbKoren')
     + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
-    + [grab('_skritoEgn'), grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=()=>{};const _prerisuvai=()=>{};'
     + 'const showAlert=()=>{};\n'
     + grab('sbPriemi')
-    + '\nreturn {_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
+    + '\nreturn {_skritoEgn,eEGN,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
     + '_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
     + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,sbPopravi,set:p=>{_t=p}};')();
 
@@ -35,12 +36,39 @@ const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
 const nov = () => { const p = { pi: '1' }; F._sbDanni(p); F.set(p); return p; };
 
-// ── 0. ЕГН не се показва ──────────────────────────────────────────────────
-// Операторът, 14.10.2026: „четецът НЕ ТРЯБВА да показва ЕГН“.
-t('ЕГН се скрива', F._skritoEgn('7212096441') === '••••••••••', F._skritoEgn('7212096441'));
+// ── 0. ЕГН не влиза, не стои и не излиза ──────────────────────────────────
+// Операторът, 14–15.10.2026: „четецът НЕ ТРЯБВА да показва ЕГН“ и „личните
+// данни не трябва да се вписват“.
+t('истинско ЕГН се разпознава', F.eEGN('7212096441') && F.eEGN('6411016956'));
+t('телефонът НЕ е ЕГН', !F.eEGN('0898681928'));
+t('ЕИК НЕ е ЕГН', !F.eEGN('204024246'));
+t('случайни десет цифри не минават', !F.eEGN('1234567890'));
+t('празното и текстът не минават', !F.eEGN('') && !F.eEGN('гр. София'));
+t('ЕГН се скрива', F._skritoEgn('7212096441') === '••••••••••');
 t('ЕИК на фирма се показва', F._skritoEgn('204024246') === '204024246');
-t('празното си остава празно', F._skritoEgn('') === '');
-t('друг текст не се пипа', F._skritoEgn('гр. София') === 'гр. София');
+
+// Вече събраното се чисти при всяко отваряне на данните.
+const pe = { sobstvenost: { lica: [
+    { id: 'a', ime: 'Иван Петров', egn: '7212096441' },
+    { id: 'b', ime: 'Фирма ООД', egn: '204024246', vid: 'юридическо' }] } };
+F._sbDanni(pe);
+t('запазено ЕГН се изтрива при отваряне', !pe.sobstvenost.lica[0].egn, pe.sobstvenost.lica[0]);
+t('ЕИК на фирмата остава', pe.sobstvenost.lica[1].egn === '204024246');
+
+// Приемането на прочетен акт не записва ЕГН, дори четецът да го върне.
+const pe2 = nov();
+pe2._sb_procheteno = {
+    fajl: 'na.pdf', nomer: '1', data: '01.01.2020',
+    lica: [{ ime: 'Иван Петров', egn_eik: '7212096441' },
+           { ime: 'Строй ЕООД', egn_eik: '204024246', vid: 'юридическо' }],
+    obekti: [{ identifikator: '1', vid: 'земя' }],
+    prehvarliania: [{ vid: 'покупко-продажба', ot: 'Иван Петров', na: 'Строй ЕООД',
+                      dyal: '1/1', obekt: '1' }],
+};
+F.sbPriemi();
+const lica2 = pe2.sobstvenost.lica;
+t('прочетено ЕГН не влиза в регистъра', !lica2.find(l => /Иван/.test(l.ime)).egn, lica2);
+t('прочетен ЕИК влиза', lica2.find(l => /Строй/.test(l.ime)).egn === '204024246');
 
 // ── 1. дроби ───────────────────────────────────────────────────────────────
 t('1/2 се чете', F._drTekst(F._dr('1/2')) === '1/2');
