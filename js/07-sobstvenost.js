@@ -67,7 +67,21 @@ function _sbDanni(p) {
     s.obekti = s.obekti || [];
     s.sabitia = s.sabitia || [];
     if (typeof eEGN === 'function') _sbIzchistiEgn(s);
+    _sbStaraForma(s);
     return s;
+}
+
+// Старите данни носеха по едно събитие на ДВИЖЕНИЕ: „от Иван на Мария 1/4“.
+// Новите носят по едно на АКТ, с придобиващите вътре. Старото се превръща, за
+// да не се губи; осем стари реда стават осем акта, не един — кой с кого върви
+// не се познава със сигурност и не се гадае. (15.10.2026)
+function _sbStaraForma(s) {
+    for (const e of s.sabitia) {
+        if (e.pridobivashti) continue;
+        e.pridobivashti = e.na ? [{ lice: e.na, dyal: e.dyal || '' }] : [];
+        delete e.na;
+        delete e.dyal;
+    }
 }
 const _sbLice = (s, id) => s.lica.find(x => x.id === id);
 const _sbImeLice = (s, id) => (_sbLice(s, id) || {}).ime || '(неизвестен)';
@@ -76,6 +90,15 @@ const _sbImeObekt = (s, id) => {
     const o = _sbObekt(s, id);
     return o ? (o.identifikator || o.opisanie || '(обект)') : '(обект)';
 };
+// Как се нарича един акт в изречение: „НА № 186 от 09.07.2019“.
+const _sbImeAkt = e => [
+    (e.dokument || e.vid || 'Актът').split(',')[0].trim(),
+    e.data ? 'от ' + e.data : '',
+].filter(Boolean).join(' ');
+
+// Имената се сравняват без оглед на интервали и главни букви.
+const _sbZnIme = x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
 const _sbNovId = () => 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 // Датата се пази както е въведена (дд.мм.гггг) — за подредба се обръща.
@@ -99,10 +122,17 @@ function _sbSmetka(p, obektId, doData) {
         .filter(e => e.obekt === obektId && _sbRed(e.data) <= pred)
         .sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)));
     for (const e of redove) {
-        const f = _dr(e.dyal);
-        if (!f) continue;
-        dvizh(e.na, f, +1);
-        dvizh(e.ot, f, -1);
+        let sbor = _NULA;
+        for (const pr of e.pridobivashti || []) {
+            const f = _dr(pr.dyal);
+            if (!f) continue;
+            dvizh(pr.lice, f, +1);
+            sbor = _drSabi(sbor, f);
+        }
+        // Прехвърлителят губи толкова, колкото са получили заедно. Ако той не
+        // е лице в регистъра, губенето няма къде да се запише — и не трябва:
+        // актът е коренът на веригата. (15.10.2026)
+        if (e.ot && sbor.n) dvizh(e.ot, sbor, -1);
     }
     return salda;
 }
@@ -160,7 +190,8 @@ function _sbNahodki(p) {
         // неговото придобиване да е вписано, и това е нормално: събраното вече
         // е 1/1 и назад не се копае. Дефект е само когато е придобил нещо и е
         // прехвърлил ПОВЕЧЕ от него. (Сан Стефано, 13.10.2026)
-        const pridobival = new Set(s.sabitia.filter(e => e.obekt === koren.id && e.na).map(e => e.na));
+        const pridobival = new Set(s.sabitia.filter(e => e.obekt === koren.id)
+            .flatMap(e => (e.pridobivashti || []).map(pr => pr.lice)).filter(Boolean));
         for (const [lice, f] of salda)
             if (f.n < 0 && pridobival.has(lice)) out.push({ vid: 'minus', obekt: koren.id,
                 tekst: `${_sbImeImeBezopasno(s, lice)} е прехвърлил ${_drTekst({ n: -f.n, d: f.d })} `
@@ -177,25 +208,32 @@ function _sbNahodki(p) {
     // дефект в самия запис, независимо кой е коренът.
     const vazhni = koren ? s.sabitia.filter(e => e.obekt === koren.id) : [];
     for (const e of vazhni) {
-        if (!e.ot && e.vid !== 'първоначално')
-            out.push({ vid: 'otnikade', sabitie: e.id,
-                tekst: `${_sbImeImeBezopasno(s, e.na)} придобива без да е посочено от кого (${e.data}).` });
-        if (!_dr(e.dyal))
-            out.push({ vid: 'dyal', sabitie: e.id,
-                tekst: `Дялът „${e.dyal || ''}“ в ${e.data} не се чете — пиши дроб (1/2) или процент (8,38%).` });
+        if (!(e.pridobivashti || []).length)
+            out.push({ vid: 'prazen_akt', sabitie: e.id,
+                tekst: `${_sbImeAkt(e)} няма придобиващ — кой получава правото?` });
+        for (const pr of e.pridobivashti || []) {
+            if (!_dr(pr.dyal))
+                out.push({ vid: 'dyal', sabitie: e.id,
+                    tekst: `Дялът „${pr.dyal || ''}“ в ${_sbImeAkt(e)} не се чете `
+                         + `— пиши дроб (1/2) или процент (8,38%).` });
+        }
     }
     // Събитие, което сочи изтрито лице или обект. Не бива да се случва след
     // поправката на изтриването, но старите данни го носят. (15.10.2026)
     for (const e of s.sabitia) {
-        for (const [pole, kakvo] of [['ot', 'прехвърлителят'], ['na', 'приобретателят']]) {
-            if (e[pole] && !_sbLice(s, e[pole]))
+        if (e.ot && !_sbLice(s, e.ot))
+            out.push({ vid: 'sirache', sabitie: e.id,
+                tekst: `${_sbImeAkt(e)}: прехвърлителят е изтрит от списъка с лица `
+                     + `— впиши го наново или махни акта.` });
+        for (const pr of e.pridobivashti || []) {
+            if (pr.lice && !_sbLice(s, pr.lice))
                 out.push({ vid: 'sirache', sabitie: e.id,
-                    tekst: `Събитие от ${e.data || 'без дата'}: ${kakvo} е изтрит от списъка с лица `
-                         + `— впиши го наново или махни събитието.` });
+                    tekst: `${_sbImeAkt(e)}: придобиващият е изтрит от списъка с лица `
+                         + `— впиши го наново или махни акта.` });
         }
         if (e.obekt && !_sbObekt(s, e.obekt))
             out.push({ vid: 'sirache', sabitie: e.id,
-                tekst: `Събитие от ${e.data || 'без дата'} сочи изтрит обект.` });
+                tekst: `${_sbImeAkt(e)} сочи изтрит обект.` });
     }
 
     // Еднакви изречения не се повтарят.
@@ -465,16 +503,29 @@ function _sbTablici(p) {
             <button class="btn btn-ghost btn-sm" onclick="sbMahni('obekti','${o.id}')">×</button></div>`;
     }).join('');
 
+    // Един ред на АКТ, не на движение. Придобиващите са вътре в него.
+    // (Операторът, 15.10.2026: „ако събитие е НА, то това събитие е 1“.)
     const sabitia = [...s.sabitia]
         .sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)))
-        .map(e => `<div>${esc(e.data)} · ${esc(e.vid)} · <strong>${esc(_drTekst(_dr(e.dyal) || { n: 0, d: 1 }))}</strong>
-            от ${esc(e.ot ? _sbImeLice(s, e.ot) : '—')} на ${esc(_sbImeLice(s, e.na))}
-            <span style="color:var(--muted)">· ${esc(_sbImeObekt(s, e.obekt))}${e.dokument ? ' · ' + esc(e.dokument) : ''}</span>
-            <button class="btn btn-ghost btn-sm" onclick="sbMahni('sabitia','${e.id}')">×</button></div>`).join('');
+        .map(e => {
+            const kak = (e.pridobivashti || []).map(pr =>
+                `${esc(_sbImeLice(s, pr.lice))} <strong>${esc(pr.dyal || '?')}</strong>`).join(' · ');
+            const ot = e.ot ? _sbImeLice(s, e.ot) : (e.ot_opisanie || '');
+            return `<div style="padding:5px 0;border-bottom:1px solid var(--border-light)">
+                <div><strong>${esc(e.vid || 'придобиване')}</strong>${e.data ? ' · ' + esc(e.data) : ''}
+                    <span style="color:var(--muted)">· ${esc(_sbImeObekt(s, e.obekt))}</span>
+                    <button class="btn btn-ghost btn-sm" onclick="sbMahni('sabitia','${e.id}')">×</button></div>
+                <div style="margin-left:14px">придобиват: ${kak || '<span style="color:var(--red)">никой</span>'}</div>
+                ${ot ? `<div style="margin-left:14px;color:var(--muted)">от: ${esc(ot)}${
+                    e.ot ? '' : ' <span style="font-size:11px">(по акта; не е вписан като лице)</span>'}</div>` : ''}
+                ${e.dokument ? `<div style="margin-left:14px;color:var(--muted);font-size:11.5px">${esc(e.dokument)}</div>` : ''}
+            </div>`;
+        }).join('');
 
     return red(`\u{1F464} Лица (${s.lica.length})`, lica, '+ Добави лице', 'sbDobaviLice()')
          + red(`\u{1F3E0} Обекти (${s.obekti.length})`, obekti, '+ Добави обект', 'sbDobaviObekt()')
-         + red(`\u{1F4DC} Събития (${s.sabitia.length})`, sabitia, '+ Добави събитие', 'sbDobaviSabitie()');
+         + red(`\u{1F4DC} Актове за придобиване (нот. актове и/или други документи) · ${s.sabitia.length}`, sabitia,
+                '+ Впиши акт', 'sbDobaviSabitie()');
 }
 
 // ── четенето на акт ───────────────────────────────────────────────────────
@@ -602,10 +653,12 @@ function _drDeli(tekst, n) {
 // осем прехвърляния на шестнайсет. (ЖИТЕН, 15.10.2026)
 function _sbEdnakvi(s, a, b) {
     const ime = id => (id ? String((_sbLice(s, id) || {}).ime || id).trim().toLowerCase() : '');
+    const spisak = e => (e.pridobivashti || [])
+        .map(pr => ime(pr.lice) + ' ' + String(pr.dyal || '').trim()).sort().join(' | ');
     return a.obekt === b.obekt && a.vid === b.vid
-        && ime(a.ot) === ime(b.ot) && ime(a.na) === ime(b.na)
-        && String(a.dyal).trim() === String(b.dyal).trim()
-        && String(a.data || '').trim() === String(b.data || '').trim();
+        && ime(a.ot) === ime(b.ot)
+        && String(a.data || '').trim() === String(b.data || '').trim()
+        && spisak(a) === spisak(b);
 }
 
 function sbPriemi() {
@@ -619,10 +672,18 @@ function sbPriemi() {
     const imena = v => String(v || '').split(/\s*(?:,|;| и )\s*/)
         .map(x => x.trim()).filter(x => x.length > 2);
 
+    // Намира лице, ако вече е в регистъра. НЕ създава — създаването е само
+    // при придобиване.
+    const nameriLice = (ime) => {
+        const l = s.lica.find(x => klyuch(x.ime) === klyuch(ime));
+        return l ? l.id : null;
+    };
+
     const lice = (ime, dop) => {
         if (!klyuch(ime)) return null;
         let l = s.lica.find(x => klyuch(x.ime) === klyuch(ime));
         if (!l) { l = { id: _sbNovId(), ime: String(ime).trim(), vid: 'физическо' }; s.lica.push(l); }
+        dop = dop || dopalnenia[klyuch(ime)];
         if (dop) { if (dop.vid) l.vid = dop.vid;
                    if (dop.egn_eik && !eEGN(dop.egn_eik)) l.egn = l.egn || dop.egn_eik;
                    if (dop.pochinal) l.pochinal = l.pochinal || dop.pochinal; }
@@ -643,8 +704,11 @@ function sbPriemi() {
         return o.id;
     };
 
-    // Лицата — всички: те са страните по акта.
-    for (const l of ch.lica || []) lice(l.ime, l);
+    // Лицата НЕ се създават вкупом. Създава се този, който придобива —
+    // по-долу, при самия акт. Тук само се запомнят допълненията (вид, ЕИК),
+    // за да се ползват, ако лицето наистина влезе.
+    const dopalnenia = {};
+    for (const l of ch.lica || []) if (l && l.ime) dopalnenia[klyuch(l.ime)] = l;
     // Обектите — САМО тези, в които има прехвърляне. Актът изброява и чужди
     // обекти, за да ги изключи от сделката („всички останали обекти в
     // комплекса“); те не са обекти на този регистър. (13.10.2026)
@@ -659,32 +723,35 @@ function sbPriemi() {
                       ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
                       ch.notarius && 'нотариус ' + ch.notarius].filter(Boolean).join(', ');
     let n = 0, veche = 0;
+    // ЕДИН АКТ — ЕДНО СЪБИТИЕ. Дяловете са вътре в него, не са отделни
+    // събития. (Операторът, 15.10.2026: „ако събитие е НА, то това събитие е
+    // 1, а не 2“.)
+    //
+    // И: ЛИЦЕ СЕ СЪЗДАВА, КОГАТО ПРИДОБИВА. Прехвърлителят е описание към
+    // акта, докато не докажем и неговото придобиване — тогава се качва
+    // неговият акт и той вече придобива. Затова четиримата продавачи на
+    // ЖИТЕН не стават лица: те са в разказа, не в регистъра.
     for (const x of ch.prehvarliania || []) {
         const poluchateli = imena(x.na);
         if (!poluchateli.length) continue;
         const dava = imena(x.ot);
-        // Четирима продават на двама: това са ОСЕМ движения по 1/8, не едно.
-        // Събитието е винаги между ДВЕ лица — иначе салдото не се смята.
-        // (ЖИТЕН, 14.10.2026)
-        const dvoyki = dava.length
-            ? dava.flatMap(ot => poluchateli.map(na => [ot, na]))
-            : poluchateli.map(na => [null, na]);
-        const dyal = _drDeli(x.dyal, dvoyki.length);
         const obektId = obekt(x.obekt);
-        for (const [ot, na] of dvoyki) {
-            const sabitie = {
-                id: _sbNovId(), obekt: obektId, vid: x.vid || 'покупко-продажба',
-                ot: ot ? lice(ot) : null, na: lice(na),
-                dyal, data: ch.data || '',
-                dokument, ot_chetene: ch.fajl || '', citat: x.citat || '',
-            };
-            // Второ натискане на „Приеми“ не бива да удвоява веригата.
-            // (Операторът, 14.10.2026: „когато натисна приеми, ги трупа всички“.)
-            if (s.sabitia.some(e => _sbEdnakvi(s, e, sabitie))) { veche++; continue; }
-            s.sabitia.push(sabitie);
-            n++;
-        }
+        const dyal = _drDeli(x.dyal, poluchateli.length);
+        // Прехвърлителят става лице САМО ако вече е в регистъра — тогава
+        // салдото му трябва да падне. Иначе остава име върху акта.
+        const otLice = dava.length === 1 ? nameriLice(dava[0]) : null;
+        const sabitie = {
+            id: _sbNovId(), obekt: obektId, vid: x.vid || 'покупко-продажба',
+            data: ch.data || '', dokument,
+            ot: otLice, ot_opisanie: dava.join(', '),
+            pridobivashti: poluchateli.map(na => ({ lice: lice(na), dyal })),
+            ot_chetene: ch.fajl || '', citat: x.citat || '',
+        };
+        if (s.sabitia.some(e => _sbEdnakvi(s, e, sabitie))) { veche++; continue; }
+        s.sabitia.push(sabitie);
+        n++;
     }
+
     delete p._sb_procheteno;
     _sbZapishi(p, veche
         ? `${n} нови прехвърляния от „${ch.fajl || ''}“ · ${veche} вече ги имаше`
@@ -750,7 +817,7 @@ function sbDobaviSabitie() {
     const p = _zhivObekt(); if (!p) return;
     const s = _sbDanni(p);
     if (!s.obekti.length) return alert('Първо добави обект.');
-    if (!s.lica.length) return alert('Първо добави лице.');
+
     const izbor = (spisak, podkana) => {
         const red = spisak.map((x, i) => `${i + 1}. ${x.tekst}`).join(String.fromCharCode(10));
         const o = prompt(podkana + String.fromCharCode(10, 10) + red);
@@ -758,22 +825,50 @@ function sbDobaviSabitie() {
         const i = parseInt(o, 10) - 1;
         return spisak[i] ? spisak[i].id : null;
     };
+
     const obekt = izbor(s.obekti.map(o => ({ id: o.id, tekst: _sbImeObekt(s, o.id) })), 'За кой обект?');
-    if (obekt === undefined || obekt === null) return;
-    const vid = (prompt('Вид на събитието:' + String.fromCharCode(10, 10) + _SB_VID.join(', '),
+    if (!obekt) return;
+
+    const vid = (prompt('Какъв е документът?' + String.fromCharCode(10, 10) + _SB_VID.join(', '),
                         'покупко-продажба') || '').trim();
     if (!vid) return;
-    const lica = s.lica.map(l => ({ id: l.id, tekst: l.ime }));
-    const ot = vid === 'първоначално' ? null : izbor(lica, 'От кого? (празно = от никого)');
-    if (ot === undefined) return;
-    const na = izbor(lica, 'На кого?');
-    if (!na) return;
-    const dyal = (prompt('Дял — ДРОБ, не процент: 1/1, 1/2, 1/6', '1/1') || '').trim();
-    if (!_dr(dyal)) return alert('Дялът трябва да е дроб: 1/2, 1/6, 1.');
+
+    // Придобиващите: по един на ред, с дяла след името.
+    // „Иван Петров 1/2“ — така се пише цял акт наведнъж.
+    const redove = (prompt(
+        'Кой придобива и с какъв дял?' + String.fromCharCode(10, 10)
+        + 'По един на ред, дялът след името:' + String.fromCharCode(10)
+        + 'Даниела Валентинова Занева 1/2' + String.fromCharCode(10)
+        + 'Павел Валериев Христов 1/2') || '').split(String.fromCharCode(10))
+        .map(x => x.trim()).filter(Boolean);
+    if (!redove.length) return;
+
+    const pridobivashti = [];
+    for (const red of redove) {
+        const m = red.match(/^(.+?)\s+([0-9]+\s*\/\s*[0-9]+|[0-9]+(?:[.,][0-9]+)?\s*%|1)$/);
+        if (!m) return alert(`Не разбирам реда „${red}“.\n\nПиши име и дял: Иван Петров 1/2`);
+        const ime = m[1].trim(), dyal = m[2].trim();
+        if (!_dr(dyal)) return alert(`Дялът „${dyal}“ не се чете. Пиши дроб (1/2) или процент (8,38%).`);
+        let l = s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(ime));
+        if (!l) {
+            const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(ime);
+            l = { id: _sbNovId(), ime, vid: yur ? 'юридическо' : 'физическо', egn: '' };
+            s.lica.push(l);
+        }
+        pridobivashti.push({ lice: l.id, dyal });
+    }
+
+    // Прехвърлителят е ОПИСАНИЕ, докато не докажем и неговото придобиване.
+    const otTekst = (prompt('От кого? (имената, както са в акта; празно = не се сочи)') || '').trim();
+    const otLice = otTekst
+        ? (s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(otTekst)) || {}).id || null : null;
+
     const data = (prompt('Дата (дд.мм.гггг):') || '').trim();
-    const dokument = (prompt('Документ — НА № …, том, рег. №, нотариус:') || '').trim();
-    s.sabitia.push({ id: _sbNovId(), obekt, vid, ot, na, dyal, data, dokument });
-    _sbZapishi(p, `${vid} ${dyal} · ${data}`);
+    const dokument = (prompt('Документът — НА № …, том, рег. №, дело, нотариус:') || '').trim();
+
+    s.sabitia.push({ id: _sbNovId(), obekt, vid, data, dokument,
+                     ot: otLice, ot_opisanie: otTekst, pridobivashti });
+    _sbZapishi(p, `${vid}${data ? ' от ' + data : ''} — ${pridobivashti.length} придобиващи`);
 }
 
 // Лице или обект, който участва в събития, не се маха мълчаливо: събитията му
@@ -783,7 +878,9 @@ function sbMahni(tablica, id) {
     const p = _zhivObekt(); if (!p) return;
     const s = _sbDanni(p);
     const svarzani = tablica === 'sabitia' ? []
-        : s.sabitia.filter(e => tablica === 'lica' ? (e.ot === id || e.na === id) : e.obekt === id);
+        : s.sabitia.filter(e => tablica === 'lica'
+            ? (e.ot === id || (e.pridobivashti || []).some(pr => pr.lice === id))
+            : e.obekt === id);
     const ime = tablica === 'lica' ? _sbImeLice(s, id)
               : tablica === 'obekti' ? _sbImeObekt(s, id) : 'реда';
 
