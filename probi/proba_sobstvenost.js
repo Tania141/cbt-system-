@@ -130,6 +130,12 @@ const AKT = {
                       na: 'Даниела Валентинова Занева, Павел Валериев Христов',
                       dyal: '1/1', obekt: '29430.4713.49' }],
 };
+// Истинският акт на ЖИТЕН носи И РАЗКАЗА: четецът дава два реда — как
+// четиримата са станали собственици, и самата продажба. (15.10.2026)
+AKT.prehvarliania.unshift({ vid: 'първоначално', ot: '', na: CHETVARMATA,
+                            dyal: '1/1', obekt: '29430.4713.49' });
+AKT.vid = 'договор за покупко-продажба';   // четецът бърка вида на документа
+
 const p3 = nov();
 p3._sb_procheteno = JSON.parse(JSON.stringify(AKT));
 F.sbPriemi();
@@ -142,6 +148,13 @@ t('двамата придобиват по 1/2',
   s3.sabitia[0].pridobivashti.every(pr => pr.dyal === '1/2'), s3.sabitia[0].pridobivashti);
 t('един обект', s3.obekti.length === 1);
 t('документът е сглобен', /№ 186.*том III.*рег\. № 10350/.test(s3.sabitia[0].dokument), s3.sabitia[0].dokument);
+// Видът на ДОКУМЕНТА не е видът на СДЕЛКАТА: щом има том и нотариус, това е
+// нотариален акт, каквато и да е сделката вътре.
+t('документът е НОТАРИАЛЕН АКТ, не договор',
+  /^нотариален акт/.test(s3.sabitia[0].dokument), s3.sabitia[0].dokument);
+t('думата „нотариус“ не се удвоява',
+  !/нотариус\s+[^,]*нотариус/i.test(s3.sabitia[0].dokument), s3.sabitia[0].dokument);
+t('разказът не е записан като втори акт', s3.sabitia.length === 1, s3.sabitia.length);
 s3.koren = s3.obekti[0].id;
 t('веригата връзва от първия акт', F._sbNahodki(p3).length === 0, F._sbNahodki(p3));
 

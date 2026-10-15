@@ -129,10 +129,14 @@ function _sbSmetka(p, obektId, doData) {
             dvizh(pr.lice, f, +1);
             sbor = _drSabi(sbor, f);
         }
-        // Прехвърлителят губи толкова, колкото са получили заедно. Ако той не
-        // е лице в регистъра, губенето няма къде да се запише — и не трябва:
-        // актът е коренът на веригата. (15.10.2026)
-        if (e.ot && sbor.n) dvizh(e.ot, sbor, -1);
+        // Прехвърлителите губят толкова, колкото са получили приобретателите.
+        // Ако не са лица в регистъра, губенето няма къде да се запише — и не
+        // трябва: актът е коренът на веригата. (15.10.2026)
+        const dava = e.ot_lica && e.ot_lica.length ? e.ot_lica : (e.ot ? [e.ot] : []);
+        if (dava.length && sbor.n) {
+            const vseki = _drSvi({ n: sbor.n, d: sbor.d * dava.length });
+            for (const l of dava) dvizh(l, vseki, -1);
+        }
     }
     return salda;
 }
@@ -719,9 +723,19 @@ function sbPriemi() {
         if (zasegnati.has(k1) || zasegnati.has(k2)) obekt(o.identifikator || o.opisanie);
     }
 
-    const dokument = [ch.vid, ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
+    // Видът на ДОКУМЕНТА не е видът на СДЕЛКАТА. Щом има том, регистър, дело
+    // или нотариус — документът е нотариален акт, каквато и да е сделката
+    // вътре. (Операторът, 15.10.2026: „НА е записан като договор за
+    // покупко-продажба“.)
+    const notarialen = [ch.tom, ch.registar, ch.delo, ch.notarius]
+        .some(x => String(x || '').trim());
+    const vidDokument = notarialen ? 'нотариален акт' : (ch.vid || 'документ за собственост');
+    // „Росица Рашева – Нотариус“ → „Росица Рашева“: думата я пишем ние.
+    const notarius = String(ch.notarius || '')
+        .replace(/[\s–—-]*нотариус\s*$/i, '').trim();
+    const dokument = [vidDokument, ch.nomer && '№ ' + ch.nomer, ch.tom && 'том ' + ch.tom,
                       ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
-                      ch.notarius && 'нотариус ' + ch.notarius].filter(Boolean).join(', ');
+                      notarius && 'нотариус ' + notarius].filter(Boolean).join(', ');
     let n = 0, veche = 0;
     // ЕДИН АКТ — ЕДНО СЪБИТИЕ. Дяловете са вътре в него, не са отделни
     // събития. (Операторът, 15.10.2026: „ако събитие е НА, то това събитие е
@@ -731,19 +745,34 @@ function sbPriemi() {
     // акта, докато не докажем и неговото придобиване — тогава се качва
     // неговият акт и той вече придобива. Затова четиримата продавачи на
     // ЖИТЕН не стават лица: те са в разказа, не в регистъра.
-    for (const x of ch.prehvarliania || []) {
+    // РАЗКАЗЪТ НЕ СЕ ЗАПИСВА. Нотариалният акт почти винаги започва с това как
+    // продавачът е станал собственик — по наследство, по делба, по предишна
+    // покупка. За четеца това изглежда като още едно прехвърляне.
+    //
+    // Познава се по правило, не по догадка: ако някой придобива в един ред и
+    // прехвърля в друг ред от СЪЩИЯ документ, първият ред е предисловие.
+    // Актът доказва собствеността на крайния приобретател; нагоре не се копае.
+    // (Операторът, 15.10.2026: „четиримата продавачи са в разказа.“)
+    const redove = ch.prehvarliania || [];
+    const prehvarliat = new Set(redove.flatMap(x => imena(x.ot).map(klyuch)));
+    const sdelki = redove.filter(x => !imena(x.na).every(na => prehvarliat.has(klyuch(na))));
+    // Замяна: двамата си прехвърлят взаимно и правилото би изхвърлило всичко.
+    for (const x of (sdelki.length ? sdelki : redove)) {
         const poluchateli = imena(x.na);
         if (!poluchateli.length) continue;
         const dava = imena(x.ot);
         const obektId = obekt(x.obekt);
         const dyal = _drDeli(x.dyal, poluchateli.length);
-        // Прехвърлителят става лице САМО ако вече е в регистъра — тогава
-        // салдото му трябва да падне. Иначе остава име върху акта.
-        const otLice = dava.length === 1 ? nameriLice(dava[0]) : null;
+        // Прехвърлителите стават лица САМО ако вече са в регистъра — тогава
+        // салдата им трябва да паднат. Иначе остават имена върху акта.
+        const otLica = dava.map(nameriLice).filter(Boolean);
+        const otLice = otLica.length === dava.length && otLica.length === 1 ? otLica[0] : null;
         const sabitie = {
             id: _sbNovId(), obekt: obektId, vid: x.vid || 'покупко-продажба',
             data: ch.data || '', dokument,
-            ot: otLice, ot_opisanie: dava.join(', '),
+            ot: otLice,
+            ot_lica: otLica.length === dava.length && otLica.length > 1 ? otLica : undefined,
+            ot_opisanie: dava.join(', '),
             pridobivashti: poluchateli.map(na => ({ lice: lice(na), dyal })),
             ot_chetene: ch.fajl || '', citat: x.citat || '',
         };
