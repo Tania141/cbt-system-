@@ -184,6 +184,20 @@ function _sbNahodki(p) {
             out.push({ vid: 'dyal', sabitie: e.id,
                 tekst: `Дялът „${e.dyal || ''}“ в ${e.data} не се чете — пиши дроб (1/2) или процент (8,38%).` });
     }
+    // Събитие, което сочи изтрито лице или обект. Не бива да се случва след
+    // поправката на изтриването, но старите данни го носят. (15.10.2026)
+    for (const e of s.sabitia) {
+        for (const [pole, kakvo] of [['ot', 'прехвърлителят'], ['na', 'приобретателят']]) {
+            if (e[pole] && !_sbLice(s, e[pole]))
+                out.push({ vid: 'sirache', sabitie: e.id,
+                    tekst: `Събитие от ${e.data || 'без дата'}: ${kakvo} е изтрит от списъка с лица `
+                         + `— впиши го наново или махни събитието.` });
+        }
+        if (e.obekt && !_sbObekt(s, e.obekt))
+            out.push({ vid: 'sirache', sabitie: e.id,
+                tekst: `Събитие от ${e.data || 'без дата'} сочи изтрит обект.` });
+    }
+
     // Еднакви изречения не се повтарят.
     const vidyani = new Set();
     return out.filter(n => !vidyani.has(n.tekst) && vidyani.add(n.tekst));
@@ -582,8 +596,14 @@ function _drDeli(tekst, n) {
 // Две събития са едно и също, когато съвпадат по обект, вид, страни, дял и
 // дата. Номерът на документа НЕ влиза: същият акт, препрочетен с поправен
 // номер, пак е същото прехвърляне.
-function _sbEdnakvi(a, b) {
-    return a.obekt === b.obekt && a.vid === b.vid && a.ot === b.ot && a.na === b.na
+//
+// Страните се сравняват по ИМЕ, не по вътрешен номер: изтрито и пресъздадено
+// лице получава нов номер и същото събитие минаваше за ново. Така се удвоиха
+// осем прехвърляния на шестнайсет. (ЖИТЕН, 15.10.2026)
+function _sbEdnakvi(s, a, b) {
+    const ime = id => (id ? String((_sbLice(s, id) || {}).ime || id).trim().toLowerCase() : '');
+    return a.obekt === b.obekt && a.vid === b.vid
+        && ime(a.ot) === ime(b.ot) && ime(a.na) === ime(b.na)
         && String(a.dyal).trim() === String(b.dyal).trim()
         && String(a.data || '').trim() === String(b.data || '').trim();
 }
@@ -660,7 +680,7 @@ function sbPriemi() {
             };
             // Второ натискане на „Приеми“ не бива да удвоява веригата.
             // (Операторът, 14.10.2026: „когато натисна приеми, ги трупа всички“.)
-            if (s.sabitia.some(e => _sbEdnakvi(e, sabitie))) { veche++; continue; }
+            if (s.sabitia.some(e => _sbEdnakvi(s, e, sabitie))) { veche++; continue; }
             s.sabitia.push(sabitie);
             n++;
         }
@@ -756,12 +776,30 @@ function sbDobaviSabitie() {
     _sbZapishi(p, `${vid} ${dyal} · ${data}`);
 }
 
+// Лице или обект, който участва в събития, не се маха мълчаливо: събитията му
+// остават да сочат в празното и излизат като „от (неизвестен)“. Операторът го
+// видя на ЖИТЕН. (15.10.2026)
 function sbMahni(tablica, id) {
     const p = _zhivObekt(); if (!p) return;
     const s = _sbDanni(p);
-    if (!confirm('Да го махна ли?')) return;
+    const svarzani = tablica === 'sabitia' ? []
+        : s.sabitia.filter(e => tablica === 'lica' ? (e.ot === id || e.na === id) : e.obekt === id);
+    const ime = tablica === 'lica' ? _sbImeLice(s, id)
+              : tablica === 'obekti' ? _sbImeObekt(s, id) : 'реда';
+
+    if (svarzani.length) {
+        if (!confirm(`„${ime}“ участва в ${svarzani.length} `
+            + `${svarzani.length === 1 ? 'събитие' : 'събития'}.\n\n`
+            + `Да ги махна ли заедно с него?\n`
+            + `Ако откажеш, нищо не се маха — събитията не бива да сочат в празното.`)) return;
+        s.sabitia = s.sabitia.filter(e => !svarzani.includes(e));
+    } else if (!confirm(`Да махна ли „${ime}“?`)) {
+        return;
+    }
     s[tablica] = s[tablica].filter(x => x.id !== id);
-    _sbZapishi(p, 'махнат ред');
+    _sbZapishi(p, svarzani.length
+        ? `махнат „${ime}“ и ${svarzani.length} негови събития`
+        : `махнат „${ime}“`);
 }
 
 

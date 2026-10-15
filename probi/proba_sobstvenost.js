@@ -21,16 +21,16 @@ const F = new Function(
     + [grab('_sbIzchistiEgn'), 'const _skritoEgn = v => skriiEGN(v);'].join('\n') + '\n'
     + parche('const _SB_REDOVE =', 'function _sbKoren')
     + parche('const _DOP_REDOVE =', 'function _dopalniCheklist')
-    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
+    + [grab('_dopalniCheklist'), grab('_drDeli'), grab('sbPopravi'), grab('_sbEdnakvi'), grab('sbMahni'), grab('_sbSmetka'), grab('_sbSabrano'), grab('_sbVazlozhiteli'), grab('_sbKoren'),
        grab('_sbNahodki'), grab('_sbSastoyanie'), grab('_sbPodmeniCheklist'),
        grab('_sbDveImena'), grab('_sbKlienti'), grab('_sbPredstavitel')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=()=>{};const _prerisuvai=()=>{};'
-    + 'const showAlert=()=>{};\n'
+    + 'const showAlert=()=>{};const confirm=()=>true;\n'
     + grab('sbPriemi')
     + '\nreturn {_skritoEgn,eEGN,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,_sbVazlozhiteli,'
     + '_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,sbPopravi,set:p=>{_t=p}};')();
+    + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,set:p=>{_t=p}};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -267,6 +267,47 @@ t('днешните собственици са двамата купувачи'
   F._sbVazlozhiteli(pj, '').map(x => x.ime).sort().join(' / ')
     === 'Даниела Валентинова Занева / Павел Валериев Христов',
   F._sbVazlozhiteli(pj, '').map(x => x.ime));
+
+// ── 6в. ЖИТЕН: изтрито лице и повторно приемане ───────────────────────────
+// Операторът изтри четиримата продавачи, за да види може ли. Събитията им
+// останаха да сочат в празното („от (неизвестен)“), а повторното приемане ги
+// удвои от осем на шестнайсет. (15.10.2026)
+const pz = nov();
+const CHETVARMATA_2 = 'Трендафил Ангелов Трайков, Теодора Цветкова Трайкова';
+const AKT = {
+    fajl: 'НА.PDF', vid: 'нотариален акт', nomer: '186', data: '09.07.2019',
+    lica: CHETVARMATA_2.split(', ').map(ime => ({ ime }))
+        .concat([{ ime: 'Даниела Валентинова Занева' }, { ime: 'Павел Валериев Христов' }]),
+    obekti: [{ identifikator: '29430.4713.49', vid: 'земя' }],
+    prehvarliania: [{ vid: 'покупко-продажба', ot: CHETVARMATA_2,
+                      na: 'Даниела Валентинова Занева, Павел Валериев Христов',
+                      dyal: '1/1', obekt: '29430.4713.49' }],
+};
+pz._sb_procheteno = JSON.parse(JSON.stringify(AKT));
+F.sbPriemi();
+const brojSled = pz.sobstvenost.sabitia.length;
+t('двама продават на двама → четири движения', brojSled === 4, brojSled);
+
+// Изтриваме едно лице заедно със събитията му, после приемаме пак.
+const prodavach = pz.sobstvenost.lica.find(l => /Трендафил/.test(l.ime));
+F.sbMahni('lica', prodavach.id);
+t('изтритото лице отнася и събитията си',
+  !pz.sobstvenost.sabitia.some(e => e.ot === prodavach.id || e.na === prodavach.id),
+  pz.sobstvenost.sabitia.length);
+t('няма сирачета след изтриване',
+  !F._sbNahodki(pz).some(n => n.vid === 'sirache'), F._sbNahodki(pz));
+
+pz._sb_procheteno = JSON.parse(JSON.stringify(AKT));
+F.sbPriemi();
+t('повторното приемане не удвоява, въпреки новия номер на лицето',
+  pz.sobstvenost.sabitia.length === 4, pz.sobstvenost.sabitia.length);
+
+// Сираче от стари данни се вижда.
+pz.sobstvenost.sabitia.push({ id: 'x', obekt: pz.sobstvenost.obekti[0].id,
+    vid: 'покупко-продажба', ot: 'нямаготакова', na: pz.sobstvenost.lica[0].id,
+    dyal: '1/8', data: '01.01.2020' });
+t('старо сираче се показва като находка',
+  F._sbNahodki(pz).some(n => n.vid === 'sirache'), F._sbNahodki(pz).map(n => n.vid));
 
 // ── 7. случаят „Сан Стефано“: проценти и изброени чужди обекти ────────────
 // Операторът, 13.10.2026: 28 забележки, от които значение имат две.
