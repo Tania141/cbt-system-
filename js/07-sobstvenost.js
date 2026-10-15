@@ -328,6 +328,11 @@ function renderSobstvenostPage() {
     if (!p) return;
     document.getElementById('sobstvenost-content').innerHTML =
         _lentaObekt(p, 'sobstvenost') + _sbHtml(p);
+    try {
+        const c = localStorage.getItem('sb_chetec') || 'mistral';
+        const el = document.getElementById('sb-chetec');
+        if (el) el.value = c;
+    } catch (e) {}
 }
 
 function _sbHtml(p) {
@@ -401,6 +406,17 @@ function _sbHtml(p) {
                 <label for="sb-stranici" style="font-size:12.5px;color:var(--muted)">Страници (по избор):</label>
                 <input type="text" id="sb-stranici" class="form-input" style="width:150px" placeholder="напр. 1-4, 20">
                 <span style="font-size:11.5px;color:var(--muted)">за дълъг PDF с много актове — по-малко токени</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                <label for="sb-chetec" style="font-size:12.5px;color:var(--muted)">Четец:</label>
+                <select id="sb-chetec" class="form-input" style="width:auto;font-size:13px"
+                        onchange="try { localStorage.setItem('sb_chetec', this.value) } catch (e) {}">
+                    <option value="mistral">Mistral — френска фирма, обработката остава в ЕС</option>
+                    <option value="claude">Claude — по-точен, но обработва в САЩ</option>
+                    <option value="auto">Автоматично</option>
+                </select>
+                <span style="font-size:11.5px;color:var(--muted)">
+                    документите за собственост носят лични данни</span>
             </div>
             <div id="sb-hod" style="font-size:12.5px;color:var(--muted);margin-top:8px"></div>
         </div>`;
@@ -530,7 +546,11 @@ async function sbCheti() {
     try {
         const r = await apiCall('/api/sobstvenost/chete', 'POST', {
             pi: p.pi,
-            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            // Документите за собственост носят лични данни, затова се четат с
+            // европейски доставчик. Mistral е френска фирма и обработката
+            // остава в ЕС; Claude е в САЩ. Изборът е отделен от общия четец —
+            // тук по подразбиране не е „auto“. (Операторът, 15.10.2026)
+            chetec: localStorage.getItem('sb_chetec') || 'mistral',
             stranici: (document.getElementById('sb-stranici') || {}).value || '',
             fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
         });
