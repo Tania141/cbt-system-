@@ -262,6 +262,29 @@ function _sbDveImena(ime) {
 
 // Възложителите към дата, в вида, който шаблоните вече приемат. Празен списък
 // значи „регистърът още не е пълнен“ — тогава се ползва писаното на ръка.
+// Правното основание в ОСИП — досега точки: „Правно основание: ......“.
+// Регистърът го знае: това са актовете, с които ДНЕШНИТЕ възложители държат
+// правата си. Изброяват се по веднъж, в реда на датите. Непопълнен регистър
+// връща празно и шаблонът си оставя точките. (Операторът, 16.10.2026: „никъде
+// не записва НА“.)
+function _sbPravnoOsnovanie(p, data) {
+    const s = _sbDanni(p);
+    const nositeli = new Set(_sbVazlozhiteli(p, data).map(v => v.lice));
+    if (!nositeli.size) return '';
+    const pred = data ? _sbRed(data) : '99999999';
+    const vidyani = new Set(), redove = [];
+    for (const e of [...s.sabitia].sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)))) {
+        if (_sbRed(e.data) > pred) continue;
+        if (!(e.pridobivashti || []).some(pr => nositeli.has(pr.lice))) continue;
+        const tekst = [e.dokument || e.vid || '', e.data ? 'от ' + e.data : '']
+            .filter(Boolean).join(' ').trim();
+        if (!tekst || vidyani.has(tekst)) continue;
+        vidyani.add(tekst);
+        redove.push(tekst.charAt(0).toUpperCase() + tekst.slice(1));
+    }
+    return redove.join('; ');
+}
+
 function _sbKlienti(p, data) {
     const s = _sbDanni(p);
     return _sbVazlozhiteli(p, data).map(v => {

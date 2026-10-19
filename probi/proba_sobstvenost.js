@@ -21,7 +21,7 @@ const F = new Function(
        grab(s, '_sbEdnakvi'), grab(s, 'sbMahni'), grab(s, '_sbSmetka'),
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
-       grab(s, '_sbDveImena'), grab(s, '_sbKlienti'), grab(s, '_sbPredstavitel'),
+       grab(s, '_sbDveImena'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPredstavitel'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -29,7 +29,7 @@ const F = new Function(
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + '_sbDveImena,_sbKlienti,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + '_sbDveImena,_sbKlienti,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -273,6 +273,34 @@ s8.sabitia.push(akt('upi', { vid: 'първоначално', data: '16.06.2009'
 t('8,38 % + 91,62 % дават цяло', F._sbNahodki(p8).length === 0, F._sbNahodki(p8));
 
 // ── край ───────────────────────────────────────────────────────────────────
+// ── правното основание ────────────────────────────────────────────────────
+// В ОСИП, раздел Б: „Правно основание: ......“. Актът е в регистъра — пише се
+// оттам. (Операторът, 16.10.2026: „никъде не записва НА“.)
+const po = nov();
+const spo = F._sbDanni(po);
+spo.lica.push({ id: 'l1', ime: 'Даниела Валентинова Занева' });
+spo.obekti.push({ id: 'o1', vid: 'земя', identifikator: '29430.4713.49' });
+spo.koren = 'o1';
+spo.sabitia.push(akt('o1', { vid: 'покупко-продажба', data: '09.07.2019',
+    dokument: 'нотариален акт № 186, том II, рег. № 3421, дело 311, нотариус Росица Рашева',
+    ot: null, ot_opisanie: 'Иван Петров', pridobivashti: [{ lice: 'l1', dyal: '1/1' }] }));
+const osn = F._sbPravnoOsnovanie(po, '');
+t('правното основание сочи акта', /№ 186/.test(osn) && /нотариус Росица Рашева/.test(osn), osn);
+t('правното основание носи датата', /09\.07\.2019/.test(osn), osn);
+t('започва с главна буква', /^Нотариален/.test(osn), osn);
+
+// Два носителя — два акта, и двата са основание.
+spo.lica.push({ id: 'l2', ime: 'Павел Валериев Христов' });
+spo.sabitia.push(akt('o1', { vid: 'дарение', data: '12.05.2021',
+    dokument: 'нотариален акт № 9, том I', ot: 'l1',
+    pridobivashti: [{ lice: 'l2', dyal: '1/2' }] }));
+const osn2 = F._sbPravnoOsnovanie(po, '');
+t('и двата акта са основание', /№ 186/.test(osn2) && /№ 9/.test(osn2), osn2);
+t('актовете са подредени по дата', osn2.indexOf('186') < osn2.indexOf('№ 9'), osn2);
+t('основанието е до дата', !/№ 9/.test(F._sbPravnoOsnovanie(po, '01.01.2020')),
+  F._sbPravnoOsnovanie(po, '01.01.2020'));
+t('празен регистър дава празно основание', F._sbPravnoOsnovanie(nov(), '') === '');
+
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
 console.log(loshi.length ? `\n${loshi.length} проблема от ${dobri.length + loshi.length}`

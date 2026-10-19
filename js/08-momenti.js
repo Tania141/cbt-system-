@@ -1070,6 +1070,27 @@ function _blRedHtml(k, b) {
 //
 // Влиза САМО потвърденото. Непотвърден текст не бива да стига до документ,
 // който операторът подписва.
+// Новият ред в PDF не е нов абзац. Записката е набрана с твърди преноси по
+// ширината на листа; шаблонът прави по един абзац на ред и описанието излиза
+// накъсано на парчета по две думи. Сървърът вече сглобява прочетеното, но
+// вече прочетените блокове стоят накъсани в браузъра — минават и оттук, за да
+// не се четат пак. (Операторът, 16.10.2026)
+const _BL_ZATVARYA = '.:;!?»“';
+const _BL_NOV_RED = /^(?:[-–—•·●■*]|\d+(?:\.\d+)*[.)]|[a-zA-Zа-я][.)]\s)/;
+
+function _blIzgladi(tekst) {
+    const izhod = [];
+    for (const red of String(tekst || '').replace(/\r/g, '\n').split('\n').map(x => x.trim())) {
+        if (!red) { if (izhod.length && izhod[izhod.length - 1]) izhod.push(''); continue; }
+        if (izhod.length && izhod[izhod.length - 1] === '') { izhod[izhod.length - 1] = red; continue; }
+        const pred = izhod.length ? izhod[izhod.length - 1] : '';
+        if (pred && !_BL_ZATVARYA.includes(pred.slice(-1)) && !_BL_NOV_RED.test(red)) {
+            izhod[izhod.length - 1] = pred.endsWith('-') ? pred.slice(0, -1) + red : pred + ' ' + red;
+        } else izhod.push(red);
+    }
+    return izhod.join(String.fromCharCode(10)).trim();
+}
+
 function _blZaDokument(p) {
     const vsichki = Object.values(_blVzemi(p))
         .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno');
@@ -1082,7 +1103,7 @@ function _blZaDokument(p) {
         for (const b of spisak) {
             const zagl = String(b.podzaglavie || '').trim();
             if (zagl) redove.push(zagl);
-            redove.push(String(b.tekst || '').trim());
+            redove.push(_blIzgladi(b.tekst));
         }
         redove.push('');
     }
@@ -1709,6 +1730,14 @@ function buildPassportRows(project, consultant, extra) {
         }
     });
     add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
+
+    // Правното основание: с кой акт възложителите държат правата си. Досега в
+    // ОСИП стояха точки, а актът го имаше в регистъра. Непопълнен регистър
+    // връща празно и точките остават. (Операторът, 16.10.2026.)
+    if (typeof _sbPravnoOsnovanie === 'function' && project.sobstvenost) {
+        const osn = _sbPravnoOsnovanie(project, extra.data_dokument || '');
+        if (osn) add('Правно_Основание', osn);
+    }
 
     // Раздел В на комплексния доклад — описанията от записките, по части.
     // Само потвърденото; непотвърдено не влиза в документ за подпис.

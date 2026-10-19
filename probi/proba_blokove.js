@@ -11,12 +11,13 @@ const F = new Function(
     + [grab(s, '_blHtml'), grab(s, '_blRedHtml'), grab(s, '_blFakt'),
        grab(s, 'blPotvardi'), grab(s, 'blPoprav'), grab(s, 'blOtmeni'),
        grab(s, 'blVzemiNovoto'), grab(s, 'blOstaviMoeto'),
-       grab(s, '_blZaDokument'), grab(s, '_blChakat')].join('\n')
+       grab(s, '_blZaDokument'), grab(s, '_blChakat'), grab(s, '_blIzgladi'),
+       parche(s, 'const _BL_ZATVARYA', 'function _blIzgladi')].join('\n')
     + '\nlet _t=null,_otgovor=null;'
     + 'const _zhivObekt=()=>_t;const _stroezh=p=>p;const _s2Koy=()=>"оператор";'
     + 'const _s2ZapishiTiho=(p,k)=>_zapisi.push(k);const _prerisuvai=()=>{};'
     + 'const prompt=()=>_otgovor;'
-    + '\nreturn {_blSleej,_blHtml,_blVzemi,_blKlyuch,_blZaDokument,_blChakat,blPotvardi,blPoprav,blOtmeni,'
+    + '\nreturn {_blSleej,_blHtml,_blIzgladi,_blVzemi,_blKlyuch,_blZaDokument,_blChakat,blPotvardi,blPoprav,blOtmeni,'
     + 'blVzemiNovoto,blOstaviMoeto,set:p=>{_t=p},otgovor:v=>{_otgovor=v},zapisi:()=>_zapisi};');
 const B = F();
 
@@ -120,6 +121,29 @@ t('вече влиза и текстът ѝ', /уличен водопровод
 t('частите са подредени', zaDok2.indexOf('Част Архитектура') < zaDok2.indexOf('Част ВиК'));
 t('текстът е многоредов — шаблонът го разбива на абзаци',
   zaDok2.split(NR).length >= 6, zaDok2.split(NR).length);
+
+// ── накъсаният текст се сглобява ──────────────────────────────────────────
+// Записката е набрана с твърди преноси; шаблонът прави по един абзац на ред.
+// (Операторът, 16.10.2026: в генерирания ОСИП 140 от 301 реда под 60 знака.)
+const nakasano = 'Сградата се разполага в южната' + NR + 'част на имота.' + NR
+    + 'Теренът е равнинен и е с' + NR + 'denivelacia 0,50 m.';
+t('редовете в едно изречение се сглобяват', B._blIzgladi(nakasano).split(NR).length === 2,
+  B._blIzgladi(nakasano));
+t('изречението се пази цяло', /в южната част на имота\./.test(B._blIzgladi(nakasano)));
+t('точките от списък не се сливат',
+  B._blIzgladi('Предвиждат се:' + NR + '- водопровод' + NR + '- канализация').split(NR).length === 3);
+t('номерираната точка остава на свой ред',
+  B._blIzgladi('Общи данни' + NR + '4.2. Водопровод').split(NR).length === 2);
+t('преносът на дума се събира', B._blIzgladi('водо-' + NR + 'проводът е от') === 'водопроводът е от');
+
+// Вече прочетени блокове стоят накъсани в браузъра — сглобяват се на изхода,
+// за да не се чете записката пак.
+b[k2].tekst = nakasano;
+t('и в документа текстът влиза сглобен',
+  /в южната част на имота\./.test(B._blZaDokument(p)), B._blZaDokument(p));
+t('в документа няма парчета по две думи',
+  !B._blZaDokument(p).split(NR).some(r => r === 'част на имота.' || /и е с$/.test(r)),
+  B._blZaDokument(p));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

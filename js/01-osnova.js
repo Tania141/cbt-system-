@@ -242,6 +242,9 @@ function loadData() {
             const parsed = JSON.parse(saved);
             appData = { ...appData, ...parsed };
             if (!appData.history) appData.history = [];
+            // И записаното в браузъра се пречиства от повтарящи се номера —
+            // инак вече счупеният избор остава счупен след поправката.
+            nomeraNaObekti(appData.projects);
             // Keep hardcoded default if nothing was ever saved
             if (!appData.apiUrl) appData.apiUrl = 'https://web-production-220c7.up.railway.app';
         } catch(e) {
@@ -298,9 +301,7 @@ function loadData() {
                 if (Array.isArray(data) && data.length > 0) {
                     // Normalise consultant: match by id first, then by name, so the
                     // local consultant object (with employees etc.) is used if available
-                    appData.projects = data.map(p => {
-                        // Ensure every project has an id usable by openPassportModal
-                        if (!p.id) p.id = p.pi;
+                    appData.projects = nomeraNaObekti(data).map(p => {
                         // Normalise consultant to local object (id + employees)
                         if (p.consultant && appData.consultants.length > 0) {
                             const byId   = appData.consultants.find(c => c.id == p.consultant.id);
@@ -326,6 +327,31 @@ function loadData() {
 // показваше „✅ запазено“ — тоест работата изчезваше, без да се разбере.
 // Затова: връща true/false и при отказ казва високо, че записът НЕ е станал.
 // (29.09.2026)
+// Сървърът връща паспортите БЕЗ `id` — досега всеки получаваше `id = pi`.
+// Два паспорта в един и същ имот (преустройство на магазин и преустройство в
+// аптека, или два строежа, заведени като два обекта) тогава получаваха ЕДИН И
+// СЪЩИ номер, а всяка справка намира ПЪРВИЯ: `_zhivObekt`, „Редактирай“,
+// „Изтрий“. Оттам и „на другия обект е собствеността на предишния“ — и акт,
+// вписан на втория, отиваше на първия. (Операторът, 16.10.2026)
+//
+// Номерът е ПИ, а при повторение — ПИ с поредност. Пази се еднакъв при всяко
+// зареждане, за да не се къса изборът на обект.
+function nomeraNaObekti(spisak) {
+    const vzeti = new Set();
+    return (spisak || []).map((p, i) => {
+        let id = String(p.id || '').trim() || String(p.pi || '').trim();
+        if (!id || vzeti.has(id)) {
+            const osnova = id || 'obekt';
+            let n = 2;
+            while (vzeti.has(osnova + '#' + n)) n++;
+            id = osnova + '#' + n;
+        }
+        vzeti.add(id);
+        p.id = id;
+        return p;
+    });
+}
+
 function saveData() {
     const predi = appData.savedAt;
     appData.savedAt = new Date().toISOString();
