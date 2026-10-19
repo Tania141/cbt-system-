@@ -555,6 +555,91 @@ function _kesSravneniaHtml(f) {
     </div>`;
 }
 
+// ── съставките на строежа ─────────────────────────────────────────────────
+// Четат се от заглавието; операторът може да добави или махне. Ръчно
+// махнатата не се връща при следващото четене — иначе поправката е напразна.
+function _kesSastavkiNa(p) {
+    const r = p.sastavki || {};
+    const ot_zaglavie = _sastavki([p.stroej, p.zahranvan_obekt, p.name].filter(Boolean).join(' · '))
+        .filter(s => !(r.mahnati || []).includes(s.kod));
+    const rachni = (r.dobaveni || []).map(k => _SASTAVKI.find(x => x.kod === k)).filter(Boolean);
+    const vidyani = new Set();
+    return [...ot_zaglavie, ...rachni].filter(s => !vidyani.has(s.kod) && vidyani.add(s.kod));
+}
+
+function _kesSastavkiHtml(p, sast) {
+    const esc = _s2esc;
+    const r = p.sastavki || {};
+    const pitat = sast.filter(s => s.pita);
+    return `
+        <div class="card" style="margin:0 0 16px">
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+                <div class="card-title" style="margin:0;font-size:13px">\u{1F9F1} От какво е съставен строежът</div>
+                <span style="font-size:11.5px;color:var(--muted)">${sast.length
+                    ? sast.length + ' съставки — прочетени от заглавието'
+                    : 'заглавието не казва — питат се всички полета'}</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px">
+                От тях зависи кое изобщо се пита. Шахтов трафопост не носи кота било и виза;
+                надземен БКТП ги носи. Сбърка ли, поправи тук.
+            </p>
+            <div style="font-size:12.5px;line-height:2">
+                ${sast.map(s => `<span style="display:inline-block;border:1px solid var(--border);
+                        border-radius:12px;padding:1px 10px;margin:0 6px 6px 0">${esc(s.ime)}
+                    <button class="btn btn-ghost btn-sm" style="padding:0 4px"
+                            onclick="kesMahniSastavka('${s.kod}')">×</button></span>`).join('')
+                || '<span style="color:var(--muted)">няма разпозната съставка</span>'}
+            </div>
+            ${pitat.length ? `<div class="alert alert-warning" style="margin:8px 0 0"><div>
+                ${pitat.map(s => `<div><strong>${esc(s.ime)}</strong> — ${esc(s.pita)}
+                    <button class="btn btn-secondary btn-sm" onclick="kesDobaviSastavka('bktp')">надземен</button>
+                    <button class="btn btn-secondary btn-sm" onclick="kesDobaviSastavka('shtp')">подземен</button>
+                </div>`).join('')}
+            </div></div>` : ''}
+            <button class="btn btn-ghost btn-sm" style="margin-top:8px"
+                    onclick="kesDobaviSastavka('')">+ добави съставка</button>
+            ${(r.mahnati || []).length ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">
+                махнати на ръка: ${(r.mahnati || []).map(k =>
+                    esc((_SASTAVKI.find(x => x.kod === k) || {}).ime || k)).join(' · ')}</div>` : ''}
+        </div>`;
+}
+
+function _kesSastavkiZapis(p) {
+    return (p.sastavki = p.sastavki || { dobaveni: [], mahnati: [] });
+}
+
+function kesMahniSastavka(kod) {
+    const obekt = _zhivObekt(); if (!obekt) return;
+    const p = _stroezh(obekt), r = _kesSastavkiZapis(p);
+    r.dobaveni = (r.dobaveni || []).filter(x => x !== kod);
+    if (!(r.mahnati || []).includes(kod)) (r.mahnati = r.mahnati || []).push(kod);
+    _s2ZapishiTiho(obekt, `Проверки: махната съставка „${
+        (_SASTAVKI.find(x => x.kod === kod) || {}).ime || kod}“`);
+    renderKakavPage();
+}
+
+function kesDobaviSastavka(kod) {
+    const obekt = _zhivObekt(); if (!obekt) return;
+    const p = _stroezh(obekt), r = _kesSastavkiZapis(p);
+    if (!kod) {
+        const spisak = _SASTAVKI.map((s, i) => `${i + 1}. ${s.ime}`).join(String.fromCharCode(10));
+        const o = prompt('Коя съставка да добавя?' + String.fromCharCode(10, 10) + spisak);
+        if (o === null) return;
+        const i = parseInt(o, 10) - 1;
+        if (!_SASTAVKI[i]) return;
+        kod = _SASTAVKI[i].kod;
+    }
+    r.mahnati = (r.mahnati || []).filter(x => x !== kod);
+    if (!(r.dobaveni || []).includes(kod)) (r.dobaveni = r.dobaveni || []).push(kod);
+    // Казано ли е какъв е трафопостът, неясният отпада.
+    if (kod === 'bktp' || kod === 'shtp') {
+        if (!r.mahnati.includes('tp_neyasen')) r.mahnati.push('tp_neyasen');
+    }
+    _s2ZapishiTiho(obekt, `Проверки: добавена съставка „${
+        (_SASTAVKI.find(x => x.kod === kod) || {}).ime || kod}“`);
+    renderKakavPage();
+}
+
 // Разминаванията между потвърденото и паспорта. Не се решават тихо: виждаш
 // двете стойности и избираш. (Операторът, 19.10.2026.)
 function _kesRazminavaniaHtml(p) {
@@ -615,7 +700,10 @@ function _kesHtml(p, r) {
     const predl = broi('predlozheno'), sporni = broi('sporno');
     // Броят е от ПРИЛОЖИМИТЕ за този строеж — иначе „31 празни“ казва само,
     // че обектът не е сграда. (19.10.2026)
-    const vsichki = _KES_POLETA.filter(([k]) => f[k] || _kesPriloshim(k, p.vid || '')).length;
+    // Съставките се четат от ЗАГЛАВИЕТО на строежа — безплатно и веднага.
+    // Операторът може да ги поправи; поправените бият прочетените.
+    const sast = _kesSastavkiNa(p);
+    const vsichki = _KES_POLETA.filter(([k]) => f[k] || _kesPriloshim(k, p.vid || '', sast)).length;
     const prazni = Math.max(0, vsichki - potv - predl - sporni);
     const zaPotvarzhdavane = _KES_POLETA.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').map(([k]) => k);
 
@@ -630,8 +718,8 @@ function _kesHtml(p, r) {
     const vidStroezh = p.vid || '';
     const grupa = (ime, zaglavie, poyasnenie) => {
         const vsichki2 = _KES_POLETA.filter(([, , g]) => g === ime);
-        const poleta = vsichki2.filter(([k]) => f[k] || _kesPriloshim(k, vidStroezh));
-        const nepriloshimi = vsichki2.filter(([k]) => !f[k] && !_kesPriloshim(k, vidStroezh));
+        const poleta = vsichki2.filter(([k]) => f[k] || _kesPriloshim(k, vidStroezh, sast));
+        const nepriloshimi = vsichki2.filter(([k]) => !f[k] && !_kesPriloshim(k, vidStroezh, sast));
         const chakat = poleta.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').length;
         return `
         <div class="card" style="margin:0 0 16px">
@@ -670,6 +758,7 @@ function _kesHtml(p, r) {
                 onclick="kesPotvardiVsichki('${encodeURIComponent(JSON.stringify(zaPotvarzhdavane))}')">
                 ✔ Потвърди всички ${predl}</button>` : ''}
         </div>
+        ${_kesSastavkiHtml(p, sast)}
         ${_kesSravneniaHtml(f)}
         ${_kesRazminavaniaHtml(p)}
         ${(r.razminavania || []).length ? `<div class="alert alert-warning">

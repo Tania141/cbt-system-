@@ -130,9 +130,130 @@ const _KES_ZA_VID = {
     zahranvan_obekt: ['lineen', 'lineen_ktp'],
 };
 
-// Приложим ли е признакът. Непознат или непопълнен вид → питаме всичко: по-добре
-// излишен въпрос, отколкото скрит.
-function _kesPriloshim(klyuch, vid) {
+// ── СЪСТАВКИТЕ НА СТРОЕЖА ─────────────────────────────────────────────────
+// Операторът, 19.10.2026: „вид = линеен“ е твърде грубо. Водещ е ПРОЕКТЪТ, а
+// той казва от какво е съставен строежът — в самото си заглавие:
+//
+//   „Външно електрозахранване с нови кабели СрН, нови кабели НН и нов ШАХТОВ
+//    ТП 2х800kVA … за «Жилищна сграда с ресторант, подземни гаражи…»“
+//
+// Съставки: кабел СрН · кабел НН · шахтов ТП. Никоя не носи „кота било“,
+// „корниз“ или „виза“ — затова не се питат. Същият строеж, но с НАДЗЕМЕН
+// БКТП, ги носи и те излизат сами.
+//
+// Килерът е сглобен от 67 заглавия в „МИКОВ ел. проекти“, 42 в „АРХИВ“ и 147
+// в „СГРАДИ / ЗА НАДЗОР“ — с думите на оператора, не измислени.
+//
+// `nosi` са признаците, които съставката отваря. Питаме признак, ако поне
+// ЕДНА съставка го иска — обединение, не сечение: втора съставка никога не
+// отнема въпрос на първата.
+const _BAZOVI = ['identifikator', 'obekt', 'upi', 'faza', 'zona', 'plosht_upi',
+    'pup', 'kadastr', 'opisanie_ploshtadka', 'reper_nomer', 'reper_kota',
+    'kota_izkop', 'sobstvenik', 'investitor', 'vid', 'kategoria',
+    'prednaznachenie', 'spo', 'rspbzn', 'povod', 'imaMashini'];
+
+const _SGRADNI = ['etaji', 'visochina', 'otoplenie', 'toplosnabdyavane', 'gaz',
+    'ovk', 'ventilaciya', 'asansior', 'pozharogasene', 'pozharoizvestyavane',
+    'el_saobshteniya', 'vik', 'elektro', 'metalnaKonstrukcia',
+    'plytnost_dop', 'plytnost_post', 'kint_dop', 'ozelen_dop', 'ozelen_post',
+    'korniz_dop', 'korniz_post', 'zp', 'rzp', 'otstoyania', 'kota_cokul', 'kota_bilo'];
+
+// Надземна постройка — макар и малка, иска виза, отстояния и коти.
+const _NADZEMNA = ['zp', 'otstoyania', 'korniz_dop', 'korniz_post', 'kota_bilo',
+                   'kota_cokul', 'visochina'];
+
+const _SASTAVKI = [
+    // ── електро ──────────────────────────────────────────────────────────
+    // `` е ASCII и не хваща кирилица: „БКТП 800kVA“ оставаше неразпознат.
+    // Затова границата е „не е буква“ — с \p{L} и флаг u. (Пробата, 19.10.2026)
+    { kod: 'kabel_srn', ime: 'Кабел СрН', kak: /кабел[аи]?\s*(?:ср\.?\s*н|срн)|(?:ср\.?\s*н|срн)[\s,]*\d+\s*k?v/iu,
+      nosi: ['elektro', 'zahranvan_obekt'] },
+    { kod: 'kabel_nn', ime: 'Кабел НН', kak: /кабел[аи]?\s*(?:н\.?\s*н|нн)|(?:н\.?\s*н|нн)\s*1\s*k?v/iu,
+      nosi: ['elektro', 'zahranvan_obekt'] },
+    { kod: 'shtp', ime: 'Шахтов трафопост (подземен)', kak: /шахтов|(?<!\p{L})штп(?!\p{L})|подземен трафопост/iu,
+      nosi: ['elektro', 'zahranvan_obekt'] },
+    { kod: 'bktp', ime: 'БКТП / МКТП (надземен трафопост)', kak: /(?<!\p{L})(?:бктп|мктп|ктп)(?!\p{L})/iu,
+      nosi: [..._NADZEMNA, 'elektro', 'zahranvan_obekt'] },
+    { kod: 'tp_neyasen', ime: 'Трафопост — не е казано какъв', kak: /(?<!\p{L})тп(?!\p{L})|трафопост/iu,
+      nosi: ['elektro', 'zahranvan_obekt'], pita: 'надземен (БКТП) или подземен (шахтов)?' },
+    { kod: 'zru', ime: 'ЗРУ / БКЗРУ / разпределителна уредба',
+      kak: /(?<!\p{L})(?:зру|бкзру)(?!\p{L})|разпределителна уредба/iu, nosi: [..._NADZEMNA, 'elektro'] },
+    { kod: 'krsh', ime: 'Кабелен разпределителен шкаф (КРШ)', kak: /(?<!\p{L})крш(?!\p{L})/iu, nosi: ['elektro'] },
+    { kod: 'vel', ime: 'Въздушна линия / закабеляване',
+      kak: /(?<!\p{L})вел(?!\p{L})|закабеляване|електропровод|стълб\s*№/iu, nosi: ['elektro'] },
+    { kod: 'izmestvane', ime: 'Изместване на съществуващи съоръжения', kak: /изместван|ликвидиран/iu, nosi: [] },
+    { kod: 'vremenno', ime: 'Временно електрозахранване (чл. 54)',
+      kak: /временно електрозахранван|чл\.?\s*54(?!\d)/iu, nosi: ['elektro'] },
+    { kod: 'ulichno_osv', ime: 'Улично осветление', kak: /улично осветление/iu, nosi: ['elektro'] },
+    // ── ВиК и топло ──────────────────────────────────────────────────────
+    { kod: 'vodoprovod', ime: 'Водопровод (клон)', kak: /водопровод|воден клон|гл\.?\s*кл(?!\p{L})/iu, nosi: ['vik'] },
+    { kod: 'kanal', ime: 'Канал (уличен, битов, колектор)', kak: /канал|колектор/iu, nosi: ['vik'] },
+    { kod: 'svo_sko', ime: 'СВО / СКО (сградни отклонения)', kak: /(?<!\p{L})(?:сво|ско)(?!\p{L})/iu, nosi: ['vik'] },
+    { kod: 'toplo', ime: 'Топлопровод / абонатна станция',
+      kak: /топлопровод|топлозахранван|абонатна станция|топлофикац/iu, nosi: ['toplosnabdyavane'] },
+    { kod: 'izgrebna', ime: 'Изгребна яма', kak: /изгребна яма|изграебна|водоплътна яма/iu, nosi: [] },
+    { kod: 'sonda', ime: 'Сонда / собствен водоизточник', kak: /сонда|водоизточник/iu, nosi: ['vik'] },
+    // ── пътно ────────────────────────────────────────────────────────────
+    { kod: 'pat', ime: 'Път / улица', kak: /(?<!\p{L})път(?!\p{L})|улична настилка|пътна връзка/iu, nosi: [] },
+    // ── сградни ──────────────────────────────────────────────────────────
+    { kod: 'sgrada', ime: 'Сграда', kak: /сград|къща|хотел|хале|завод|административна/iu, nosi: _SGRADNI },
+    { kod: 'podzemen_garaj', ime: 'Подземен гараж / паркинг',
+      kak: /подземн\p{L}*\s+(?:гараж|паркинг)|подземен паркинг|подземно ниво/iu,
+      nosi: ['podzemen_etaj', 'garaj', 'drenaj', 'ventilaciya', 'pozharogasene'] },
+    { kod: 'garaj', ime: 'Надземен гараж / допълващо застрояване', kak: /гараж|навес|паркоместа/iu,
+      nosi: ['garaj', 'zp', 'otstoyania'] },
+    { kod: 'obsluzhvane', ime: 'Магазини, ресторант, ателиета, офиси',
+      kak: /магазин|ресторант|ателие|офис|обществено обслужван|фитнес|детск/iu,
+      nosi: ['ventilaciya', 'el_saobshteniya', 'ovk'] },
+    { kod: 'ograda', ime: 'Ограда', kak: /ограда/iu, nosi: ['otstoyania'] },
+    { kod: 'podporna', ime: 'Подпорна стена', kak: /подпорна стена/iu, nosi: ['kota_izkop'] },
+    { kod: 'sklad', ime: 'Склад, хале, производствено', kak: /склад|хале|производствен/iu,
+      nosi: ['imaMashini', 'spo', 'metalnaKonstrukcia'] },
+    { kod: 'preustroystvo', ime: 'Преустройство / пристройка / надстройка',
+      kak: /преустройств|пристройк|надстройк|достроява|реконструкц/iu, nosi: ['etaji', 'zp', 'rzp'] },
+    { kod: 'etapnost', ime: 'Етапно изпълнение', kak: /(?<!\p{L})етап(?!\p{L})|етап\s*[iv1-9]/iu, nosi: [] },
+];
+
+// Какво е съставено от заглавието. Заглавието е в паспорта — чете се без АИ,
+// веднага и безплатно. Прочетените записки могат да добавят още.
+// Мрежовият строеж КАЗВА ЗА КОГО е: „…нов шахтов ТП … ЗА «Жилищна сграда с
+// ресторант, подземни гаражи»“. Сградата след „за“ не е съставка на този
+// строеж — тя е захранваният обект. Без това всяко външно захранване питаше
+// за асансьори. (Операторът, 19.10.2026: „то няма как да искаме коти и виза,
+// за да търсим сграда, в която има построено помещение за КТП“.)
+const _MREZHA = /външно\s+(?:ел|електро|топло)|временно\s+електрозахранван|изместване|закабеляване|подобряване\s+електрозахранван/iu;
+const _ZA_KOGO = /(?:\s|^)(?:за|на)\s+(?:обект|строеж)?\s*[:„"«]|(?:\s)(?:за|на)\s+(?=[„"«])/iu;
+
+function _bezZahranvaniya(tekst) {
+    const t = String(tekst || '');
+    if (!_MREZHA.test(t)) return t;
+    const m = t.match(_ZA_KOGO);
+    return m && m.index > 20 ? t.slice(0, m.index) : t;
+}
+
+function _sastavki(tekst) {
+    const t = _bezZahranvaniya(tekst);
+    if (!t.trim()) return [];
+    const naydeni = _SASTAVKI.filter(s => s.kak.test(t));
+    // Казано ли е „шахтов ТП“ или „БКТП“, „ТП — не е казано какъв“ отпада.
+    return naydeni.filter(s => s.kod !== 'tp_neyasen'
+        || !naydeni.some(x => x.kod === 'shtp' || x.kod === 'bktp' || x.kod === 'zru'));
+}
+
+// Признаците, които съставките отварят. Празно значи „не знаем“ — тогава
+// важи грубият набор по вид.
+function _kesOtSastavki(sastavki) {
+    if (!sastavki || !sastavki.length) return null;
+    const naruchno = new Set(_BAZOVI);
+    for (const s of sastavki) for (const k of s.nosi) naruchno.add(k);
+    return naruchno;
+}
+
+// Приложим ли е признакът. Съставките бият вида; непознат или непопълнен вид
+// → питаме всичко: по-добре излишен въпрос, отколкото скрит.
+function _kesPriloshim(klyuch, vid, sastavki) {
+    const ot = _kesOtSastavki(sastavki);
+    if (ot) return ot.has(klyuch);
     const za = _KES_ZA_VID[klyuch];
     if (!za || !vid) return true;
     // Видът се пази ту като код („sgrada“), ту с думите на записката

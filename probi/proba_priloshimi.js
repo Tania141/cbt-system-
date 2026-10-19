@@ -14,7 +14,7 @@ const F = new Function(
     + 'const _KES_IME=Object.fromEntries(_KES_POLETA.map(([k,i])=>[k,i]));\n'
     + parche(s, 'const _VID_KOD =', 'function _priznaciKamPoleta')
     + parche(s, 'const _SGRADA =', 'const _KES_IZBOR')
-    + 'return {_KES_POLETA,_kesPriloshim,_KES_ZA_VID};')();
+    + 'return {_KES_POLETA,_kesPriloshim,_KES_ZA_VID,_sastavki,_SASTAVKI,_kesOtSastavki};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -50,6 +50,47 @@ t('непознат вид също не крие',
 
 t('видът с думи се разбира както кодът',
   !F._kesPriloshim('garaj', 'линеен обект') && F._kesPriloshim('garaj', 'сграда'));
+
+// ── съставките бият вида ──────────────────────────────────────────────────
+// Операторът, 19.10.2026: „няма как да искаме коти и виза за шахтов ТП“.
+const ZAGL_SHTP = 'Външно електрозахранване с нови кабели СрН, нови кабели НН и нов '
+    + 'шахтов ТП 2х800kVA, 20/0.4kV за „Жилищна сграда с ресторант, подземни гаражи“';
+const sahtov = F._sastavki(ZAGL_SHTP).map(x => x.kod);
+t('кабелите се разпознават', sahtov.includes('kabel_srn') && sahtov.includes('kabel_nn'), sahtov);
+t('шахтовият ТП се разпознава', sahtov.includes('shtp'), sahtov);
+t('„ТП — не е казано какъв“ отпада, щом е казано', !sahtov.includes('tp_neyasen'), sahtov);
+
+const pita = (k, zagl) => F._kesPriloshim(k, 'sgrada', F._sastavki(zagl));
+t('шахтов ТП не иска кота било', !pita('kota_bilo', ZAGL_SHTP));
+t('шахтов ТП не иска кота корниз', !pita('korniz_dop', ZAGL_SHTP));
+t('но иска кота изкоп и репер', pita('kota_izkop', ZAGL_SHTP) && pita('reper_nomer', ZAGL_SHTP));
+t('и захранван обект', pita('zahranvan_obekt', ZAGL_SHTP));
+
+const ZAGL_BKTP = 'Външно електрозахранване с нови кабели СрН и нов БКТП 800kVA, 20/0,4kV';
+t('надземният БКТП иска кота било', pita('kota_bilo', ZAGL_BKTP));
+t('и отстояния', pita('otstoyania', ZAGL_BKTP));
+t('но не иска асансьор', !pita('asansior', ZAGL_BKTP));
+
+// Съставките са ОБЕДИНЕНИЕ: сградата до кабела не отнема въпроси.
+const ZAGL_SMES = 'Жилищна сграда с подземни гаражи и нов шахтов ТП';
+t('сграда + шахтов ТП пита и сградните', pita('asansior', ZAGL_SMES) && pita('etaji', ZAGL_SMES));
+t('и гаражните', pita('drenaj', ZAGL_SMES) && pita('garaj', ZAGL_SMES));
+
+// ВиК
+const ZAGL_VIK = 'Уличен канал кл. 208 и съпътстващ водопровод кл. 169';
+t('канал и водопровод се разпознават',
+  F._sastavki(ZAGL_VIK).map(x => x.kod).sort().join(',').includes('kanal'), F._sastavki(ZAGL_VIK).map(x => x.kod));
+t('ВиК обект не пита за етажи', !pita('etaji', ZAGL_VIK));
+t('но пита за ВиК присъединяване', pita('vik', ZAGL_VIK));
+
+// Изгребна яма — пълноправна съставка (операторът: „в много населени места
+// няма канализация“).
+t('изгребната яма се разпознава',
+  F._sastavki('Еднофамилна жилищна сграда с изгребна яма').some(x => x.kod === 'izgrebna'));
+
+// Непознато заглавие не крие нищо.
+t('заглавие без съставки пита всичко',
+  F._KES_POLETA.every(([k]) => F._kesPriloshim(k, '', F._sastavki('Строеж'))));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
