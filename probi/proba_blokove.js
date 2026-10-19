@@ -15,7 +15,7 @@ const F = new Function(
        parche(s, 'const _BL_RED_CHASTI', 'function _blKodChast'),
        parche(s, 'const _BL_ZATVARYA', 'function _blIzgladi')].join('\n')
     + '\nlet _t=null,_otgovor=null;'
-    + 'const _zhivObekt=()=>_t;const _stroezh=p=>p;const _s2Koy=()=>"оператор";'
+    + 'const _zhivObekt=()=>_t;const _stroezh=p=>p;const _krug=p=>p;const _s2Koy=()=>"оператор";'
     + 'const _s2ZapishiTiho=(p,k)=>_zapisi.push(k);const _prerisuvai=()=>{};'
     + 'const prompt=()=>_otgovor;'
     + '\nreturn {_blSleej,_blHtml,_blIzgladi,_blRedChast,_blKodChast,_blVzemi,_blKlyuch,_blZaDokument,_blChakat,blPotvardi,blPoprav,blOtmeni,'

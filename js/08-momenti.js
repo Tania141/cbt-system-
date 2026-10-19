@@ -707,10 +707,10 @@ function renderZapiskiKarta() {
     if (!box) return;
     const obekt = _zhivObekt();
     if (!obekt) { box.innerHTML = ''; return; }
-    const p = _stroezh(obekt);
+    const p = _krug(_stroezh(obekt));   // записките са в КРЪГА на оценката
     const z = p.zapiski || {};
     const chasti = z.chasti || [];
-    box.innerHTML = _lentaStroezhi(obekt) + `
+    box.innerHTML = _lentaStroezhi(obekt) + _krugLenta(obekt) + `
         <div class="card" style="margin-bottom:16px">
             <div class="card-title" style="margin-bottom:8px">📐 Прочети записките по частите на проекта</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
@@ -750,7 +750,7 @@ function renderZapiskiKarta() {
 async function zapiskiCheti() {
     const obekt = _zhivObekt();
     if (!obekt) { showAlert('error', 'Първо избери обект.'); return; }
-    const p = _stroezh(obekt);            // записките са на СТРОЕЖА
+    const p = _krug(_stroezh(obekt));     // записките са в КРЪГА на оценката
     const fajlove = [...(document.getElementById('zp-fajlove')?.files || [])];
     if (!fajlove.length) { showAlert('error', 'Избери записките.'); return; }
     const hod = document.getElementById('zp-hod');
@@ -853,7 +853,7 @@ function zapiskiPremesti(fajl64) {
 
 function zapiskiIzchisti() {
     const obekt = _zhivObekt();
-    const p = obekt && _stroezh(obekt);
+    const p = obekt && _krug(_stroezh(obekt));
     if (!p || !p.zapiski) return;
     if (!confirm('Да изчистя прочетените записки за този строеж?')) return;
     delete p.zapiski;
@@ -863,7 +863,7 @@ function zapiskiIzchisti() {
 
 async function zapiskiRezyume() {
     const obekt = _zhivObekt();
-    const p = obekt && _stroezh(obekt);
+    const p = obekt && _krug(_stroezh(obekt));
     const kutiya = document.getElementById('zp-rezultat');
     if (!p || !kutiya) return;
     const chasti = p.zapiski?.chasti || [];
@@ -875,7 +875,7 @@ async function zapiskiRezyume() {
               ime_na_stroezha: p.stroej || '',
               stari_identifikatori: _nashiteIdent(obekt) });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-error">${_s2esc(r.greshka)}</div>`; return; }
-        const stroezh = _stroezh(obekt);
+        const stroezh = _krug(_stroezh(obekt));
         _blSleej(stroezh, r);
         kutiya.innerHTML = _blHtml(stroezh) + _zapiskiHtml(r);
     } catch (e) {
@@ -1157,7 +1157,7 @@ function _blChakat(p) {
 function _blFakt(k64) {
     const obekt = _zhivObekt();
     if (!obekt) return {};
-    const p = _stroezh(obekt);
+    const p = _krug(_stroezh(obekt));
     const k = decodeURIComponent(k64);
     return { obekt, p, k, b: _blVzemi(p)[k] };
 }
@@ -1781,9 +1781,13 @@ function buildPassportRows(project, consultant, extra) {
     // Раздел В на комплексния доклад — описанията от записките, по части.
     // Само потвърденото; непотвърдено не влиза в документ за подпис.
     if (typeof _blZaDokument === 'function') {
-        const stroezh = typeof _stroezh === 'function' ? _stroezh(project) : project;
+        const stroezh = typeof _krug === 'function' ? _krug(_stroezh(project))
+            : (typeof _stroezh === 'function' ? _stroezh(project) : project);
         const tekst = _blZaDokument(stroezh);
         if (tekst) add('ОСИП_В_Части', tekst);
+        // Кръг по чл. 154: предметът на изменението, кой доклад се изменя и
+        // кои части НЕ се изменят. При кръг 1 не добавя нищо.
+        if (typeof _krugRedove === 'function') _krugRedove(_stroezh(project), add);
         // Мълчанието тук беше лошо: операторът виждаше прочетените блокове в
         // „Проектът“ и чакаше да се появят в доклада, а те не влизат без ✔.
         // (15.10.2026 — „има си ги прочетени, но не се наливат в ОСИП“.)

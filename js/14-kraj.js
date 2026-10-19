@@ -1,4 +1,4 @@
-// АКТ СИСТЕМ · 13-kraj.js
+// АКТ СИСТЕМ · 14-kraj.js
 // помощни функции и пускането на приложението
 //
 // Отделен от app.js на 13.10.2026 (стъпка 2 от ПОДРЕЖДАНЕ.md).
@@ -35,7 +35,7 @@ async function pokazhiKogaEKodat() {
     const kutiya = document.getElementById('kod-ot');
     if (!kutiya) return;
     try {
-        const r = await fetch('js/13-kraj.js', { method: 'HEAD', cache: 'no-store' });
+        const r = await fetch('js/14-kraj.js', { method: 'HEAD', cache: 'no-store' });
         const d = new Date(r.headers.get('last-modified') || Date.now());
         kutiya.textContent = 'код от ' + d.toLocaleDateString('bg-BG')
             + ' ' + d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' });
