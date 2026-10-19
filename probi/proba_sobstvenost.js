@@ -21,7 +21,7 @@ const F = new Function(
        grab(s, '_sbEdnakvi'), grab(s, 'sbMahni'), grab(s, '_sbSmetka'),
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
-       grab(s, '_sbDveImena'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPredstavitel'),
+       grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPredstavitel'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -29,7 +29,7 @@ const F = new Function(
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + '_sbDveImena,_sbKlienti,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + '_sbDveImena,_sbKlienti,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -300,6 +300,58 @@ t('актовете са подредени по дата', osn2.indexOf('186') 
 t('основанието е до дата', !/№ 9/.test(F._sbPravnoOsnovanie(po, '01.01.2020')),
   F._sbPravnoOsnovanie(po, '01.01.2020'));
 t('празен регистър дава празно основание', F._sbPravnoOsnovanie(nov(), '') === '');
+
+// ── представителството не е страна ────────────────────────────────────────
+// Операторът, 19.10.2026 (НА на ЕРМ): „Йоана е пълномощник на Иван, който е
+// управител на ХЪС = ХЪС участва като ЮЛ с управител Иван“.
+const HUS = '„ХЪС ИНВЕСТ СОФИЯ“ ЕООД, представлявано от ИВАН ХРИСТОВ АСЕНОВ,'
+    + ' действащ чрез пълномощника си ЙОАНА КАМЕНОВА ИВАНОВА';
+t('фирмата е ЕДНА страна, не три лица', F._sbStrani(HUS).length === 1, F._sbStrani(HUS));
+t('името на фирмата остава както е', /ХЪС ИНВЕСТ СОФИЯ/.test(F._sbStrani(HUS)[0])
+  && !/АСЕНОВ/.test(F._sbStrani(HUS)[0]), F._sbStrani(HUS));
+t('подписалите се пазят', /ИВАН ХРИСТОВ АСЕНОВ/.test(F._sbKojPodpisva(HUS))
+  && /ЙОАНА/.test(F._sbKojPodpisva(HUS)), F._sbKojPodpisva(HUS));
+
+const ERM = '„ЕЛЕКТРОРАЗПРЕДЕЛИТЕЛНИ МРЕЖИ ЗАПАД“ ЕАД, представлявано от Лилия Росенова'
+    + ' Йорданова, Виктор Любомиров Станчев и Радослав Георгиев Цветков';
+t('тримата представляващи не стават страни', F._sbStrani(ERM).length === 1, F._sbStrani(ERM));
+
+t('истинските съсобственици пак се разделят',
+  F._sbStrani('Иван Петров, Мария Петрова и Георги Иванов').length === 3,
+  F._sbStrani('Иван Петров, Мария Петрова и Георги Иванов'));
+t('име само с главни букви се изглажда',
+  F._sbStrana('ЙОАНА КАМЕНОВА ИВАНОВА') === 'Йоана Каменова Иванова',
+  F._sbStrana('ЙОАНА КАМЕНОВА ИВАНОВА'));
+t('фирма с главни букви НЕ се изглажда',
+  F._sbStrana('„ХЪС ИНВЕСТ СОФИЯ“ ЕООД') === '„ХЪС ИНВЕСТ СОФИЯ“ ЕООД',
+  F._sbStrana('„ХЪС ИНВЕСТ СОФИЯ“ ЕООД'));
+t('нормално писано име не се пипа',
+  F._sbStrana('Лилия Росенова Йорданова') === 'Лилия Росенова Йорданова');
+
+// Целият акт на ЕРМ през приемането.
+const pr2 = nov();
+pr2._sb_procheteno = {
+    fajl: 'НА_ЕРМ.pdf', vid: 'договор за учредяване право на строеж',
+    nomer: '67', tom: 'XIV', registar: '30824', delo: '2257/2026',
+    data: '02.10.2026', notarius: 'Георги Нейков',
+    lica: [], obekti: [{ identifikator: '68134.1006.2440.трафопост', vid: 'друго' }],
+    prehvarliania: [{ vid: 'учредяване право на строеж', dyal: '1/1',
+        ot: HUS, na: ERM, obekt: '68134.1006.2440.трафопост' }],
+};
+F.sbPriemi();
+const sErm = F._sbDanni(pr2);
+t('в регистъра влиза ЕДНО лице — приобретателят', sErm.lica.length === 1, sErm.lica.map(l => l.ime));
+t('и то е ЕРМ', /ЕЛЕКТРОРАЗПРЕДЕЛИТЕЛНИ/.test(sErm.lica[0].ime), sErm.lica[0].ime);
+t('едно събитие', sErm.sabitia.length === 1);
+t('прехвърлителят е ХЪС, без управителя',
+  /ХЪС/.test(sErm.sabitia[0].ot_opisanie) && !/АСЕНОВ/.test(sErm.sabitia[0].ot_opisanie),
+  sErm.sabitia[0].ot_opisanie);
+t('подписалите стоят върху акта', /АСЕНОВ/.test(sErm.sabitia[0].podpisali || ''),
+  sErm.sabitia[0].podpisali);
+t('документът е нотариален акт', /нотариален акт/.test(sErm.sabitia[0].dokument),
+  sErm.sabitia[0].dokument);
+t('видът на сделката се пази', sErm.sabitia[0].vid === 'учредяване право на строеж',
+  sErm.sabitia[0].vid);
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

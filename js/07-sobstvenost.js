@@ -96,6 +96,47 @@ const _sbImeAkt = e => [
     e.data ? 'от ' + e.data : '',
 ].filter(Boolean).join(' ');
 
+// ПРЕДСТАВИТЕЛСТВОТО НЕ Е ПРИДОБИВАНЕ.
+// „«ХЪС ИНВЕСТ СОФИЯ» ЕООД, представлявано от ИВАН ХРИСТОВ АСЕНОВ, действащ
+// чрез пълномощника си ЙОАНА КАМЕНОВА ИВАНОВА“ е ЕДНА страна, не три лица.
+// Операторът, 19.10.2026: „Йоана е пълномощник на Иван, който е управител на
+// ХЪС = ХЪС участва като ЮЛ с управител Иван“. Дотук разделянето по запетая
+// правеше от управителя и пълномощника отделни лица и кодът се оплакваше, че
+// „участват, но ги няма сред лицата“.
+const _SB_PREDSTAVITELSTVO =
+    /[\s,;]*(?:действащ(?:а|и|о)?\s+чрез|чрез\s+пълномощник|с\s+пълномощник|представлявано?\s+от|представляван(?:а|и|о)?\s+от|в\s+качеството\s+на\s+пълномощник)[\s\S]*$/i;
+
+// Правната форма личи и когато името е с главни букви — тогава страната е
+// фирма и не се пипа. Иначе име от регистър или акт, писано само с главни, се
+// изглажда: „ЙОАНА КАМЕНОВА ИВАНОВА“ → „Йоана Каменова Иванова“.
+// `\b` е ASCII: между „Д“ и запетая няма граница на дума и изразът не хващаше
+// нищо на кирилица. Затова: „не следва буква“.
+const _SB_FORMA = /(^|[\s„"'(])(ЕООД|ООД|ЕАД|АД|СД|КД|ЕТ|ДЗЗД|ЕИК|ЕРП|ЕРМ)(?![А-Яа-я])/;
+
+function _sbStrana(tekst) {
+    const bez = String(tekst || '').replace(_SB_PREDSTAVITELSTVO, '').trim()
+        .replace(/[\s,;]+$/, '');
+    if (!bez) return '';
+    const samoGlavni = bez === bez.toUpperCase() && /[А-Я]/.test(bez);
+    return (samoGlavni && !_SB_FORMA.test(bez) && typeof imeSGlavni === 'function')
+        ? imeSGlavni(bez) : bez;
+}
+
+// Страните в едно поле. Четецът понякога слага няколко в едно („Иван…,
+// Мария…“); представителството се реже ПРЕДИ разделянето, за да не станат
+// управителят и пълномощникът отделни страни. (ЖИТЕН, 14.10.2026; ЕРМ, 19.10)
+function _sbStrani(v) {
+    const tekst = String(v || '').replace(_SB_PREDSTAVITELSTVO, '');
+    return tekst.split(/\s*(?:,|;| и )\s*/)
+        .map(_sbStrana).filter(x => x.length > 2);
+}
+
+// Кой е подписал от името на страната — пази се върху акта, но НЕ става лице.
+function _sbKojPodpisva(tekst) {
+    const m = String(tekst || '').match(_SB_PREDSTAVITELSTVO);
+    return m ? m[0].replace(/^[\s,;]+/, '').trim() : '';
+}
+
 // Имената се сравняват без оглед на интервали и главни букви.
 const _sbZnIme = x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -546,6 +587,7 @@ function _sbTablici(p) {
                 ${ot ? `<div style="margin-left:14px;color:var(--muted)">от: ${esc(ot)}${
                     e.ot ? '' : ' <span style="font-size:11px">(по акта; не е вписан като лице)</span>'}</div>` : ''}
                 ${e.dokument ? `<div style="margin-left:14px;color:var(--muted);font-size:11.5px">${esc(e.dokument)}</div>` : ''}
+                ${e.podpisali ? `<div style="margin-left:14px;color:var(--muted);font-size:11.5px">${esc(e.podpisali)}</div>` : ''}
             </div>`;
         }).join('');
 
@@ -696,8 +738,7 @@ function sbPriemi() {
     // Четецът понякога слага няколко лица в едно поле („Иван…, Мария…“), макар
     // указанието да иска по един ред на човек. Едно лице от две имена чупи
     // цялата верига, затова се разделят тук. (ЖИТЕН, 14.10.2026)
-    const imena = v => String(v || '').split(/\s*(?:,|;| и )\s*/)
-        .map(x => x.trim()).filter(x => x.length > 2);
+    const imena = v => _sbStrani(v);
 
     // Намира лице, ако вече е в регистъра. НЕ създава — създаването е само
     // при придобиване.
@@ -796,6 +837,8 @@ function sbPriemi() {
             ot: otLice,
             ot_lica: otLica.length === dava.length && otLica.length > 1 ? otLica : undefined,
             ot_opisanie: dava.join(', '),
+            // Кой е подписал от името на страните — личи върху акта, но не е лице.
+            podpisali: [_sbKojPodpisva(x.ot), _sbKojPodpisva(x.na)].filter(Boolean).join('; '),
             pridobivashti: poluchateli.map(na => ({ lice: lice(na), dyal })),
             ot_chetene: ch.fajl || '', citat: x.citat || '',
         };
