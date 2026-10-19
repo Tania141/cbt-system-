@@ -100,6 +100,47 @@ const _KES_POLETA = [
     ['povod',               'Повод',                          'drugo'],
 ];
 const _KES_IME = Object.fromEntries(_KES_POLETA.map(([k, i]) => [k, i]));
+
+// ЗА КОЙ ВИД СТРОЕЖ ВЪОБЩЕ СЕ ПИТА.
+// Операторът, 19.10.2026: за „Външно кабелно захранване“ десет от полетата са
+// несъстоятелни — гараж, асансьор, етажи, отопление. Те не са празни, те са
+// НЕПРИЛОЖИМИ, а дотук списъкът се показваше цял за всеки строеж.
+//
+// Тук стоят само ИЗКЛЮЧЕНИЯТА: признак, който го няма в таблицата, се пита
+// винаги. Кодовете са тези на паспорта (`_VID_KOD`): sgrada · lineen ·
+// lineen_ktp · saorajenie.
+const _SGRADA = ['sgrada'];
+const _SGRADA_LINEEN = ['sgrada', 'lineen', 'lineen_ktp'];
+const _KES_ZA_VID = {
+    // Обемът и инсталациите са на сграда.
+    etaji: _SGRADA, podzemen_etaj: _SGRADA, garaj: _SGRADA, visochina: _SGRADA,
+    otoplenie: _SGRADA, toplosnabdyavane: _SGRADA, gaz: _SGRADA, ovk: _SGRADA,
+    ventilaciya: _SGRADA, asansior: _SGRADA, drenaj: _SGRADA,
+    pozharogasene: _SGRADA, pozharoizvestyavane: _SGRADA, el_saobshteniya: _SGRADA,
+    vik: _SGRADA, metalnaKonstrukcia: _SGRADA,
+    // Градоустройствените показатели се мерят на УПИ със сграда в него.
+    plytnost_dop: _SGRADA, plytnost_post: _SGRADA, kint_dop: _SGRADA,
+    ozelen_dop: _SGRADA, ozelen_post: _SGRADA, korniz_dop: _SGRADA, korniz_post: _SGRADA,
+    zp: _SGRADA, rzp: _SGRADA, otstoyania: _SGRADA,
+    // Кота цокъл и било има само сграда; изкопът и реперът важат и за трасе.
+    kota_cokul: _SGRADA, kota_bilo: _SGRADA,
+    // Присъединяването е същината на линейния обект, но го има и при сграда.
+    elektro: _SGRADA_LINEEN,
+    // „Захранван обект“ е въпрос само към мрежа.
+    zahranvan_obekt: ['lineen', 'lineen_ktp'],
+};
+
+// Приложим ли е признакът. Непознат или непопълнен вид → питаме всичко: по-добре
+// излишен въпрос, отколкото скрит.
+function _kesPriloshim(klyuch, vid) {
+    const za = _KES_ZA_VID[klyuch];
+    if (!za || !vid) return true;
+    // Видът се пази ту като код („sgrada“), ту с думите на записката
+    // („сграда“) — и двете се разбират, иначе скриваме полета на сграда.
+    const kod = (typeof _VID_KOD === 'object' && _VID_KOD[String(vid).trim().toLowerCase()])
+        || String(vid);
+    return za.includes(kod);
+}
 // Какво ДОКАЗВА всяко от тези полета. Операторът, 02.10.2026: „собственост се
 // потвърждава с НА“ — значи име в проект или в договор е само податка, не
 // доказателство. Същото както с категорията: проектът предлага, разрешението за

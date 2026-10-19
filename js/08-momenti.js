@@ -613,17 +613,25 @@ function _kesHtml(p, r) {
     const broi = v => _KES_POLETA.filter(([k]) => (f[k]?.sastoyanie || 'prazno') === v).length;
     const potv = broi('potvardeno') + broi('popraveno');
     const predl = broi('predlozheno'), sporni = broi('sporno');
-    const vsichki = _KES_POLETA.filter(([k]) => k !== 'zahranvan_obekt' || f[k]).length;
-    const prazni = vsichki - potv - predl - sporni;
+    // Броят е от ПРИЛОЖИМИТЕ за този строеж — иначе „31 празни“ казва само,
+    // че обектът не е сграда. (19.10.2026)
+    const vsichki = _KES_POLETA.filter(([k]) => f[k] || _kesPriloshim(k, p.vid || '')).length;
+    const prazni = Math.max(0, vsichki - potv - predl - sporni);
     const zaPotvarzhdavane = _KES_POLETA.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').map(([k]) => k);
 
     // Двете групи бяха една до друга в равни колони, а са 36 срещу 10 полета:
     // дясната свършваше веднага и се губеше, макар да е по-важната — от нея
     // зависи кои актове изобщо се съставят. Сега са една под друга, всяка на
     // цялата ширина, с толкова стълба, колкото се събират. (14.10.2026)
+    // Неприложимите за този вид строеж не се питат — но ако четецът ВСЕ ПАК е
+    // намерил стойност, полето се показва: това е най-интересният случай,
+    // значи нещо не се връзва. (Операторът, 19.10.2026: „десет полета са
+    // несъстоятелни за външно кабелно захранване“.)
+    const vidStroezh = p.vid || '';
     const grupa = (ime, zaglavie, poyasnenie) => {
-        const poleta = _KES_POLETA.filter(([, , g]) => g === ime)
-            .filter(([k]) => k !== 'zahranvan_obekt' || f[k]);
+        const vsichki2 = _KES_POLETA.filter(([, , g]) => g === ime);
+        const poleta = vsichki2.filter(([k]) => f[k] || _kesPriloshim(k, vidStroezh));
+        const nepriloshimi = vsichki2.filter(([k]) => !f[k] && !_kesPriloshim(k, vidStroezh));
         const chakat = poleta.filter(([k]) => f[k]?.sastoyanie === 'predlozheno').length;
         return `
         <div class="card" style="margin:0 0 16px">
@@ -637,6 +645,16 @@ function _kesHtml(p, r) {
                         gap:0 20px;align-items:start">
                 ${poleta.map(([k]) => _kesPoleHtml(k, f[k])).join('')}
             </div>
+            ${nepriloshimi.length ? `
+            <details style="margin-top:10px">
+                <summary style="cursor:pointer;font-size:11.5px;color:var(--muted)">
+                    не се отнасят за този строеж · ${nepriloshimi.length}</summary>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.8">
+                    ${nepriloshimi.map(([, i]) => _s2esc(i)).join(' · ')}
+                    <div style="margin-top:4px">Появи ли се стойност за някое от тях, полето се
+                        връща горе — значи нещо не се връзва.</div>
+                </div>
+            </details>` : ''}
         </div>`;
     };
 
