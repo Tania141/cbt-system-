@@ -993,11 +993,17 @@ function _blSleej(p, r) {
             const k = _blKlyuch(chast.chast, razdel.podzaglavie);
             const b = pazeni[k];
             if (!b) {
-                pazeni[k] = { chast: chast.chast, podzaglavie: razdel.podzaglavie,
+                pazeni[k] = { chast: chast.chast, chast_kod: chast.chast_kod || '',
+                              podzaglavie: razdel.podzaglavie,
                               tekst: razdel.tekst, prochetan: razdel.tekst,
                               fajl: chast.fajl, stranica: razdel.stranica,
                               sastoyanie: 'predlozheno' };
-            } else if (b.prochetan !== razdel.tekst) {
+                continue;
+            }
+            // Кодът на частта допълва вече пазените блокове — той определя
+            // реда в доклада.
+            if (!b.chast_kod && chast.chast_kod) b.chast_kod = chast.chast_kod;
+            if (b.prochetan !== razdel.tekst) {
                 b.prochetan = razdel.tekst;
                 b.novo_chetene = b.sastoyanie === 'predlozheno' ? '' : razdel.tekst;
                 if (b.sastoyanie === 'predlozheno') b.tekst = razdel.tekst;
@@ -1027,7 +1033,10 @@ function _blHtml(p) {
                 а после — обърнат в сегашно време — в Акт 15, окончателния доклад и техническия
                 паспорт. Потвърденото не се преписва повече на ръка.
             </p>
-            ${Object.entries(poChasti).map(([chast, spisak]) => `
+            ${Object.entries(poChasti).sort((a, b) =>
+                _blRedChast(a[0], (a[1][0] || [])[1]?.chast_kod)
+                - _blRedChast(b[0], (b[1][0] || [])[1]?.chast_kod)
+                || a[0].localeCompare(b[0], 'bg')).map(([chast, spisak]) => `
                 <details class="card" style="margin:0 0 10px" ${
                     spisak.some(([, b]) => b.sastoyanie === 'predlozheno') ? 'open' : ''}>
                     <summary style="cursor:pointer;font-weight:600;font-size:13px">
@@ -1091,14 +1100,44 @@ function _blIzgladi(tekst) {
     return izhod.join(String.fromCharCode(10)).trim();
 }
 
+// Редът на частите в доклада е по проектантската практика, не по реда, в който
+// са прочетени записките. (Операторът, 19.10.2026: „Архитектура; конструкции;
+// ел; ВиК, ОВК, геодезия; озеленяване, ПБ“.) Част извън списъка влиза накрая.
+const _BL_RED_CHASTI = ['ARH', 'KONSTR', 'EL', 'VIK', 'OVK', 'GEO', 'OZELEN', 'PB',
+                        'EE', 'PBZ', 'TRANSP', 'SITUACIA', 'VIZA', 'DRUGA'];
+// Старите блокове са пазени само с името на частта — то също трябва да се
+// познава, за да не чака операторът ново четене.
+const _BL_IME_KOD = [[/архитект/i, 'ARH'], [/конструк/i, 'KONSTR'],
+    [/електро|^ел\b/i, 'EL'], [/вик|водоснаб|канализ/i, 'VIK'],
+    [/овк|отоплен|вентилац|климат/i, 'OVK'], [/геодез/i, 'GEO'],
+    [/озелен|паркоустр/i, 'OZELEN'], [/пожарн|^пб\b/i, 'PB'],
+    [/енергийна/i, 'EE'], [/пбз|безопасност и здраве/i, 'PBZ'],
+    [/транспорт|пътна/i, 'TRANSP'], [/ситуац|вертикална/i, 'SITUACIA'],
+    [/виза/i, 'VIZA']];
+
+function _blKodChast(chast, kod) {
+    if (kod && _BL_RED_CHASTI.includes(kod)) return kod;
+    const ime = String(chast || '');
+    for (const [kak, k] of _BL_IME_KOD) if (kak.test(ime)) return k;
+    return '';
+}
+
+function _blRedChast(chast, kod) {
+    const i = _BL_RED_CHASTI.indexOf(_blKodChast(chast, kod));
+    return i < 0 ? _BL_RED_CHASTI.length : i;
+}
+
 function _blZaDokument(p) {
     const vsichki = Object.values(_blVzemi(p))
         .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno');
     if (!vsichki.length) return '';
     const poChasti = {};
     for (const b of vsichki) (poChasti[b.chast || 'Друга част'] ||= []).push(b);
+    const podredeni = Object.entries(poChasti).sort((a, b) =>
+        _blRedChast(a[0], (a[1][0] || {}).chast_kod) - _blRedChast(b[0], (b[1][0] || {}).chast_kod)
+        || a[0].localeCompare(b[0], 'bg'));
     const redove = [];
-    for (const [chast, spisak] of Object.entries(poChasti)) {
+    for (const [chast, spisak] of podredeni) {
         redove.push('Част ' + chast);
         for (const b of spisak) {
             const zagl = String(b.podzaglavie || '').trim();

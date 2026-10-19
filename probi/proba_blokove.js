@@ -11,13 +11,14 @@ const F = new Function(
     + [grab(s, '_blHtml'), grab(s, '_blRedHtml'), grab(s, '_blFakt'),
        grab(s, 'blPotvardi'), grab(s, 'blPoprav'), grab(s, 'blOtmeni'),
        grab(s, 'blVzemiNovoto'), grab(s, 'blOstaviMoeto'),
-       grab(s, '_blZaDokument'), grab(s, '_blChakat'), grab(s, '_blIzgladi'),
+       grab(s, '_blZaDokument'), grab(s, '_blChakat'), grab(s, '_blIzgladi'), grab(s, '_blKodChast'), grab(s, '_blRedChast'),
+       parche(s, 'const _BL_RED_CHASTI', 'function _blKodChast'),
        parche(s, 'const _BL_ZATVARYA', 'function _blIzgladi')].join('\n')
     + '\nlet _t=null,_otgovor=null;'
     + 'const _zhivObekt=()=>_t;const _stroezh=p=>p;const _s2Koy=()=>"оператор";'
     + 'const _s2ZapishiTiho=(p,k)=>_zapisi.push(k);const _prerisuvai=()=>{};'
     + 'const prompt=()=>_otgovor;'
-    + '\nreturn {_blSleej,_blHtml,_blIzgladi,_blVzemi,_blKlyuch,_blZaDokument,_blChakat,blPotvardi,blPoprav,blOtmeni,'
+    + '\nreturn {_blSleej,_blHtml,_blIzgladi,_blRedChast,_blKodChast,_blVzemi,_blKlyuch,_blZaDokument,_blChakat,blPotvardi,blPoprav,blOtmeni,'
     + 'blVzemiNovoto,blOstaviMoeto,set:p=>{_t=p},otgovor:v=>{_otgovor=v},zapisi:()=>_zapisi};');
 const B = F();
 
@@ -144,6 +145,37 @@ t('и в документа текстът влиза сглобен',
 t('в документа няма парчета по две думи',
   !B._blZaDokument(p).split(NR).some(r => r === 'част на имота.' || /и е с$/.test(r)),
   B._blZaDokument(p));
+
+// ── редът на частите ──────────────────────────────────────────────────────
+// Операторът, 19.10.2026: „записките не трябва да се подреждат по реда на
+// прочитане, а: Архитектура; конструкции; ел; ВиК, ОВК, геодезия;
+// озеленяване, ПБ“.
+const RED = { blokove: [
+    { chast: 'Пожарна безопасност', chast_kod: 'PB', fajl: 'pb.pdf',
+      razdeli: [{ podzaglavie: 'Евакуация', tekst: 'Евакуацията е по две стълбища.', stranica: 1 }] },
+    { chast: 'ВиК', chast_kod: 'VIK', fajl: 'vik.pdf',
+      razdeli: [{ podzaglavie: 'Водопровод', tekst: 'Сградата се захранва от уличен водопровод.', stranica: 1 }] },
+    { chast: 'Геодезия', chast_kod: 'GEO', fajl: 'geo.pdf',
+      razdeli: [{ podzaglavie: 'Трасе', tekst: 'Трасировъчният план е по координати.', stranica: 1 }] },
+    { chast: 'Архитектура', chast_kod: 'ARH', fajl: 'arh.pdf',
+      razdeli: [{ podzaglavie: 'Решение', tekst: 'Сградата е на едно ниво.', stranica: 1 }] },
+    { chast: 'Конструкции', chast_kod: 'KONSTR', fajl: 'k.pdf',
+      razdeli: [{ podzaglavie: 'Фундиране', tekst: 'Фундирането е с единични фундаменти.', stranica: 1 }] },
+] };
+const pr = {};
+B.set(pr);
+B._blSleej(pr, RED);
+for (const k of Object.keys(B._blVzemi(pr))) B.blPotvardi(encodeURIComponent(k));
+const dok = B._blZaDokument(pr);
+const red = dok.split(NR).filter(x => x.startsWith('Част ')).join(' | ');
+t('частите са в проектантски ред',
+  red === 'Част Архитектура | Част Конструкции | Част ВиК | Част Геодезия | Част Пожарна безопасност', red);
+
+// Старите блокове са пазени без код — познават се по името.
+t('частта се познава и само по име', B._blKodChast('ОВК (отопление, вентилация, климатизация)', '') === 'OVK');
+t('ел се познава', B._blKodChast('Електро', '') === 'EL');
+t('непозната част отива накрая',
+  B._blRedChast('Нещо друго', '') > B._blRedChast('Пожарна безопасност', 'PB'));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
