@@ -778,7 +778,12 @@ async function zapiskiCheti() {
                 + ` · ${(zap.priznaci || []).length} признака · ${(zap.materiali || []).length} материала`
                 + (zap.ot_tekst ? ' <span style="color:var(--green,#2e7d32)">· от текст (безплатно)</span>'
                                : zap.sken ? ' <span style="color:var(--muted)">· скан</span>' : '')
-                + ` <span style="color:var(--muted)">· ${_s2esc(zap.chetec || '')}</span>`);
+                + ` <span style="color:var(--muted)">· ${_s2esc(zap.chetec || '')}</span>`
+                // Защо не е чел основният — иначе „резервен“ стои без причина и
+                // при следващия отказ няма от какво да се тръгне. (19.10.2026)
+                + (zap.zashto_rezerven
+                    ? `<div style="font-size:11px;color:#8a6400;margin-left:14px">основният не можа: ${
+                        _s2esc(String(zap.zashto_rezerven).slice(0, 160))}</div>` : ''));
         } catch (e) {
             znak(i, `❌ ${ime} — ${_s2esc(e.message)}`);
         }
