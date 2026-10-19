@@ -1716,8 +1716,16 @@ function buildPassportRows(project, consultant, extra) {
         const stroezh = typeof _stroezh === 'function' ? _stroezh(project) : project;
         const tekst = _blZaDokument(stroezh);
         if (tekst) add('ОСИП_В_Части', tekst);
+        // Мълчанието тук беше лошо: операторът виждаше прочетените блокове в
+        // „Проектът“ и чакаше да се появят в доклада, а те не влизат без ✔.
+        // (15.10.2026 — „има си ги прочетени, но не се наливат в ОСИП“.)
         const chakat = _blChakat(stroezh);
-        if (chakat) console.warn(`${chakat} текстови блока още чакат потвърждение`);
+        if (chakat && typeof showAlert === 'function') {
+            showAlert(tekst ? 'warning' : 'error', tekst
+                ? `${chakat} текстови блока още чакат ✔ в „Проектът“ — те НЕ влизат в доклада.`
+                : `Нито един текстов блок не е потвърден — раздел В остава [___]. `
+                  + `Отвори „Проектът“ и натисни ✔ на блоковете.`);
+        }
     }
 
     // Представител на Възложителя за подписи. В протокол 2 се пише само ЕДНО
