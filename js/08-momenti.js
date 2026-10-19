@@ -555,6 +555,59 @@ function _kesSravneniaHtml(f) {
     </div>`;
 }
 
+// Разминаванията между потвърденото и паспорта. Не се решават тихо: виждаш
+// двете стойности и избираш. (Операторът, 19.10.2026.)
+function _kesRazminavaniaHtml(p) {
+    const esc = _s2esc;
+    const spisak = Object.values((p && p.razminavania) || {});
+    if (!spisak.length) return '';
+    return `
+        <div class="alert alert-warning" style="margin:0 0 16px"><div>
+            <strong>Потвърденото се разминава с паспорта на ${spisak.length}
+                ${spisak.length === 1 ? 'място' : 'места'}</strong>
+            <div style="font-size:12.5px;margin-top:8px;line-height:1.9">
+                ${spisak.map(r => `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)">
+                    <strong>${esc(r.ime || r.pole)}</strong><br>
+                    от проекта: <strong>${esc(r.ot_proekt)}</strong> ·
+                    в паспорта: <strong>${esc(r.v_pasporta)}</strong>
+                    ${r.samo_sverka ? `<span style="color:var(--muted);font-size:11.5px">
+                        — само се сверява; това поле се пипа на своето място</span>`
+                    : `<button class="btn btn-secondary btn-sm" style="margin-left:8px"
+                            onclick="kesVzemiOtProekta('${encodeURIComponent(r.pole)}')">вземи от проекта</button>
+                       <button class="btn btn-ghost btn-sm"
+                            onclick="kesOstaviPasporta('${encodeURIComponent(r.pole)}')">остави паспорта</button>`}
+                </div>`).join('')}
+            </div>
+        </div></div>`;
+}
+
+function _kesRazminavane(pole64) {
+    const obekt = _zhivObekt();
+    if (!obekt) return {};
+    const p = _stroezh(obekt);
+    const pole = decodeURIComponent(pole64);
+    return { obekt, p, pole, r: ((p.razminavania || {})[pole]) };
+}
+
+function kesVzemiOtProekta(pole64) {
+    const { obekt, p, pole, r } = _kesRazminavane(pole64);
+    if (!r || r.samo_sverka) return;
+    const nosach = r.kade === 'stroezh' ? p
+        : r.kade === 'osip' ? (obekt.osip = obekt.osip || {}) : obekt;
+    nosach[pole] = r.ot_proekt;
+    delete p.razminavania[pole];
+    _s2ZapishiTiho(obekt, `Проверки: „${r.ime || pole}“ — взето от проекта`);
+    renderKakavPage();
+}
+
+function kesOstaviPasporta(pole64) {
+    const { obekt, p, pole, r } = _kesRazminavane(pole64);
+    if (!r) return;
+    delete p.razminavania[pole];
+    _s2ZapishiTiho(obekt, `Проверки: „${r.ime || pole}“ — остава както е в паспорта`);
+    renderKakavPage();
+}
+
 function _kesHtml(p, r) {
     const f = p.fakti || {};
     const broi = v => _KES_POLETA.filter(([k]) => (f[k]?.sastoyanie || 'prazno') === v).length;
@@ -600,6 +653,7 @@ function _kesHtml(p, r) {
                 ✔ Потвърди всички ${predl}</button>` : ''}
         </div>
         ${_kesSravneniaHtml(f)}
+        ${_kesRazminavaniaHtml(p)}
         ${(r.razminavania || []).length ? `<div class="alert alert-warning">
             Записките не се връзват на ${r.razminavania.length}
             ${r.razminavania.length === 1 ? 'място' : 'места'} — спорните полета по-долу остават празни,
@@ -629,6 +683,10 @@ function _kesZapishi(p, opis) {
     const obekt = _zhivObekt() || p;
     _pokazateliKamGrad(obekt, p);
     _priznaciKamPoleta(p);
+    // Потвърденото тече и към паспорта — празното се попълва, различното се
+    // показва като разминаване и не се подменя тихо. (19.10.2026)
+    _priznaciKamPasport(obekt, p);
+    _vazlozhitelKamPasport(obekt, p);
     _s2ZapishiTiho(obekt, opis);
     renderKakavPage();
 }

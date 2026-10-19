@@ -130,6 +130,42 @@ const _VID_KOD = { 'сграда': 'sgrada', 'линеен обект': 'lineen'
                    'линеен обект с ктп': 'lineen_ktp', 'съоръжение': 'saorajenie' };
 const _KATEGORIA_KOD = { 'първа': '1', 'втора': '2', 'трета': '3', 'четвърта': '4', 'пета': '5' };
 
+// ПОТВЪРДЕНОТО ТЕЧЕ НАДОЛУ, НО НЕ ТИХО.
+// Операторът, 19.10.2026: „защо след като потвърдя кой е възложителят в
+// «Проверки», това не се записва в «Обекти» и където другаде се изисква“.
+//
+// Три случая, същите като при текстовите блокове:
+//   · полето е празно → попълва се;
+//   · съвпада → нищо;
+//   · различава се → НЕ се подменя. Записва се разминаване и операторът
+//     избира — иначе въведеното на ръка изчезва, без да се види.
+// Разминаването е и най-полезното: разминат ли се, документите си
+// противоречат и никой не забелязва.
+function _razminavania(st) {
+    return (st.razminavania = st.razminavania || {});
+}
+
+// Връща true, ако е записал. Пази разминаването, вместо да подменя.
+function _techeNadolu(st, pole, nova, kade) {
+    if (nova === null || nova === undefined || nova === '') return false;
+    const nosach = kade || st;
+    const sega = nosach[pole];
+    const edno = (a, b) => String(a ?? '').trim().toLowerCase()
+                        === String(b ?? '').trim().toLowerCase();
+    if (sega === undefined || sega === null || sega === '' || (Array.isArray(sega) && !sega.length)) {
+        nosach[pole] = nova;
+        delete _razminavania(st)[pole];
+        return true;
+    }
+    if (edno(Array.isArray(sega) ? sega.join('; ') : sega,
+             Array.isArray(nova) ? nova.join('; ') : nova)) {
+        delete _razminavania(st)[pole];
+        return false;
+    }
+    _razminavania(st)[pole] = { pole, ot_proekt: nova, v_pasporta: sega, koga: new Date().toISOString() };
+    return false;
+}
+
 function _priznaciKamPoleta(st) {
     const vzemi = k => {
         const f = (st.fakti || {})[k];
@@ -137,7 +173,7 @@ function _priznaciKamPoleta(st) {
     };
     const n = x => String(x || '').trim().toLowerCase();
     let broj = 0;
-    const slozhi = (pole, st2) => { if (st2 !== null && st2 !== undefined) { st[pole] = st2; broj++; } };
+    const slozhi = (pole, st2) => { if (_techeNadolu(st, pole, st2)) broj++; };
 
     const vid = vzemi('vid');
     if (vid) slozhi('vid', _VID_KOD[n(vid)] || st.vid);
@@ -172,6 +208,78 @@ function _pokazateliKamGrad(obekt, st) {
     }
     if (n) obekt.gradoustroystvo = g;
     return n;
+}
+
+// Останалите полета на паспорта, които признак може да попълни. Таблицата е и
+// одитът: признак, който го няма тук, НЯМА къде да отиде — стои само в
+// „Проверки“ и се ползва от чеклиста. (19.10.2026)
+//
+// `kade` казва върху какво се пише: строежът или обектът (имотът).
+const _PRIZNAK_KAM_PASPORT = [
+    { klyuch: 'obekt',     kade: 'stroezh', pole: 'stroej', ime: 'Наименование на строежа' },
+    // Категорията се ДОКАЗВА от разрешението за строеж, не от записката —
+    // затова само попълва празно и никога не спори с въведеното.
+    { klyuch: 'kategoria', kade: 'osip', pole: 'kategoria', ime: 'Категория (текст за раздел А)',
+      samo_prazno: true },
+    { klyuch: 'faza',      kade: 'osip', pole: 'faza', ime: 'Фаза на проекта' },
+    // Идентификаторът НЕ се подменя: по него се намира обектът и смяната му
+    // би разместила всичко. Само се сверява.
+    { klyuch: 'identifikator', kade: 'obekt', pole: 'pi', ime: 'Идентификатор по КККР',
+      samo_sverka: true },
+];
+
+function _priznaciKamPasport(obekt, st) {
+    const vzemi = k => {
+        const f = (st.fakti || {})[k];
+        return f && (f.sastoyanie === 'potvardeno' || f.sastoyanie === 'popraveno')
+            ? String(f.stoynost || '').trim() : null;
+    };
+    let n = 0;
+    for (const r of _PRIZNAK_KAM_PASPORT) {
+        const v = vzemi(r.klyuch);
+        if (!v) continue;
+        const nosach = r.kade === 'stroezh' ? st
+            : r.kade === 'osip' ? (obekt.osip = obekt.osip || {}) : obekt;
+        const sega = String(nosach[r.pole] ?? '').trim();
+        if (r.samo_sverka || (r.samo_prazno && sega)) {
+            if (sega && sega.toLowerCase() !== v.toLowerCase()) {
+                _razminavania(st)[r.pole] = { pole: r.pole, ime: r.ime, kade: r.kade,
+                                              ot_proekt: v, v_pasporta: sega, samo_sverka: true };
+            } else delete _razminavania(st)[r.pole];
+            continue;
+        }
+        if (_techeNadolu(st, r.pole, v, nosach)) n++;
+        const raz = _razminavania(st)[r.pole];
+        if (raz) { raz.ime = r.ime; raz.kade = r.kade; }
+    }
+    return n;
+}
+
+// Възложителят е особен: регистърът на собствеността бие всичко. Име от
+// проект или от договор е ПОДАТКА — собствеността се доказва с нотариален
+// акт. Затова потвърденият „собственик“ влиза в паспорта само когато
+// регистърът е празен и в паспорта няма никого. (Операторът, 02.10.2026)
+function _vazlozhitelKamPasport(obekt, st) {
+    const f = (st.fakti || {}).sobstvenik;
+    if (!f || (f.sastoyanie !== 'potvardeno' && f.sastoyanie !== 'popraveno')) return 0;
+    const ime = String(f.stoynost || '').trim();
+    if (!ime) return 0;
+    const otRegistar = (typeof _sbKlienti === 'function' && obekt.sobstvenost)
+        ? _sbKlienti(obekt, '') : [];
+    if (otRegistar.length) return 0;            // регистърът знае по-добре
+    const sega = (obekt.clients || []).filter(c => c && c.name);
+    if (!sega.length) {
+        obekt.clients = [{ type: /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)(?![А-Яа-я])/.test(ime) ? 'ЮЛ' : 'ФЛ',
+                           name: ime, ot_proekt: true }];
+        delete _razminavania(st).clients;
+        return 1;
+    }
+    if (!sega.some(c => c.name.trim().toLowerCase() === ime.toLowerCase())) {
+        _razminavania(st).clients = { pole: 'clients', ime: 'Възложител', kade: 'obekt',
+                                      ot_proekt: ime, v_pasporta: sega.map(c => c.name).join(', '),
+                                      samo_sverka: true };
+    } else delete _razminavania(st).clients;
+    return 0;
 }
 
 // Данните на ИМОТА: градоустройството и каквото е общо за всички строежи в него.
