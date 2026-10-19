@@ -211,6 +211,13 @@ const _SASTAVKI = [
       nosi: ['imaMashini', 'spo', 'metalnaKonstrukcia'] },
     { kod: 'preustroystvo', ime: 'Преустройство / пристройка / надстройка',
       kak: /преустройств|пристройк|надстройк|достроява|реконструкц/iu, nosi: ['etaji', 'zp', 'rzp'] },
+    // Тези две не ги пише в заглавието — идват от записките по архитектура
+    // и електро. (Операторът, 19.10.2026.)
+    { kod: 'asansior', ime: 'Асансьорна уредба', kak: /асансьор|подемна платформа/iu,
+      nosi: ['asansior', 'spo', 'el_saobshteniya'] },
+    { kod: 'basein', ime: 'Басейн', kak: /басейн/iu, nosi: ['vik', 'drenaj'] },
+    { kod: 'gaz_instalacia', ime: 'Газова инсталация', kak: /газов|газоснабдяван|(?<!\p{L})газ(?!\p{L})/iu,
+      nosi: ['gaz', 'spo'] },
     { kod: 'etapnost', ime: 'Етапно изпълнение', kak: /(?<!\p{L})етап(?!\p{L})|етап\s*[iv1-9]/iu, nosi: [] },
 ];
 
@@ -231,13 +238,52 @@ function _bezZahranvaniya(tekst) {
     return m && m.index > 20 ? t.slice(0, m.index) : t;
 }
 
-function _sastavki(tekst) {
+function _sastavki(tekst, izvor) {
     const t = _bezZahranvaniya(tekst);
     if (!t.trim()) return [];
     const naydeni = _SASTAVKI.filter(s => s.kak.test(t));
     // Казано ли е „шахтов ТП“ или „БКТП“, „ТП — не е казано какъв“ отпада.
-    return naydeni.filter(s => s.kod !== 'tp_neyasen'
-        || !naydeni.some(x => x.kod === 'shtp' || x.kod === 'bktp' || x.kod === 'zru'));
+    return naydeni
+        .filter(s => s.kod !== 'tp_neyasen'
+            || !naydeni.some(x => x.kod === 'shtp' || x.kod === 'bktp' || x.kod === 'zru'))
+        .map(s => ({ ...s, ot: izvor || 'заглавието' }));
+}
+
+// ЗАГЛАВИЕТО НЕ Е ЕДИНСТВЕНИЯТ ИЗВОР — и не е най-добрият.
+// Операторът, 19.10.2026: „асансьорът не се разглежда в заглавието на проекта,
+// има го в записката по част архитектура и ел; басейн също“. Затова съставките
+// се четат и от прочетените записки, и от самите потвърдени признаци.
+//
+// Признак, който сам по себе си значи съставка: отговори ли проектът „да“ на
+// асансьор, значи ИМА асансьорна уредба — с нейните въпроси и документи.
+const _PRIZNAK_E_SASTAVKA = {
+    asansior: 'asansior', garaj: 'garaj', podzemen_etaj: 'podzemen_garaj',
+    gaz: 'gaz_instalacia', toplosnabdyavane: 'toplo',
+};
+
+const _E_DA = v => /^(да|има|налице)/i.test(String(v || '').trim());
+
+// Текстът на прочетените записки — описанието, подзаглавията и блоковете.
+function _tekstZapiski(p) {
+    const parcheta = [];
+    for (const z of ((p.zapiski || {}).chasti) || []) {
+        parcheta.push(z.opisanie || '', z.chast_ime || '');
+        for (const b of z.opisanie_blokove || []) parcheta.push(b.podzaglavie || '', b.tekst || '');
+    }
+    for (const b of Object.values(p.blokove || {})) parcheta.push(b.podzaglavie || '', b.tekst || '');
+    return parcheta.filter(Boolean).join(' · ');
+}
+
+// Съставките от признаците: „има ли асансьор — да“ е съставка.
+function _sastavkiOtPriznaci(p) {
+    const out = [];
+    for (const [klyuch, kod] of Object.entries(_PRIZNAK_E_SASTAVKA)) {
+        const f = (p.fakti || {})[klyuch];
+        if (!f || !_E_DA(f.stoynost)) continue;
+        const s = _SASTAVKI.find(x => x.kod === kod);
+        if (s) out.push({ ...s, ot: 'признак „' + (_KES_IME[klyuch] || klyuch) + '“' });
+    }
+    return out;
 }
 
 // Признаците, които съставките отварят. Празно значи „не знаем“ — тогава

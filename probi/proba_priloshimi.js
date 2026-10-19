@@ -14,7 +14,9 @@ const F = new Function(
     + 'const _KES_IME=Object.fromEntries(_KES_POLETA.map(([k,i])=>[k,i]));\n'
     + parche(s, 'const _VID_KOD =', 'function _priznaciKamPoleta')
     + parche(s, 'const _SGRADA =', 'const _KES_IZBOR')
-    + 'return {_KES_POLETA,_kesPriloshim,_KES_ZA_VID,_sastavki,_SASTAVKI,_kesOtSastavki};')();
+    + grab(s, '_kesSastavkiNa') + '\n'
+    + 'return {_KES_POLETA,_kesPriloshim,_KES_ZA_VID,_sastavki,_SASTAVKI,_kesOtSastavki,'
+    + '_tekstZapiski,_sastavkiOtPriznaci,_kesSastavkiNa};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -91,6 +93,47 @@ t('изгребната яма се разпознава',
 // Непознато заглавие не крие нищо.
 t('заглавие без съставки пита всичко',
   F._KES_POLETA.every(([k]) => F._kesPriloshim(k, '', F._sastavki('Строеж'))));
+
+// ── съставките идват и от ЗАПИСКИТЕ, не само от заглавието ────────────────
+// Операторът, 19.10.2026: „асансьорът не се разглежда в заглавието на проекта,
+// има го в записката по част архитектура и ел; басейн също“.
+const p1 = {
+    stroej: 'Многофамилна жилищна сграда с подземни гаражи',
+    zapiski: { chasti: [{ chast_ime: 'Архитектура',
+        opisanie_blokove: [{ podzaglavie: 'Вертикални комуникации',
+            tekst: 'Сградата се обслужва от един асансьор с товароподемност 630 кг и басейн на покрива.' }] }] },
+};
+const s1 = F._kesSastavkiNa(p1);
+const kodove = s1.map(x => x.kod);
+t('асансьорът идва от записката', kodove.includes('asansior'), kodove);
+t('басейнът също', kodove.includes('basein'), kodove);
+t('и се помни ОТКЪДЕ', (s1.find(x => x.kod === 'asansior') || {}).ot === 'записките',
+  s1.map(x => x.kod + ':' + x.ot));
+t('заглавието си остава извор',
+  (s1.find(x => x.kod === 'sgrada') || {}).ot === 'заглавието', s1.map(x => x.ot));
+t('асансьорът отваря своя въпрос', F._kesPriloshim('asansior', '', s1));
+t('и СПО, защото е съоръжение с повишена опасност', F._kesPriloshim('spo', '', s1));
+
+// Признак „да“ е съставка сам по себе си.
+const p2 = { stroej: 'Външно електрозахранване с кабели НН',
+             fakti: { asansior: { sastoyanie: 'potvardeno', stoynost: 'да' } } };
+const s2 = F._kesSastavkiNa(p2);
+t('потвърденият признак прави съставка', s2.some(x => x.kod === 'asansior'), s2.map(x => x.kod));
+t('и казва, че идва от признак', /признак/.test((s2.find(x => x.kod === 'asansior') || {}).ot || ''),
+  s2.map(x => x.ot));
+
+const p3 = { stroej: 'Сграда', fakti: { asansior: { sastoyanie: 'potvardeno', stoynost: 'не' } } };
+t('„не“ не прави съставка', !F._kesSastavkiNa(p3).some(x => x.kod === 'asansior'));
+
+// Ръчно махнатото не се връща, макар записката пак да го казва.
+const p4 = { ...p1, sastavki: { mahnati: ['basein'], dobaveni: [] } };
+t('махнатото на ръка не се връща', !F._kesSastavkiNa(p4).some(x => x.kod === 'basein'));
+
+// Записката казва „шахтов“ — неясният ТП отпада и оттам.
+const p5 = { stroej: 'Външно електрозахранване с нов ТП 2х800kVA',
+             zapiski: { chasti: [{ opisanie_blokove: [{ tekst: 'Предвижда се шахтов трафопост.' }] }] } };
+const s5 = F._kesSastavkiNa(p5).map(x => x.kod);
+t('записката изяснява какъв е трафопостът', s5.includes('shtp') && !s5.includes('tp_neyasen'), s5);
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

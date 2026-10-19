@@ -558,13 +558,28 @@ function _kesSravneniaHtml(f) {
 // ── съставките на строежа ─────────────────────────────────────────────────
 // Четат се от заглавието; операторът може да добави или махне. Ръчно
 // махнатата не се връща при следващото четене — иначе поправката е напразна.
+// Три извора, в ред на доказателствена сила: заглавието на строежа, самите
+// записки и потвърдените признаци. Всяка съставка помни ОТКЪДЕ е — иначе
+// после няма как да се каже защо системата пита това, което пита.
+// (Операторът, 19.10.2026: „асансьорът го има в записката, не в заглавието“.)
 function _kesSastavkiNa(p) {
     const r = p.sastavki || {};
-    const ot_zaglavie = _sastavki([p.stroej, p.zahranvan_obekt, p.name].filter(Boolean).join(' · '))
-        .filter(s => !(r.mahnati || []).includes(s.kod));
-    const rachni = (r.dobaveni || []).map(k => _SASTAVKI.find(x => x.kod === k)).filter(Boolean);
+    const ot = [
+        ..._sastavki([p.stroej, p.name].filter(Boolean).join(' · '), 'заглавието'),
+        ..._sastavki(_tekstZapiski(p), 'записките'),
+        ..._sastavkiOtPriznaci(p),
+        ...(r.dobaveni || []).map(k => {
+            const s = _SASTAVKI.find(x => x.kod === k);
+            return s && { ...s, ot: 'вписана на ръка' };
+        }).filter(Boolean),
+    ];
     const vidyani = new Set();
-    return [...ot_zaglavie, ...rachni].filter(s => !vidyani.has(s.kod) && vidyani.add(s.kod));
+    return ot
+        .filter(s => !(r.mahnati || []).includes(s.kod))
+        .filter(s => !vidyani.has(s.kod) && vidyani.add(s.kod))
+        // Каже ли някой извор какъв е трафопостът, неясният отпада.
+        .filter(s => s.kod !== 'tp_neyasen'
+            || !ot.some(x => ['shtp', 'bktp', 'zru'].includes(x.kod)));
 }
 
 function _kesSastavkiHtml(p, sast) {
@@ -585,7 +600,9 @@ function _kesSastavkiHtml(p, sast) {
             </p>
             <div style="font-size:12.5px;line-height:2">
                 ${sast.map(s => `<span style="display:inline-block;border:1px solid var(--border);
-                        border-radius:12px;padding:1px 10px;margin:0 6px 6px 0">${esc(s.ime)}
+                        border-radius:12px;padding:1px 10px;margin:0 6px 6px 0"
+                        title="от ${esc(s.ot || '')}">${esc(s.ime)}
+                    <span style="color:var(--muted);font-size:11px">· ${esc(s.ot || '')}</span>
                     <button class="btn btn-ghost btn-sm" style="padding:0 4px"
                             onclick="kesMahniSastavka('${s.kod}')">×</button></span>`).join('')
                 || '<span style="color:var(--muted)">няма разпозната съставка</span>'}
