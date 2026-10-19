@@ -679,7 +679,7 @@ async function kiipSearch(i, query) {
              onmouseenter="this.style.background='var(--surface-2)'"
              onmouseleave="this.style.background=''">
             <span style="font-weight:700;color:var(--gold)">${r.nomer}</span>
-            <span style="margin-left:8px">${r.ime}</span>
+            <span style="margin-left:8px">${imeSGlavni(r.ime)}</span>
             <span style="margin-left:8px;color:var(--muted);font-size:12px">${
                 (r.chasti || []).map(c => c.chast + (c.pp === 'ОПП' ? ' (ОПП)' : '')).join(' · ')
             }</span>
@@ -692,7 +692,7 @@ function selectKiipEntry(i, ppp, name, el) {
     const nameInput = el.closest('[style*="position:relative"]')?.querySelector('input');
     const pppInput = document.getElementById('ppp-input-' + i);
     if (nameInput) {
-        nameInput.value = name.charAt(0) + name.slice(1).toLowerCase();
+        nameInput.value = imeSGlavni(name);
         updateProjectant(i, 'name', nameInput.value);
     }
     if (pppInput) {

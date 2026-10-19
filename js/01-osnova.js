@@ -170,6 +170,29 @@ function updateApiIndicator() {
 
 const _registri = {};
 
+// Регистрите на КИИП и техническия контрол са с ГЛАВНИ букви — така са
+// публикувани. Досега избраното име се вкарваше в акта като „Абдулла мохамед
+// ждид“: голяма само първата буква на реда. Всяка дума си има своя главна, а
+// двойните фамилии (Христова-Димова) и „оглу“-подобните представки са част от
+// името. Частицата „на“/„и“ не започва име, затова остава малка.
+// (Операторът, 19.10.2026.)
+const _MALKI_DUMI = new Set(['на', 'и', 'от', 'за']);
+// Правната форма не е дума от име и си остава с главни букви.
+const _FORMI = new Set(['ООД', 'ЕООД', 'АД', 'ЕАД', 'СД', 'КД', 'КДА', 'ЕТ', 'ДЗЗД', 'ЕИК']);
+
+function imeSGlavni(ime) {
+    return String(ime || '').trim()
+        .replace(/\s+/g, ' ')
+        .split(' ')
+        .map((duma, i) => {
+            if (_FORMI.has(duma.toUpperCase())) return duma.toUpperCase();
+            const d = duma.toLowerCase();
+            if (i && _MALKI_DUMI.has(d)) return d;
+            return d.split(/([-'’])/).map(h => h.charAt(0).toUpperCase() + h.slice(1)).join('');
+        })
+        .join(' ');
+}
+
 async function registar(ime) {
     if (_registri[ime] !== undefined) return _registri[ime];
     try {

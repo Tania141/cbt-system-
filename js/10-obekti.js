@@ -1077,15 +1077,15 @@ async function pokazhiSverkaTK() {
     const html = {
         'nyama-registar': `<span style="color:var(--muted)">Регистърът на ТК не е зареден.</span>`,
         'prazno': '',
-        'savpada': () => `<span style="color:#2e6b32">✓ В регистъра на ТК: ${esc(r.po_ime.ime)}
+        'savpada': () => `<span style="color:#2e6b32">✓ В регистъра на ТК: ${esc(imeSGlavni(r.po_ime.ime))}
             · № ${esc(r.po_ime.nomer_tk)} · ${esc(r.po_ime.chast)}</span>`,
         'razminava': () => `<span style="color:var(--red)">⚠️ № ${esc(r.po_nomer.nomer_tk)} е на
-            <strong>${esc(r.po_nomer.ime)}</strong>, а вписаното лице е с № ${esc(r.po_ime.nomer_tk)}
+            <strong>${esc(imeSGlavni(r.po_nomer.ime))}</strong>, а вписаното лице е с № ${esc(r.po_ime.nomer_tk)}
             — единият е грешен.</span>`,
         'samo-ime': () => `<span style="color:#8a6400">⚠️ Лицето е в регистъра с
             № <strong>${esc(r.po_ime.nomer_tk)}</strong> (${esc(r.po_ime.chast)}) — впиши този номер.</span>`,
         'samo-nomer': () => `<span style="color:#8a6400">⚠️ № ${esc(r.po_nomer.nomer_tk)} е на
-            <strong>${esc(r.po_nomer.ime)}</strong> — провери името.</span>`,
+            <strong>${esc(imeSGlavni(r.po_nomer.ime))}</strong> — провери името.</span>`,
         'ne-e-nameren': () => `<span style="color:#8a6400">⚠️ Не е намерен в регистъра на ТК
             (изведен на ${esc(r.izvedeno)}) — провери.</span>`,
     }[r.sastoyanie];
