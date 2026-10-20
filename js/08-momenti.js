@@ -1184,12 +1184,17 @@ function _blSleej(p, r) {
                               podzaglavie: razdel.podzaglavie,
                               tekst: razdel.tekst, prochetan: razdel.tekst,
                               fajl: chast.fajl, stranica: razdel.stranica,
+                              // Ролята и поредността идват от четеца: по тях се
+                              // решава кое влиза в доклада и в какъв ред.
+                              rolya: razdel.rolya || 'описание', red: razdel.red || 0,
                               sastoyanie: 'predlozheno' };
                 continue;
             }
             // Кодът на частта допълва вече пазените блокове — той определя
             // реда в доклада.
             if (!b.chast_kod && chast.chast_kod) b.chast_kod = chast.chast_kod;
+            if (!b.rolya && razdel.rolya) b.rolya = razdel.rolya;
+            if (!b.red && razdel.red) b.red = razdel.red;
             if (b.prochetan !== razdel.tekst) {
                 b.prochetan = razdel.tekst;
                 b.novo_chetene = b.sastoyanie === 'predlozheno' ? '' : razdel.tekst;
@@ -1245,6 +1250,8 @@ function _blRedHtml(k, b) {
                 ${esc(b.podzaglavie || '(без заглавие)')}
                 ${b.fajl ? ` \u00b7 ${esc(b.fajl)}` : ''}${b.stranica ? `, стр. ${b.stranica}` : ''}
                 ${znak ? ` \u00b7 <span style="color:#2e6b32">${znak}</span>` : ''}
+                ${_BL_VLIZA(b) ? '' : ` \u00b7 <span style="color:#8a6400">${
+                    esc(b.rolya)} \u2014 \u043d\u0435 \u0432\u043b\u0438\u0437\u0430 \u0432 \u0434\u043e\u043a\u043b\u0430\u0434\u0430</span>`}
             </div>
             <div style="font-size:13px;line-height:1.65;white-space:pre-wrap;margin-top:3px">${esc(b.tekst)}</div>
             ${b.novo_chetene ? `<div style="font-size:11.5px;color:#b45309;margin-top:4px">
@@ -1314,12 +1321,36 @@ function _blRedChast(chast, kod) {
     return i < 0 ? _BL_RED_CHASTI.length : i;
 }
 
+// В доклада на НАДЗОРА влиза само описанието. Указанията на проектанта към
+// изпълнителя („за всички въпроси да се търси решението на проектанта“),
+// изчисленията и съдържанието са негови раздели, не наша оценка.
+// (Операторът, 20.10.2026, след първия истински доклад с текст.)
+const _BL_VLIZA = b => !b.rolya || b.rolya === 'описание';
+
+// Един и същи пасаж го има в две записки (ШТП и кабели) и влизаше два пъти.
+// Сравнява се самият текст, без интервали и главни букви.
+const _blOtpechatak = t => String(t || '').toLowerCase()
+    .replace(/[^0-9a-zа-я]+/g, ' ').trim();
+
 function _blZaDokument(p) {
     const vsichki = Object.values(_blVzemi(p))
-        .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno');
+        .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno')
+        .filter(_BL_VLIZA);
     if (!vsichki.length) return '';
     const poChasti = {};
-    for (const b of vsichki) (poChasti[b.chast || 'Друга част'] ||= []).push(b);
+    const vidyani = new Set();
+    for (const b of vsichki) {
+        const o = _blOtpechatak(b.tekst);
+        if (!o || vidyani.has(o)) continue;
+        vidyani.add(o);
+        (poChasti[b.chast || 'Друга част'] ||= []).push(b);
+    }
+    // В реда на записката: поредността, която четецът е дал, после страницата.
+    for (const spisak of Object.values(poChasti)) {
+        spisak.sort((a, b) => (a.fajl || '').localeCompare(b.fajl || '', 'bg')
+            || (a.red || 0) - (b.red || 0)
+            || (a.stranica || 0) - (b.stranica || 0));
+    }
     const podredeni = Object.entries(poChasti).sort((a, b) =>
         _blRedChast(a[0], (a[1][0] || {}).chast_kod) - _blRedChast(b[0], (b[1][0] || {}).chast_kod)
         || a[0].localeCompare(b[0], 'bg'));
@@ -1338,7 +1369,8 @@ function _blZaDokument(p) {
 
 // Колко чакат потвърждение — за да се каже, преди да се генерира документ.
 function _blChakat(p) {
-    return Object.values(_blVzemi(p)).filter(b => b.sastoyanie === 'predlozheno').length;
+    return Object.values(_blVzemi(p))
+        .filter(b => b.sastoyanie === 'predlozheno' && _BL_VLIZA(b)).length;
 }
 
 function _blFakt(k64) {

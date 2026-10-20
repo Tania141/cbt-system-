@@ -13,6 +13,7 @@ const F = new Function(
        grab(s, 'blVzemiNovoto'), grab(s, 'blOstaviMoeto'),
        grab(s, '_blZaDokument'), grab(s, '_blChakat'), grab(s, '_blIzgladi'), grab(s, '_blKodChast'), grab(s, '_blRedChast'),
        parche(s, 'const _BL_RED_CHASTI', 'function _blKodChast'),
+       parche(s, 'const _BL_VLIZA', 'function _blZaDokument'),
        parche(s, 'const _BL_ZATVARYA', 'function _blIzgladi')].join('\n')
     + '\nlet _t=null,_otgovor=null;'
     + 'const _zhivObekt=()=>_t;const _stroezh=p=>p;const _krug=p=>p;const _s2Koy=()=>"оператор";'
@@ -176,6 +177,44 @@ t('частта се познава и само по име', B._blKodChast('О�
 t('ел се познава', B._blKodChast('Електро', '') === 'EL');
 t('непозната част отива накрая',
   B._blRedChast('Нещо друго', '') > B._blRedChast('Пожарна безопасност', 'PB'));
+
+// ── разбиране за структурата, дословен текст ──────────────────────────────
+// Операторът, 20.10.2026: същият пасаж влизаше два пъти, редът беше разбъркан,
+// а в доклада на надзора влизаха указания на проектанта.
+const STRUKT = { blokove: [
+    { chast: 'Електро', chast_kod: 'EL', fajl: '02_ШТП.docx', razdeli: [
+        { podzaglavie: 'Трафопост', tekst: 'Трафопостът се изгражда в първи сутеренен етаж.',
+          rolya: 'описание', red: 2, stranica: 3 },
+        { podzaglavie: 'Обща част', tekst: 'Проектът се разработва на базата на ДПЕРМ.',
+          rolya: 'описание', red: 1, stranica: 2 },
+        { podzaglavie: 'Оразмеряване на вентилационните отвори',
+          tekst: 'Sвх = 0,18 · 18,6 / 3,315 = 1,84 m2.', rolya: 'изчисление', red: 3, stranica: 5 },
+        { podzaglavie: 'Заключение',
+          tekst: 'За всички възникнали въпроси да се търси решението на проектанта.',
+          rolya: 'указание на проектанта', red: 4, stranica: 6 } ] },
+    { chast: 'Електро', chast_kod: 'EL', fajl: '02_кабели.docx', razdeli: [
+        { podzaglavie: 'Кабели СрН 20kV', tekst: 'Ще се разкъса съществуващ кабел в шахта СШ8.',
+          rolya: 'описание', red: 1, stranica: 2 },
+        { podzaglavie: 'Техническа част', tekst: 'Ще се разкъса съществуващ кабел в шахта СШ8.',
+          rolya: 'описание', red: 2, stranica: 3 } ] },
+] };
+const ps = {};
+B.set(ps);
+B._blSleej(ps, STRUKT);
+for (const k of Object.keys(B._blVzemi(ps))) B.blPotvardi(encodeURIComponent(k));
+const dokS = B._blZaDokument(ps);
+const redoveS = dokS.split(NR).filter(Boolean);
+
+t('изчислението не влиза в доклада', !/1,84 m2/.test(dokS), dokS);
+t('указанието на проектанта не влиза', !/решението на проектанта/.test(dokS), dokS);
+t('описанието влиза', /сутеренен етаж/.test(dokS) && /СШ8/.test(dokS));
+t('еднаквият текст влиза веднъж',
+  (dokS.match(/СШ8/g) || []).length === 1, (dokS.match(/СШ8/g) || []).length);
+t('редът е както в записката',
+  dokS.indexOf('Обща част') < dokS.indexOf('Трафопост'), redoveS);
+t('чакащите не броят онова, което не влиза', B._blChakat(ps) === 0, B._blChakat(ps));
+const htmlS = B._blHtml(ps);
+t('в изгледа личи кое не влиза', /не влиза в доклада/.test(htmlS));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
