@@ -68,8 +68,10 @@ async function proveriDokumenti(faza) {
     const p = _zhivObekt() || {};
     const rows = _cheklistRows(p, dok);
     try {
+        if (typeof kandZaredi === 'function') await kandZaredi();
         const r = await apiCall('/api/cheklist', 'POST',
-                                { passport: rows, faza: _dokFaza, neotnasya: p.neotnasya || [] });
+                                { passport: rows, faza: _dokFaza, neotnasya: p.neotnasya || [],
+                                  sobstveni: typeof kandSobstveni === 'function' ? kandSobstveni() : [] });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-warning" style="margin:0">⚠️ ${r.greshka}</div>`; return; }
         const po = st => r.redove.filter(x => x.sastoyanie === st);
         const lipsvat = po('не е доказано'), precenka = po('за преценка'),
@@ -301,6 +303,18 @@ async function sloy2Sravni() {
             passport: _cheklistRows(p, readDokumenti()), neotnasya: p.neotnasya || [] });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-warning" style="margin:0">⚠️ ${_s2esc(r.greshka)}</div>`; return; }
         kutiya.innerHTML = _sloy2Html(r, procheteni, p.sloy2.od.potvardeni || {});
+        // Прочетеното без ред в чеклиста се запомня като кандидат. Нищо не
+        // влиза само — трупа се и чака. (Операторът, 20.10.2026.)
+        if (typeof kandZabelezhi === 'function') {
+            // Кандидатът се брои по ВИД на документа, както го е прочел
+            // четецът — не по име на файл.
+            const nepasnali = dokumenti
+                .filter(d => !String(d.cheklist_red || '').trim())
+                .map(d => ({ ime: String(d.vid || d.fajl || '').trim(), fajl: d.fajl || '' }));
+            await kandZabelezhi(p, nepasnali);
+            const kut = document.getElementById('s2-kandidati');
+            if (kut) kut.innerHTML = _kandHtml();
+        }
     } catch (e) {
         kutiya.innerHTML = `<div class="alert alert-error" style="margin:0">❌ ${_s2esc(e.message)}</div>`;
     }
@@ -383,6 +397,7 @@ function _sloy2Html(r, dokumenti, potvardeni) {
         h += zagl('Прочетени, без ред в чеклиста');
         h += `<div style="font-size:13px">${r.bez_red.map(_s2esc).join(' · ')}</div>`;
     }
+    h += '<div id="s2-kandidati"></div>';
 
     h += `<details style="margin-top:16px"><summary style="font-size:13px;cursor:pointer;color:var(--muted)">
             Подробно — всички прочетени полета по документ</summary>
