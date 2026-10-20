@@ -355,10 +355,16 @@ function _sloy2Html(r, dokumenti, potvardeni) {
         h += zagl('За чеклиста — кои редове доказват прочетените файлове');
         h += r.predlozhenie.map(e => {
             const vpisan = nalichni.has(e.dokument.toLowerCase());
+            // Един ред може да е доказан от няколко документа — всеки със своя
+            // номер. Дотук се показваше номерът на първия до името на
+            // последния файл и изглеждаше разменено. (Операторът, 20.10.2026)
+            const ot = e.dokazano_ot && e.dokazano_ot.length ? e.dokazano_ot
+                : (e.fajlove || []).map(f => ({ fajl: f, nomer: e.nomer, sken: e.sken }));
             return `<div style="font-size:13px;padding:3px 0;display:flex;gap:8px;align-items:baseline">
                 <span style="flex:1">${vpisan ? '✓' : '＋'} <strong>${_s2esc(e.dokument)}</strong>
-                    ${e.nomer ? ' — ' + _s2esc(e.nomer) : ''}
-                    <span style="color:var(--muted)">· ${_s2esc(e.fajlove.join(', '))}${e.sken ? ' · от скан' : ''}</span></span>
+                    ${ot.map(x => `<div style="margin-left:18px;color:var(--muted)">${
+                        x.nomer ? _s2esc(x.nomer) + ' · ' : ''}${_s2esc(x.fajl)}${
+                        x.sken ? ' · от скан' : ''}</div>`).join('')}</span>
                 ${vpisan ? '' : `<button type="button" class="btn btn-ghost btn-sm"
                     onclick="sloy2Vpishi('${encodeURIComponent(e.dokument)}','${encodeURIComponent(e.nomer || '')}')">Впиши</button>`}
             </div>`; }).join('');
