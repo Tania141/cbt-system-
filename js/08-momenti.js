@@ -1672,12 +1672,19 @@ async function generiraiOdAi() {
     }
 }
 
+// „Впиши“ пише в ОБЕКТА, не само в полето на екрана. Дотук искаше втори жест
+// („запази изходните данни“) и при забравяне вписването изчезваше.
+// (Операторът, 20.10.2026.)
 function sloy2Vpishi(ime64, nomer64) {
     const ime = decodeURIComponent(ime64), nomer = decodeURIComponent(nomer64);
-    const ima = [...document.querySelectorAll('#fp-dok-rows .dok-row')]
-        .some(r => (r.querySelector('.dok-ime')?.value || '').trim().toLowerCase() === ime.toLowerCase());
-    if (!ima) addDokRow(ime, nomer);
-    showAlert('success', `„${ime}“ е вписан — запази изходните данни.`);
+    const obekt = _zhivObekt();
+    if (!obekt) return;
+    // Изходните данни са на ОБЕКТА — там ги чете и „Запази изходните данни“.
+    if (_dokVpishi(obekt, ime, nomer)) {
+        renderDokumenti(obekt);
+        _s2ZapishiTiho(obekt, `Изходни данни: вписан „${ime}“`);
+    }
+    showAlert('success', `„${ime}“ е вписан.`);
     sloy2Sravni();
 }
 

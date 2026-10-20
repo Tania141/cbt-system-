@@ -43,6 +43,45 @@ function vpishiLipsvasht(ime64) {
     nomer.focus();
 }
 
+// СВЕРЕНО И ЧЕКНАТО ЗНАЧИ ВПИСАНО.
+// Операторът, 20.10.2026: „това го е прочел четецът, аз съм го чекнала и
+// одобрила — защо не се е вписало?“. Дотук имаше три жеста за едно нещо:
+// чекваш фактите, после „Впиши“, после „Запази“. Сега документът, чиито
+// факти са сверени и който доказва ред от чеклиста, влиза сам — в обекта, не
+// само в полето на екрана.
+function _dokVpishi(p, ime, nomer) {
+    const k = x => String(x || '').trim().toLowerCase();
+    if (!k(ime)) return false;
+    const spisak = (p.dokumenti = p.dokumenti || []);
+    const red = spisak.find(d => k(d.ime) === k(ime));
+    if (!red) { spisak.push({ ime: String(ime).trim(), nomer: String(nomer || '').trim() }); return true; }
+    if (!String(red.nomer || '').trim() && nomer) { red.nomer = String(nomer).trim(); return true; }
+    return false;
+}
+
+// Кои прочетени документи са сверени докрай.
+function _s2Sveren(d, potv) {
+    const fakti = _s2Fakti(d);
+    return fakti.length > 0 && fakti.every(x => potv[`${_s2Id(d)}::${x.k}`]);
+}
+
+function _dokVpishiSverenite(obekt, p, dokumenti, potv) {
+    let n = 0;
+    for (const d of dokumenti) {
+        const red = String(d.cheklist_red || '').trim();
+        if (!red || !_s2Sveren(d, potv)) continue;
+        const nomer = [d.nomer && d.nomer.stoynost ? '№ ' + d.nomer.stoynost : '',
+                       d.data && d.data.stoynost ? 'от ' + d.data.stoynost : '']
+            .filter(Boolean).join(' ');
+        if (_dokVpishi(p, red, nomer)) n++;
+    }
+    if (n) {
+        renderDokumenti(p);
+        _s2ZapishiTiho(obekt, `Изходни данни: вписани ${n} сверени документа`);
+    }
+    return n;
+}
+
 function renderDokumenti(project) {
     const box = document.getElementById('fp-dok-rows');
     if (!box) return;
@@ -302,7 +341,17 @@ async function sloy2Sravni() {
             agenda: 'od', dokumenti, pasport,
             passport: _cheklistRows(p, readDokumenti()), neotnasya: p.neotnasya || [] });
         if (r.greshka) { kutiya.innerHTML = `<div class="alert alert-warning" style="margin:0">⚠️ ${_s2esc(r.greshka)}</div>`; return; }
+        // Сверените документи влизат в изходните данни сами — без „Впиши“ и
+        // без „Запази“. (Операторът, 20.10.2026.)
+        // Изходните данни са на ОБЕКТА (имота), а прочетеното — на строежа.
+        const obekt = _zhivObekt();
+        const vpisani = _dokVpishiSverenite(obekt, obekt, dokumenti,
+                                            p.sloy2.od.potvardeni || {});
         kutiya.innerHTML = _sloy2Html(r, procheteni, p.sloy2.od.potvardeni || {});
+        if (vpisani) {
+            showAlert('success', `${vpisani} сверени документа влязоха в изходните данни.`);
+            if (document.getElementById('fp-dok-rezultat')) proveriDokumenti(_dokFaza);
+        }
         // Прочетеното без ред в чеклиста се запомня като кандидат. Нищо не
         // влиза само — трупа се и чака. (Операторът, 20.10.2026.)
         if (typeof kandZabelezhi === 'function') {
