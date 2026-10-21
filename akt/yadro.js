@@ -221,6 +221,101 @@ function aktProcent(vezna) {
     return vezna ? vezna.post + ' %' : '—';
 }
 
+// ── Едно изречение: какво СЕГА може ──────────────────────────────────────────
+// Под везните стои изречение, не процент. Операторът не чете две числа — чете
+// „можеш да започнеш“. (ЗАДАНИЕ.md, Екран 3)
+
+function aktKakvoMozhe(dve) {
+    if (!dve) return 'Още не е броено.';
+    const p = dve.podpis;
+    if (p.ot === 0) return 'Този момент няма чеклист — остава шаблон.';
+    if (p.post === 100) return 'Всичко е налице — може и да се подпише.';
+    const n = dve.nachalo;
+    const zaPodpisa = `За подписа липсва${p.lipsvat.length === 1 ? '' : 'т'} ${p.lipsvat.length} ${
+        p.lipsvat.length === 1 ? 'нещо' : 'неща'}.`;
+    if (!n) return zaPodpisa;
+    if (n.post === 100) return 'Можеш да започнеш. ' + zaPodpisa;
+    return `За да започнеш, липсва${n.lipsvat.length === 1 ? '' : 'т'} ${n.lipsvat.length} ${
+        n.lipsvat.length === 1 ? 'нещо' : 'неща'}. ` + zaPodpisa;
+}
+
+// Правилото на момента: кога бутонът „Съставѝ документа“ е активен и — ако не
+// е — какво точно пише. Решението си остава на оператора: системата само казва
+// какво знае. (ЗАДАНИЕ.md, „Най-долу“)
+function aktPraviloNaMomenta(dve) {
+    if (!dve || dve.podpis.ot === 0)
+        return { mozhe: true, zashto: 'Този момент е шаблон — няма какво да се чака.' };
+    const n = dve.nachalo;
+    if (n && n.post < 100)
+        return { mozhe: false, zashto: `${_aktNeshta(n.lipsvat.length)}, за да се започне.` };
+    const p = dve.podpis;
+    if (p.post < 100)
+        return { mozhe: true, zashto: `${_aktNeshta(p.lipsvat.length)} за подписа. `
+                       + 'Може да се състави и така — ще излязат на точки.' };
+    return { mozhe: true, zashto: 'Всичко е налице.' };
+}
+
+// „Липсват 1 неща“ е дребно, но се чете всеки ден.
+function _aktNeshta(n) {
+    return n === 1 ? 'Липсва 1 нещо' : `Липсват ${n} неща`;
+}
+
+// ── Цената на файла ──────────────────────────────────────────────────────────
+// „Системата ИЗБРОЯВА папката, без да чете нищо (нула токени)… До всеки файл
+// пише какво ще струва.“ (Операторът, 20.10.2026)
+//
+// Съди се по РАЗШИРЕНИЕТО — това е всичко, което се знае, без да се отваря
+// файлът. Точно затова надписът казва „скан“, а не „е скан“: .pdf може да е и
+// текстов, но докато не се прочете, не се знае, и предположението е скъпото.
+
+function aktCenaNaFajl(ime) {
+    const t = String(ime || '').toLowerCase();
+    if (/\.docx$/.test(t)) return { cena: 'безплатно', kak: 'има текст' };
+    if (/\.(txt|md|csv)$/.test(t)) return { cena: 'безплатно', kak: 'има текст' };
+    if (/\.doc$/.test(t)) return { cena: 'не се чете', kak: 'стар .doc — запиши го като .docx' };
+    if (/\.pdf$/.test(t)) return { cena: 'през АИ', kak: 'може да е скан' };
+    if (/\.(jpg|jpeg|png|heic|tif|tiff)$/.test(t)) return { cena: 'през АИ', kak: 'снимка' };
+    return { cena: 'не се чете', kak: 'непознат вид' };
+}
+
+// Името на файла НЕ Е ДАННА. Най-многото е сива подсказка до въпроса, която
+// операторът потвърждава или пренаписва. (ЗАДАНИЕ.md)
+function aktPodskazkaOtIme(ime) {
+    return String(ime || '').replace(/\.[a-z0-9]+$/i, '')
+        .replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// ── Остатъкът ────────────────────────────────────────────────────────────────
+// „Това, което системата НЕ може да знае“ — изх. номер, рег. № на ПБЗН, номер
+// на визата. Попълненото влиза направо в текста.
+//
+// Полетата висят на МОМЕНТА. Списъкът е нарочно къс: при истинския доклад за
+// ХЪС останалите бяха точно 13. Расте само когато операторът каже.
+
+const AKT_OSTATAK = {
+    'Оценка на съответствието': [
+        { klyuch: 'izh_nomer', ime: 'Изх. номер на доклада' },
+        { klyuch: 'viza_nomer', ime: 'Номер на визата' },
+    ],
+    'Протокол 2': [
+        { klyuch: 'izh_nomer', ime: 'Изх. номер' },
+        { klyuch: 'viza_nomer', ime: 'Номер на визата' },
+    ],
+    'Акт 15': [
+        { klyuch: 'izh_nomer', ime: 'Изх. номер' },
+        { klyuch: 'pbzn_reg', ime: 'Рег. № на становището на ПБЗН' },
+    ],
+    'Окончателен доклад': [
+        { klyuch: 'izh_nomer', ime: 'Изх. номер на доклада' },
+        { klyuch: 'vh_nomer', ime: 'Вх. номер в общината' },
+        { klyuch: 'pbzn_reg', ime: 'Рег. № на становището на ПБЗН' },
+    ],
+};
+
+function aktOstatak(moment) {
+    return AKT_OSTATAK[moment] || [{ klyuch: 'izh_nomer', ime: 'Изх. номер' }];
+}
+
 // ── Какво сървърът иска, за да каже чеклиста ─────────────────────────────────
 // Същите четири неща, които старият екран „Надзор“ подава. Полетата са на
 // строежа и се четат; нищо не се изчислява наново тук.
@@ -322,5 +417,7 @@ if (typeof module !== 'undefined' && module.exports) {
         aktDveChisla, aktCvyat, aktProcent, aktRedove, aktTarsi, aktGlavaRedove,
         aktStroezhi, aktImeStroezh, aktArhiviran, aktVremeZaArhiv, aktData, AKT_SLED,
         aktSastavki, aktNalichni, aktPriznaci,
+        aktKakvoMozhe, aktPraviloNaMomenta, aktCenaNaFajl, aktPodskazkaOtIme,
+        aktOstatak, AKT_OSTATAK,
     };
 }

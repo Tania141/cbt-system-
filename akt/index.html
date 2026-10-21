@@ -36,6 +36,12 @@
     <section id="ekran-obekt" hidden>
         <div id="obekt-telo"></div>
     </section>
+
+    <!-- ЕКРАН 3 -->
+    <section id="ekran-moment" hidden>
+        <h1 class="moment-ime" id="moment-zaglavie"></h1>
+        <div id="moment-telo"></div>
+    </section>
 </main>
 
 <!-- Кое липсва: всяко число се отваря тук (правило 2) -->
@@ -44,6 +50,14 @@
         <div id="obekt-kutiya-telo"></div>
         <div style="margin-top:14px;text-align:right">
             <button class="bt" onclick="obektZatvoriKutiya()">затвори</button>
+        </div>
+    </div>
+</div>
+<div id="moment-kutiya" onclick="if(event.target===this)momentZatvoriKutiya()">
+    <div class="kutiya-list">
+        <div id="moment-kutiya-telo"></div>
+        <div style="margin-top:14px;text-align:right">
+            <button class="bt" onclick="momentZatvoriKutiya()">затвори</button>
         </div>
     </div>
 </div>
@@ -56,27 +70,42 @@
 <script src="yadro.js"></script>
 <script src="plot.js"></script>
 <script src="obekt.js"></script>
+<script src="moment.js"></script>
 
 <script>
-// Къде сме: #/plot или #/obekt/<id>/<строеж>[?chislo=nachalo|podpis]
+// Къде сме:
+//   #/plot
+//   #/obekt/<id>/<строеж>[?chislo=nachalo|podpis]
+//   #/moment/<id>/<строеж>/<момент>
 function aktKade() {
     const h = location.hash.replace(/^#\/?/, '');
     const [pat, opashka] = h.split('?');
     const chasti = pat.split('/').filter(Boolean).map(decodeURIComponent);
     const chislo = /chislo=(\w+)/.exec(opashka || '');
     return { ekran: chasti[0] || 'plot', id: chasti[1], i: chasti[2] || 0,
-             chislo: chislo ? chislo[1] : '' };
+             moment: chasti[3] || '', chislo: chislo ? chislo[1] : '' };
 }
 
 function aktPokazhi() {
     const k = aktKade();
-    const naPlota = k.ekran !== 'obekt' || !k.id;
-    document.getElementById('ekran-plot').hidden = !naPlota;
-    document.getElementById('ekran-obekt').hidden = naPlota;
-    document.getElementById('shapka-plot').hidden = !naPlota;
-    document.getElementById('shapka-nazad').hidden = naPlota;
-    if (naPlota) plotRisuvai();
-    else obektOtvori(k.id, k.i, k.chislo);
+    const ekran = !k.id ? 'plot'
+        : k.ekran === 'moment' && k.moment ? 'moment'
+        : k.ekran === 'obekt' ? 'obekt' : 'plot';
+    for (const x of ['plot', 'obekt', 'moment'])
+        document.getElementById('ekran-' + x).hidden = x !== ekran;
+    document.getElementById('shapka-plot').hidden = ekran !== 'plot';
+    document.getElementById('shapka-nazad').hidden = ekran === 'plot';
+    // От момента се връщаш в обекта, не чак на плота.
+    document.getElementById('shapka-nazad').href = ekran === 'moment'
+        ? `#/obekt/${encodeURIComponent(k.id)}/${k.i}` : '#/plot';
+    document.getElementById('shapka-nazad').textContent = ekran === 'moment'
+        ? '← обектът' : '← плотът';
+    if (ekran === 'plot') plotRisuvai();
+    else if (ekran === 'obekt') obektOtvori(k.id, k.i, k.chislo);
+    else {
+        document.getElementById('moment-zaglavie').textContent = k.moment;
+        momentOtvori(k.id, k.i, k.moment);
+    }
 }
 
 window.addEventListener('hashchange', aktPokazhi);

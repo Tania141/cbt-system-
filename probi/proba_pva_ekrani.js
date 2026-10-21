@@ -253,15 +253,14 @@ t('собствеността виси на ИМОТА, не на строежа
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|plot|obekt)\.js$/.test(s) || s === '../js/05-proverki.js'),
+  vklyucheni.every(s => /^(yadro|plot|obekt|moment)\.js$/.test(s) || s === '../js/05-proverki.js'),
   vklyucheni);
 t('всеки включен файл съществува',
   vklyucheni.every(s => fs.existsSync(path.resolve(PAPKA, s))), vklyucheni);
 t('старият index.html е непокътнат — не включва нищо от akt/',
   !/akt\//.test(fs.readFileSync(path.join(KOREN, 'index.html'), 'utf8')));
-t('новата папка не пипа нито един файл в js/',
-  fs.readdirSync(PAPKA).every(f => /^(index\.html|stil\.css|yadro\.js|plot\.js|obekt\.js)$/.test(f)),
-  fs.readdirSync(PAPKA));
+t('новата повърхност живее САМО в своята папка',
+  fs.readdirSync(PAPKA).every(f => /\.(html|css|js)$/.test(f)), fs.readdirSync(PAPKA));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

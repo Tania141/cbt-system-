@@ -286,14 +286,10 @@ function obektPakSeOtnasya(dokument) {
     obektZaredilenta();
 }
 
-// Екран 3 още не е писан — дотогава моментът се отваря на старото място, за да
-// не се губи работа. Кухнята е същата.
+// Клик на момент → Екран 3. Самият клик НЕ мести „докъде си стигнала“:
+// може да се надникне в бъдещ момент, без да се обявява, че е почнал.
 function obektKamMoment(moment) {
-    const z = obektZhiv();
-    if (!z) return;
-    z.st.tekusht_moment = moment;
-    aktZapishi();
-    location.href = '../index.html';
+    location.hash = `#/moment/${encodeURIComponent(obektId)}/${obektIndeks}/${encodeURIComponent(moment)}`;
 }
 
 function obektArhiviraj() {

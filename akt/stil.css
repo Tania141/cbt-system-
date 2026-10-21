@@ -204,6 +204,81 @@ body {
     padding: 6px 0; border-bottom: 1px solid var(--border-light);
 }
 
+/* ── Екран 3 · моментът ────────────────────────────────────────────────── */
+
+.moment-ime { font-size: 22px; font-weight: 700; margin-bottom: 14px; }
+
+.vezni { display: flex; gap: 12px; flex-wrap: wrap; }
+.vezna {
+    flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px;
+    font: inherit; text-align: left; cursor: pointer;
+    padding: 14px 16px; background: var(--white); border-radius: var(--r);
+    border: 1px solid var(--border-light); box-shadow: var(--shadow);
+    transition: var(--prehod);
+}
+.vezna:hover { border-color: var(--blue); }
+.vezna-ime { font-size: 11px; font-weight: 700; letter-spacing: .5px;
+             text-transform: uppercase; color: var(--muted); }
+.vezna-post { font-size: 30px; font-weight: 700; line-height: 1.1; }
+.vezna-ot { font-size: 12px; color: var(--muted); }
+.vezna-pylno .vezna-post { color: var(--green); }
+.vezna-chastichno .vezna-post { color: var(--zhalto); }
+.vezna-nyama .vezna-post { color: var(--muted); }
+.kakvo-mozhe { font-size: 15px; margin: 12px 2px 20px; }
+
+.kutiya-razdel {
+    background: var(--white); border: 1px solid var(--border-light);
+    border-radius: var(--r); box-shadow: var(--shadow);
+    padding: 16px 18px; margin-bottom: 14px;
+}
+.kutiya-razdel > .nadpis { margin-bottom: 4px; }
+.poyasnenie { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.redica { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+
+.fajlove { margin-bottom: 10px; }
+.fajl {
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    padding: 6px 0; border-bottom: 1px solid var(--border-light); font-size: 13.5px;
+}
+.fajl-ne { color: var(--muted); cursor: default; }
+.fajl-ime { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fajl-cena { font-size: 11.5px; white-space: nowrap; }
+.fajl-cena-free { color: var(--green); }
+.fajl-cena-ai { color: var(--zhalto); }
+.fajl-cena-ne { color: var(--muted); }
+
+.lipsva-red { padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+.lipsva-red:last-child { border-bottom: none; }
+.lipsva-ime { font-size: 14px; margin-bottom: 7px; }
+.lipsva-zhestove { display: flex; gap: 7px; flex-wrap: wrap; }
+.lipsva-hod { font-size: 12.5px; color: var(--slate); margin-top: 8px; }
+.razbrano {
+    background: var(--surface); border-radius: var(--r-sm);
+    padding: 10px 12px; display: flex; flex-direction: column;
+    align-items: flex-start; gap: 7px;
+}
+.ima { color: var(--green); }
+.nyama { color: var(--muted); }
+
+.ostatak-red {
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    padding: 6px 0; font-size: 13.5px; flex-wrap: wrap;
+}
+.ostatak-red .tarsene { flex: 0 1 260px; }
+
+.sastavi { text-align: center; }
+.bt-golyam { font-size: 15px; padding: 12px 26px; }
+.bt[disabled] { opacity: .45; cursor: not-allowed; }
+.zashto-ne { font-size: 13px; color: var(--zhalto); margin-top: 10px; }
+.sastavi .poyasnenie { margin: 10px 0 0; }
+
+#moment-kutiya { display: none; }
+#moment-kutiya.otvorena {
+    display: flex; position: fixed; inset: 0; z-index: 50;
+    background: rgba(15, 25, 35, .4); align-items: flex-start; justify-content: center;
+    padding: 40px 16px; overflow: auto;
+}
+
 .pusto { text-align: center; padding: 48px 16px; color: var(--muted); }
 .pusto-ime { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--ink-2); }
 
