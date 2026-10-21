@@ -1,0 +1,213 @@
+/* АКТ СИСТЕМ · новото ПВА · stil.css
+   Цветовете и мерките са от „prototip-navigacia.html“, за да не се разминават
+   двете повърхности. Нищо в index.html не се пипа. */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --ink: #0f1923;
+    --ink-2: #1e2d3d;
+    --slate: #4a6785;
+    --muted: #7b93ab;
+    --border: #d0dbe6;
+    --border-light: #e8f0f7;
+    --surface: #f4f8fb;
+    --surface-2: #eaf1f8;
+    --white: #ffffff;
+    --gold: #c9952a;
+    --green: #2d7d52;
+    --green-light: #e6f4ec;
+    --red: #b33030;
+    --blue: #1f6bb5;
+    --blue-light: #e5f0fa;
+    --zhalto: #8a6522;
+    --zhalto-light: #fbf3e2;
+    --r: 12px;
+    --r-sm: 8px;
+    --shadow: 0 2px 12px rgba(15, 25, 35, .08);
+    --prehod: .18s cubic-bezier(.4, 0, .2, 1);
+}
+
+body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── шапка ─────────────────────────────────────────────────────────────── */
+
+.shapka {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 24px; background: var(--white);
+    border-bottom: 1px solid var(--border-light);
+    position: sticky; top: 0; z-index: 10;
+}
+.shapka-ime { font-size: 15px; font-weight: 700; letter-spacing: .4px; }
+.shapka-plot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1; }
+.shapka-plot[hidden], #shapka-nazad[hidden] { display: none; }
+#shapka-nazad { text-decoration: none; }
+.shapka-ime a { color: inherit; text-decoration: none; }
+.tarsene {
+    flex: 1 1 240px; min-width: 180px; padding: 9px 13px; font: inherit;
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    background: var(--surface); color: var(--ink);
+}
+.tarsene:focus { outline: none; border-color: var(--blue); background: var(--white); }
+.brojach { font-size: 12px; color: var(--muted); }
+
+.telo { max-width: 1040px; margin: 0 auto; padding: 20px 16px 64px; }
+
+/* ── бутони ────────────────────────────────────────────────────────────── */
+
+.bt {
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    padding: 7px 13px; border-radius: var(--r-sm); border: 1px solid var(--border);
+    background: var(--white); color: var(--ink-2); transition: var(--prehod);
+}
+.bt:hover { border-color: var(--slate); }
+.bt-glaven { background: var(--ink); border-color: var(--ink); color: var(--white); }
+.bt-tih { background: transparent; border-color: transparent; color: var(--slate);
+          font-weight: 500; font-size: 12px; padding: 3px 7px; }
+.bt-tih:hover { background: var(--surface-2); }
+.izbran { background: var(--ink); border-color: var(--ink); color: var(--white); }
+
+/* ── Екран 1 · редовете ────────────────────────────────────────────────── */
+
+.red {
+    display: grid; gap: 10px 16px; align-items: center;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) auto auto;
+    padding: 13px 16px; margin-bottom: 8px; cursor: pointer;
+    background: var(--white); border: 1px solid var(--border-light);
+    border-radius: var(--r); box-shadow: var(--shadow); transition: var(--prehod);
+}
+.red:hover, .red:focus { border-color: var(--slate); outline: none; }
+.red-stroezh { font-weight: 600; font-size: 14.5px; }
+.red-pi { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.na-ognya {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    background: var(--zhalto-light); color: var(--zhalto);
+    font-size: 12.5px; font-weight: 600;
+}
+.ne-e-pochnalo { font-size: 12.5px; color: var(--muted); }
+.red-chisla { display: flex; gap: 8px; }
+.red-koga { font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
+
+/* ── числата: отварят се ───────────────────────────────────────────────── */
+
+.chislo {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+    font: inherit; cursor: pointer; text-align: left;
+    padding: 5px 10px; border-radius: var(--r-sm);
+    border: 1px solid var(--border-light); background: var(--surface);
+    transition: var(--prehod);
+}
+.chislo:hover { border-color: var(--blue); background: var(--blue-light); }
+.chislo-ime { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; }
+.chislo-post { font-size: 15px; font-weight: 700; }
+.chislo-pylno .chislo-post { color: var(--green); }
+.chislo-chastichno .chislo-post { color: var(--zhalto); }
+.chislo-nyama .chislo-post { color: var(--muted); }
+.chislo-podchertano { border-color: var(--blue); background: var(--blue-light); }
+
+/* ── Екран 2 ───────────────────────────────────────────────────────────── */
+
+.glava {
+    background: var(--white); border: 1px solid var(--border-light);
+    border-radius: var(--r); box-shadow: var(--shadow);
+    padding: 6px 8px; margin-bottom: 16px;
+}
+.glava-red {
+    padding: 8px 10px; border-radius: var(--r-sm); cursor: pointer;
+    font-size: 14.5px; line-height: 1.45; transition: var(--prehod);
+}
+.glava-red:hover, .glava-red:focus { background: var(--surface); outline: none; }
+.otkade { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; }
+.prazno { color: var(--muted); }
+.podsetka {
+    margin: 6px 2px 2px; padding: 9px 12px; border-radius: var(--r-sm);
+    background: var(--zhalto-light); color: var(--zhalto); font-size: 12.5px;
+}
+
+.sastavki { margin-bottom: 16px; }
+.nadpis {
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+}
+.krugcheta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.krugche {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 20px; font-size: 13px;
+    background: var(--white); border: 1px solid var(--border);
+}
+.krugche-ot { font-size: 10.5px; color: var(--muted); }
+.krugche-h {
+    font: inherit; cursor: pointer; border: none; background: none;
+    color: var(--muted); font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.krugche-h:hover { color: var(--red); }
+.krugche-plyus { cursor: pointer; font-weight: 700; color: var(--slate); }
+
+.prevkl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.prevkl .nadpis { margin: 0 4px 0 0; }
+
+.lenta { margin-bottom: 20px; }
+.plochki { display: flex; gap: 10px; flex-wrap: wrap; }
+.plochka {
+    flex: 0 1 200px; cursor: pointer; padding: 12px 14px;
+    background: var(--white); border: 1px solid var(--border-light);
+    border-left: 4px solid var(--border); border-radius: var(--r);
+    box-shadow: var(--shadow); transition: var(--prehod);
+}
+.plochka:hover, .plochka:focus { border-color: var(--slate); outline: none; }
+.plochka-sivo { border-left-color: var(--border); }
+.plochka-sivo .plochka-ime { color: var(--muted); }
+.plochka-zhalto { border-left-color: var(--gold); }
+.plochka-zeleno { border-left-color: var(--green); }
+.plochka-tekushta { box-shadow: 0 0 0 2px var(--gold) inset, var(--shadow); }
+.plochka-ime { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+.plochka-chisla { display: flex; gap: 8px; }
+.minali { margin-bottom: 10px; }
+.minali > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); padding: 4px 0; }
+.chaka, .greshka { font-size: 13px; color: var(--muted); padding: 10px 0; }
+.greshka { color: var(--red); }
+
+.vrazki { display: flex; gap: 10px; flex-wrap: wrap; }
+.vrazka {
+    flex: 1 1 180px; text-decoration: none; color: var(--ink);
+    padding: 13px 16px; background: var(--white); border-radius: var(--r);
+    border: 1px solid var(--border-light); box-shadow: var(--shadow);
+    font-weight: 600; transition: var(--prehod);
+}
+.vrazka:hover { border-color: var(--slate); }
+.vrazka span { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+
+/* ── кутията „кое липсва“ ──────────────────────────────────────────────── */
+
+#obekt-kutiya { display: none; }
+#obekt-kutiya.otvorena {
+    display: flex; position: fixed; inset: 0; z-index: 50;
+    background: rgba(15, 25, 35, .4); align-items: flex-start; justify-content: center;
+    padding: 40px 16px; overflow: auto;
+}
+.kutiya-list {
+    background: var(--white); border-radius: var(--r); max-width: 560px; width: 100%;
+    padding: 20px 22px; box-shadow: 0 8px 40px rgba(15, 25, 35, .25);
+}
+.kutiya-list h2 { font-size: 16px; margin-bottom: 6px; }
+.kutiya-chislo { font-size: 13px; color: var(--slate); margin-bottom: 12px; }
+.lipsvat { list-style: none; font-size: 13.5px; }
+.lipsvat li {
+    display: flex; gap: 8px; align-items: center; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px solid var(--border-light);
+}
+
+.pusto { text-align: center; padding: 48px 16px; color: var(--muted); }
+.pusto-ime { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--ink-2); }
+
+@media (max-width: 760px) {
+    .red { grid-template-columns: 1fr; }
+    .red-koga { text-align: left; }
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>АКТ СИСТЕМ</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<!-- Двата екрана живеят в една страница; сменят се по адреса (#/plot, #/obekt/…).
+     Старото ПВА (../index.html) стои непокътнато и работи както досега. -->
+
+<header class="shapka">
+    <div class="shapka-ime"><a href="#/plot">АКТ СИСТЕМ</a></div>
+    <!-- Горе на плота: търсене и „+ нов обект“. Нищо друго. -->
+    <div class="shapka-plot" id="shapka-plot">
+        <input type="text" class="tarsene" id="plot-tarsene" placeholder="Търси по ПИ, ник, адрес или строеж…"
+               oninput="plotTarsi(this.value)">
+        <span class="brojach" id="plot-brojach"></span>
+        <button class="bt" data-izgled="raboti" onclick="plotSmeniIzgled('raboti')">в работа</button>
+        <button class="bt" data-izgled="arhiv" onclick="plotSmeniIzgled('arhiv')">архив</button>
+        <button class="bt bt-glaven" onclick="plotNovObekt()">+ нов обект</button>
+    </div>
+    <!-- На обекта: само обратният път. -->
+    <a class="bt" id="shapka-nazad" href="#/plot" hidden>← плотът</a>
+</header>
+
+<main class="telo">
+    <!-- ЕКРАН 1 -->
+    <section id="ekran-plot">
+        <div id="plot-spisak"></div>
+    </section>
+
+    <!-- ЕКРАН 2 -->
+    <section id="ekran-obekt" hidden>
+        <div id="obekt-telo"></div>
+    </section>
+</main>
+
+<!-- Кое липсва: всяко число се отваря тук (правило 2) -->
+<div id="obekt-kutiya" onclick="if(event.target===this)obektZatvoriKutiya()">
+    <div class="kutiya-list">
+        <div id="obekt-kutiya-telo"></div>
+        <div style="margin-top:14px;text-align:right">
+            <button class="bt" onclick="obektZatvoriKutiya()">затвори</button>
+        </div>
+    </div>
+</div>
+
+<!-- Кухня: съставките се разпознават от същия модул, който старото ПВА ползва.
+     Нищо в него не се пипа — чете се. -->
+<script src="../js/05-proverki.js"></script>
+
+<!-- Повърхност -->
+<script src="yadro.js"></script>
+<script src="plot.js"></script>
+<script src="obekt.js"></script>
+
+<script>
+// Къде сме: #/plot или #/obekt/<id>/<строеж>[?chislo=nachalo|podpis]
+function aktKade() {
+    const h = location.hash.replace(/^#\/?/, '');
+    const [pat, opashka] = h.split('?');
+    const chasti = pat.split('/').filter(Boolean).map(decodeURIComponent);
+    const chislo = /chislo=(\w+)/.exec(opashka || '');
+    return { ekran: chasti[0] || 'plot', id: chasti[1], i: chasti[2] || 0,
+             chislo: chislo ? chislo[1] : '' };
+}
+
+function aktPokazhi() {
+    const k = aktKade();
+    const naPlota = k.ekran !== 'obekt' || !k.id;
+    document.getElementById('ekran-plot').hidden = !naPlota;
+    document.getElementById('ekran-obekt').hidden = naPlota;
+    document.getElementById('shapka-plot').hidden = !naPlota;
+    document.getElementById('shapka-nazad').hidden = naPlota;
+    if (naPlota) plotRisuvai();
+    else obektOtvori(k.id, k.i, k.chislo);
+}
+
+window.addEventListener('hashchange', aktPokazhi);
+aktZaredi();
+plotSmeniIzgled('raboti');
+aktPokazhi();
+</script>
+
+</body>
+</html>
