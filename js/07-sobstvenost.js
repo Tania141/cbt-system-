@@ -331,12 +331,20 @@ function _sbKlienti(p, data) {
     return _sbVazlozhiteli(p, data).map(v => {
         const l = _sbLice(s, v.lice) || {};
         const yur = l.vid === 'юридическо';
+        // Пълномощното е СВОЙСТВО НА ЛИЦЕТО, не събитие — то не придобива
+        // нищо. Оттук „кой подписва“ влиза само в документите, вместо да се
+        // пише на всеки акт. (Операторът, 21.10.2026.)
+        const pr = l.predstavitel || null;
         return {
             type: yur ? 'ЮЛ' : 'ФЛ',
             name: l.ime || '',
             dveImena: _sbDveImena(l.ime),
             eik: l.egn || '',
             ot_registar: true,
+            podpisva: pr ? pr.ime : '',
+            podpisva_osnovanie: pr ? [pr.nomer && 'пълномощно № ' + pr.nomer,
+                                      pr.data && 'от ' + pr.data].filter(Boolean).join(' ') : '',
+            predstavitel: pr || undefined,
         };
     });
 }
@@ -509,6 +517,19 @@ function _sbHtml(p) {
                     В хедъра на документите излизат <strong>всички</strong>, с по две имена.
                     В протокол 2 — само избраният представител. В акт 7 възложител не се изисква.
                 </div>
+                ${(() => {
+                    // Кой подписва Акт 15: всички или нотариално упълномощен.
+                    const pod = _sbPodpisi(p, data);
+                    if (!pod.broj) return '';
+                    const chuzhdi = pod.redove.filter(r => !r.sam);
+                    return `<div style="font-size:11.5px;margin-top:8px;line-height:1.7">
+                        <strong>Акт 15 подписват ${pod.broj}</strong>${chuzhdi.length
+                            ? ' · ' + chuzhdi.map(r => `${esc(r.podpisva)} за ${esc(r.ime)}${
+                                r.osnovanie ? ' (пълномощно ' + esc(r.osnovanie) + ')' : ''}`).join(' · ')
+                            : ' — всички лично'}
+                        ${pod.lipsvat.map(x => `<div style="color:#b45309">⚠️ ${esc(x)}</div>`).join('')}
+                    </div>`;
+                })()}
             </div>` : `<div style="font-size:13px;color:var(--muted)">
                 Към ${esc(data)} никой не държи вещно право — виж находките горе.</div>`}
         </div>` : '';
@@ -554,9 +575,19 @@ function _sbTablici(p) {
             <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="${butonFn}">${butonIme}</button>
         </details>`;
 
-    const lica = s.lica.map(l => `<div>${esc(l.ime)}
+    const lica = s.lica.map(l => `<div style="padding:3px 0">${esc(l.ime)}
         <span style="color:var(--muted)">· ${esc(l.vid || 'физическо')}${l.egn ? ' · ' + esc(_skritoEgn(l.egn)) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</span>
-        <button class="btn btn-ghost btn-sm" onclick="sbMahni('lica','${l.id}')">×</button></div>`).join('');
+        <button class="btn btn-ghost btn-sm" onclick="sbPredstavitelNa('${l.id}')">${
+            l.predstavitel ? 'представител' : '+ представител'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="sbMahni('lica','${l.id}')">×</button>
+        ${l.predstavitel ? `<div style="margin-left:14px;font-size:11.5px;color:var(--muted)">
+            представлява се от <strong>${esc(l.predstavitel.ime)}</strong>${
+            l.predstavitel.nomer ? ' · пълномощно № ' + esc(l.predstavitel.nomer) : ''}${
+            l.predstavitel.data ? ' от ' + esc(l.predstavitel.data) : ''}${
+            l.predstavitel.obhvat ? ' · ' + esc(l.predstavitel.obhvat) : ''}${
+            l.predstavitel.do ? ' · до ' + esc(l.predstavitel.do) : ''}
+            <button class="btn btn-ghost btn-sm" onclick="sbMahniPredstavitel('${l.id}')">×</button>
+        </div>` : ''}</div>`).join('');
 
     const koren = _sbKoren(p);
     const obekti = s.obekti.map(o => {
@@ -883,6 +914,60 @@ function sbZapochni() {
     const s = _sbDanni(p);
     s.obekti.push({ id: _sbNovId(), vid: 'земя', identifikator: p.pi || '', opisanie: 'поземлен имот' });
     _sbZapishi(p, 'земята е първият обект');
+}
+
+// ПЪЛНОМОЩНОТО Е СВОЙСТВО НА ЛИЦЕТО.
+// Операторът, 21.10.2026: „може да го сложим в собствеността, така ще имаме
+// възложител и неговия упълномощен представител“. И: „Акт 15 може да подпише
+// само нотариално заверен упълномощен, с приложено пълномощно, подобно на НА“.
+//
+// Пази четирите неща, които после се проверяват: кой представлява кого, с
+// какъв документ, за какво и докога.
+function sbPredstavitelNa(lice) {
+    const p = _zhivObekt(); if (!p) return;
+    const s = _sbDanni(p);
+    const l = _sbLice(s, lice); if (!l) return;
+    const sega = l.predstavitel || {};
+    const ime = (prompt(`Кой представлява ${l.ime}?` + String.fromCharCode(10, 10)
+        + 'Трите имена; празно = махни представителя', sega.ime || '') || '').trim();
+    if (!ime) { delete l.predstavitel; _sbZapishi(p, `${l.ime} — махнат представител`); return; }
+    const nomer = (prompt('Пълномощно — рег. № на нотариалната заверка:', sega.nomer || '') || '').trim();
+    const data = (prompt('Дата на заверката (дд.мм.гггг):', sega.data || '') || '').trim();
+    const obhvat = (prompt('За какво е пълномощното?' + String.fromCharCode(10, 10)
+        + 'напр. „общо“ или „да подписва актове и протоколи“',
+        sega.obhvat || 'общо') || '').trim();
+    const do_ = (prompt('До кога важи (дд.мм.гггг)? Празно = без срок:', sega.do || '') || '').trim();
+    l.predstavitel = { ime, nomer, data, obhvat, do: do_ };
+    _sbZapishi(p, `${l.ime} — представител ${ime}`);
+}
+
+function sbMahniPredstavitel(lice) {
+    const p = _zhivObekt(); if (!p) return;
+    const l = _sbLice(_sbDanni(p), lice); if (!l || !l.predstavitel) return;
+    const ime = l.predstavitel.ime;
+    delete l.predstavitel;
+    _sbZapishi(p, `${l.ime} — махнат представител ${ime}`);
+}
+
+// Кой подписва Акт 15 — и достатъчно ли е. Там изискването е по-строго: всички
+// възложители, а заместването е само с нотариално заверено пълномощно.
+function _sbPodpisi(p, data) {
+    const s = _sbDanni(p);
+    const vaz = _sbVazlozhiteli(p, data);
+    const redove = [], lipsvat = [];
+    for (const v of vaz) {
+        const l = _sbLice(s, v.lice) || {};
+        const pr = l.predstavitel;
+        if (!pr) { redove.push({ ime: v.ime, podpisva: v.ime, sam: true }); continue; }
+        const bezDokument = !String(pr.nomer || '').trim() && !String(pr.data || '').trim();
+        if (bezDokument) lipsvat.push(`${v.ime} се представлява от ${pr.ime}, но няма пълномощно`);
+        else if (pr.obhvat && !/общо|подпис|акт/i.test(pr.obhvat))
+            lipsvat.push(`пълномощното на ${pr.ime} е „${pr.obhvat}“ — не покрива подписване на акт`);
+        redove.push({ ime: v.ime, podpisva: pr.ime, sam: false,
+                      osnovanie: [pr.nomer && '№ ' + pr.nomer, pr.data && 'от ' + pr.data]
+                          .filter(Boolean).join(' ') });
+    }
+    return { redove, lipsvat, broj: vaz.length };
 }
 
 function sbDobaviLice() {

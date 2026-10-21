@@ -21,7 +21,7 @@ const F = new Function(
        grab(s, '_sbEdnakvi'), grab(s, 'sbMahni'), grab(s, '_sbSmetka'),
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
-       grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPredstavitel'),
+       grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -29,7 +29,7 @@ const F = new Function(
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + '_sbDveImena,_sbKlienti,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + '_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -352,6 +352,50 @@ t('документът е нотариален акт', /нотариален �
   sErm.sabitia[0].dokument);
 t('видът на сделката се пази', sErm.sabitia[0].vid === 'учредяване право на строеж',
   sErm.sabitia[0].vid);
+
+// ── пълномощното е свойство на лицето ─────────────────────────────────────
+// Операторът, 21.10.2026: представителят живее в собствеността, до възложителя;
+// Акт 15 се подписва от всички или от нотариално упълномощен.
+const pp = nov();
+const sp = F._sbDanni(pp);
+sp.lica.push({ id: 'v1', ime: 'Иван Петров' }, { id: 'v2', ime: 'Мария Петрова' });
+sp.obekti.push({ id: 'o1', vid: 'земя', identifikator: '1' });
+sp.koren = 'o1';
+sp.sabitia.push(akt('o1', { vid: 'покупко-продажба', data: '01.01.2020', dokument: 'НА № 1',
+    ot: null, ot_opisanie: 'стар', pridobivashti: [{ lice: 'v1', dyal: '1/2' },
+                                                   { lice: 'v2', dyal: '1/2' }] }));
+
+let pod = F._sbPodpisi(pp, '');
+t('без представители подписват всички', pod.broj === 2 && pod.redove.every(r => r.sam)
+  && !pod.lipsvat.length, pod);
+
+sp.lica.find(x => x.id === 'v2').predstavitel = { ime: 'Георги Димитров', nomer: '1234',
+                                     data: '10.02.2026', obhvat: 'общо' };
+pod = F._sbPodpisi(pp, '');
+t('представителят заменя подписа',
+  pod.redove.find(r => r.ime === 'Мария Петрова').podpisva === 'Георги Димитров', pod.redove);
+t('и носи основанието си',
+  /1234/.test(pod.redove.find(r => !r.sam).osnovanie || ''), pod.redove);
+t('пълномощно „общо“ не вдига тревога', !pod.lipsvat.length, pod.lipsvat);
+
+sp.lica.find(x => x.id === 'v2').predstavitel = { ime: 'Георги Димитров', obhvat: 'общо' };
+t('представител без документ се казва',
+  F._sbPodpisi(pp, '').lipsvat.some(x => /няма пълномощно/.test(x)),
+  F._sbPodpisi(pp, '').lipsvat);
+
+sp.lica.find(x => x.id === 'v2').predstavitel = { ime: 'Георги Димитров', nomer: '9', data: '01.01.2026',
+                                     obhvat: 'представителство пред общината' };
+t('тесният обхват се казва',
+  F._sbPodpisi(pp, '').lipsvat.some(x => /не покрива подписване/.test(x)),
+  F._sbPodpisi(pp, '').lipsvat);
+
+const klP = F._sbKlienti(pp, '');
+t('клиентът носи кой подписва',
+  klP.find(c => c.name === 'Мария Петрова').podpisva === 'Георги Димитров', klP);
+t('и основанието влиза в документа',
+  /№ 9/.test(klP.find(c => c.name === 'Мария Петрова').podpisva_osnovanie || ''), klP);
+t('лице без представител подписва само',
+  !klP.find(c => c.name === 'Иван Петров').podpisva);
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
