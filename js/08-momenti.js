@@ -1908,6 +1908,90 @@ function _bezEGN(redove) {
     return chisti;
 }
 
+// ── Акт 15: тялото ───────────────────────────────────────────────────────────
+// Шаблонът получи тяло (22.10.2026) и сега то иска данни. Те НЕ се въвеждат
+// наново: всяко поле идва от място, където вече е потвърдено веднъж.
+//
+//   вписаните документи → договорът, одобрените проекти
+//   датите на документите → Протокол 2 (или 2а), Образец 3
+//   блоковете от записките → „по изпълнение“
+//   остатъкът на Екран 3 → онова, което само операторът знае
+//
+// Липсва ли нещо, полето просто не се праща и сървърът оставя [___] или точки.
+
+// Вписан документ по име. Имената в чеклиста са дълги, затова се търси по
+// израз, не по съвпадение.
+function _a15Vpisan(st, kak) {
+    const red = (st.dokumenti || []).find(d => kak.test(String(d.ime || '')));
+    return red ? String(red.nomer || '').trim() : '';
+}
+
+// „№ 12 от 01.03.2026 г.“ → { nomer: '12', data: '01.03.2026' }
+function _a15NomerData(tekst) {
+    const t = String(tekst || '');
+    const n = t.match(/№\s*([^\s,;]+)/);
+    const d = t.match(/(\d{1,2}[./]\d{1,2}[./]\d{2,4})/);
+    return { nomer: n ? n[1] : '', data: d ? d[1] : '' };
+}
+
+// Описанието на изпълненото — от потвърдените блокове с роля „изпълнение“.
+// Операторът, измерено на Петракиев: Акт 15 носи 12 % свой текст, а този блок
+// се повтаря после в окончателния доклад, в Акт 16 и в паспорта. Пише се
+// веднъж тук.
+function _a15PoIzpalnenie(st) {
+    const blokove = Object.values(st.blokove || {})
+        .filter(b => /изпълнен/i.test(String(b.rolya || '')))
+        .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno');
+    return blokove.map(b => String(b.tekst || '').trim()).filter(Boolean).join('\n');
+}
+
+// Описът на приложенията — „като чеклиста“ (операторът, 21.10.2026): същите
+// редове, които моментът вече пази като налични, с номерата им, ако ги има.
+function _a15Prilozhenia(st) {
+    const nomer = ime => {
+        const red = (st.dokumenti || []).find(d =>
+            String(d.ime || '').toLowerCase() === String(ime).toLowerCase());
+        return red && red.nomer ? ' — ' + red.nomer : '';
+    };
+    return (st.nadzor_otmetnati || []).map(ime => ime + nomer(ime));
+}
+
+// Онова, което само операторът знае — пише се в остатъка на Екран 3.
+function _a15Ostatak(st) {
+    return st.ostatak || {};
+}
+
+function _a15Redove(project, st) {
+    const o = _a15Ostatak(st);
+    const dati = st.docDates || {};
+    const dogovor = _a15NomerData(_a15Vpisan(st, /договор.*(СМР|строително-монтажни)/i));
+    // Протокол 2 при сграда, 2а при линеен — датата е една и съща в чеклиста,
+    // а шаблонът има два реда и вторият изчезва, когато не му е мястото.
+    const lineen = String(st.vid || '') === 'lineen';
+    const redove = [
+        ['Дата_Акт', o.data_akt],
+        ['Проекти_Одобрени', _a15NomerData(_a15Vpisan(st, /одобрен.*проект|проект.*одобрен/i)).data],
+        ['Договори_Списък', _a15Vpisan(st, /договор.*(СМР|строително-монтажни)/i)],
+        ['Договор_СМР_Номер', dogovor.nomer],
+        ['Договор_СМР_Дата', dogovor.data],
+        [lineen ? 'Протокол_2а_Дата' : 'Протокол_2_Дата', dati.protokol2],
+        ['Образец_3_Дата', dati.obrazec3],
+        ['Строеж_Представлява', st.stroej],
+        ['Техническо_Описание', (st.tehnichesko_opisanie || {}).tekst],
+        ['По_Изпълнение', _a15PoIzpalnenie(st)],
+        ['Недостатъци_Отстранява', o.nedostatuci_otstranyava],
+        ['Недостатъци_Срок', o.nedostatuci_srok],
+        ['Временно_Премахва', o.vremenno_premahva],
+        ['Временно_Срок', o.vremenno_srok],
+    ].filter(([, v]) => String(v || '').trim());
+    const pril = _a15Prilozhenia(st);
+    if (pril.length) {
+        redove.push(['Приложения_Брой', String(pril.length)]);
+        pril.forEach((x, i) => redove.push(['Приложение_' + (i + 1), x]));
+    }
+    return redove;
+}
+
 function buildPassportRows(project, consultant, extra) {
     // Конвертира project обекта в масив от редове за API-я
     const rows = [];
@@ -2011,6 +2095,9 @@ function buildPassportRows(project, consultant, extra) {
         const blok = _sbOsnovaniaBlok(project, extra.data_dokument || '');
         if (blok) add('Възложители_Основания', blok);
     }
+
+    // Тялото на Акт 15 — вж. _a15Redove. Полетата са на СТРОЕЖА.
+    for (const [k, v] of _a15Redove(project, _stroezh(project))) add(k, v);
 
     // Раздел В на комплексния доклад — описанията от записките, по части.
     // Само потвърденото; непотвърдено не влиза в документ за подпис.

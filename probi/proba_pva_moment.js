@@ -81,8 +81,15 @@ t('остатъкът за ОД иска вх. номер',
   Y.aktOstatak('Окончателен доклад').some(x => x.klyuch === 'vh_nomer'));
 t('непознатият момент пак иска изх. номер',
   Y.aktOstatak('Акт 9')[0].klyuch === 'izh_nomer');
-t('остатъкът е къс навсякъде',
-  Object.values(Y.AKT_OSTATAK).every(x => x.length <= 4));
+// „Кратък списък“ значи толкова, колкото документът наистина иска. Акт 15 е
+// най-дългият: освен изходящия номер, в тялото му стоят датата на съставяне и
+// двата срока. Останалите моменти са с два-три реда.
+t('остатъкът никъде не се разраства в анкета',
+  Object.values(Y.AKT_OSTATAK).every(x => x.length <= 8),
+  Object.entries(Y.AKT_OSTATAK).map(([k, v]) => k + ':' + v.length));
+t('Акт 15 пита и за двата срока',
+  Y.aktOstatak('Акт 15').some(x => x.klyuch === 'nedostatuci_srok')
+  && Y.aktOstatak('Акт 15').some(x => x.klyuch === 'vremenno_srok'));
 
 // ── екранът ──────────────────────────────────────────────────────────────────
 
@@ -250,7 +257,7 @@ t('и пише ЗАЩО, не мълчи',
 
 // остатъкът
 const ostatak = [...a.d.querySelectorAll('.ostatak-red')];
-t('остатъкът е кратък списък с по едно поле', ostatak.length === 2, ostatak.length);
+t('остатъкът е списък с по едно поле на ред', ostatak.length === 7, ostatak.length);
 t('за Акт 15 иска рег. № на ПБЗН',
   ostatak.some(x => /ПБЗН/.test(tekst(x))), ostatak.map(x => tekst(x)));
 t('празното поле показва [___]',
