@@ -326,6 +326,101 @@ function _sbPravnoOsnovanie(p, data) {
     return redove.join('; ');
 }
 
+// ── основанията, както се пишат в акт 15 ──────────────────────────────────
+// Образецът на Акт 15 иска под всеки възложител „трите имена и ТОЧНИТЕ ИМОТИ“,
+// а подпис вместо него се признава само с приложено пълномощно. Дотук в
+// документа отиваше само името. (Операторът, 22.10.2026, с еталон:)
+//
+//   За апартамент №10 (десет)
+//   ИВАН СТАНЧЕВ СТАНЧЕВ
+//   • Нотариален акт №143, том IV, рег.№4672, дело №653 от 2021 г. на
+//     Нотариус №263 в НК, вписан в СВ с вх. рег. №86700, акт 64, том ССXXVII,
+//     дело №67645/21 г.
+//   • представляван от пълномощника си Димитри Петракиев, надлежно
+//     упълномощен с пълномощно рег. №4676 от 19.11.2021 г. на нотариус №263 в НК
+//
+// Същият блок влиза в раздел А на окончателния доклад и в Акт 16 — пише се
+// веднъж тук.
+
+// Печатът на вписването. Празно значи „не е вписано в регистъра“ — не се
+// измисля и редът за него просто не излиза.
+function _sbVpisvane(ch) {
+    const v = {
+        vhoden: String(ch.sv_vhoden || '').trim(),
+        akt:    String(ch.sv_akt    || '').trim(),
+        tom:    String(ch.sv_tom    || '').trim(),
+        delo:   String(ch.sv_delo   || '').trim(),
+    };
+    return Object.values(v).some(Boolean) ? v : undefined;
+}
+
+function _sbVpisvaneTekst(sv) {
+    if (!sv) return '';
+    const ch = [sv.vhoden && 'вх. рег. №' + sv.vhoden, sv.akt && 'акт ' + sv.akt,
+                sv.tom && 'том ' + sv.tom, sv.delo && 'дело №' + sv.delo + ' г.'].filter(Boolean);
+    return ch.length ? 'вписан в СВ с ' + ch.join(', ') : '';
+}
+
+// „Нотариус №263 в НК“, ако номерът е вписан; иначе името, както е днес.
+function _sbNotariusTekst(e) {
+    const n = String(e.notarius_nomer || '').trim();
+    return n ? 'Нотариус №' + n + ' в НК' : '';
+}
+
+function _sbPalnomoshtnoTekst(pr) {
+    if (!pr || !pr.ime) return '';
+    const ch = [pr.nomer && 'рег. №' + pr.nomer, pr.data && 'от ' + pr.data + ' г.',
+                pr.notarius && 'на нотариус №' + pr.notarius + ' в НК'].filter(Boolean);
+    return 'представляван от пълномощника си ' + pr.ime
+        + (ch.length ? ', надлежно упълномощен с пълномощно ' + ch.join(' ') : '');
+}
+
+// Актът, с който ЕДИН възложител държи ЕДИН имот — вече сглобен като текст
+// при приемането, плюс годината, нотариуса и вписването.
+function _sbAktTekst(e) {
+    const godina = String(e.data || '').match(/\d{4}/);
+    const not = _sbNotariusTekst(e);
+    // „…дело №653 от 2021 г. на Нотариус №263 в НК, вписан в СВ с…“ —
+    // годината и нотариусът вървят със самия акт, без запетая; вписването е
+    // отделно изречение и затова е с.
+    const akt = [e.dokument || e.vid || '',
+                 godina ? 'от ' + godina[0] + ' г.' : '',
+                 not ? 'на ' + not : ''].filter(Boolean).join(' ');
+    return [akt, _sbVpisvaneTekst(e.sv)].filter(Boolean).join(', ');
+}
+
+// Един блок на възложител; имотите му се изброяват заедно, вместо актът да се
+// преписва по веднъж за всеки имот.
+function _sbOsnovaniaBlok(p, data) {
+    const s = _sbDanni(p);
+    const vaz = _sbVazlozhiteli(p, data);
+    if (!vaz.length) return '';
+    const pred = data ? _sbRed(data) : '99999999';
+    const blokove = [];
+    for (const v of vaz) {
+        const imoti = v.prava.map(x => _sbImeObekt(s, x.obekt)).filter(Boolean);
+        const aktove = [], vidyani = new Set();
+        for (const e of [...s.sabitia].sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)))) {
+            if (_sbRed(e.data) > pred) continue;
+            if (!(e.pridobivashti || []).some(x => x.lice === v.lice)) continue;
+            const t = _sbAktTekst(e);
+            if (!t || vidyani.has(t)) continue;
+            vidyani.add(t);
+            aktove.push(t);
+        }
+        const l = _sbLice(s, v.lice) || {};
+        const palnomoshtno = _sbPalnomoshtnoTekst(l.predstavitel);
+        const redove = [
+            imoti.length ? 'За ' + imoti.join(', ') : '',
+            String(v.ime || '').toUpperCase(),
+            ...aktove.map(a => '• ' + a),
+            palnomoshtno ? '• ' + palnomoshtno : '',
+        ].filter(Boolean);
+        blokove.push(redove.join('\n'));
+    }
+    return blokove.join('\n\n');
+}
+
 function _sbKlienti(p, data) {
     const s = _sbDanni(p);
     return _sbVazlozhiteli(p, data).map(v => {
@@ -673,6 +768,15 @@ function _sbChetenoHtml(p) {
                         ${_sbPoleHtml('delo', 'дело', ch.delo)}
                         ${_sbPoleHtml('data', 'дата', ch.data)}
                         ${_sbPoleHtml('notarius', 'нотариус', ch.notarius)}
+                        ${_sbPoleHtml('notarius_nomer', '№ на нотариуса в НК', ch.notarius_nomer)}
+                    </div>
+                    <div style="font-size:11.5px;margin:8px 0 3px;font-weight:600">
+                        Вписването в Службата по вписванията</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">
+                        ${_sbPoleHtml('sv_vhoden', 'вх. рег. №', ch.sv_vhoden)}
+                        ${_sbPoleHtml('sv_akt', 'акт', ch.sv_akt)}
+                        ${_sbPoleHtml('sv_tom', 'том', ch.sv_tom)}
+                        ${_sbPoleHtml('sv_delo', 'дело', ch.sv_delo)}
                     </div>
                 </div>
                 ${(ch.lica || []).length ? `<div style="margin-top:6px"><strong>Лица</strong>
@@ -872,6 +976,12 @@ function sbPriemi() {
             podpisali: [_sbKojPodpisva(x.ot), _sbKojPodpisva(x.na)].filter(Boolean).join('; '),
             pridobivashti: poluchateli.map(na => ({ lice: lice(na), dyal })),
             ot_chetene: ch.fajl || '', citat: x.citat || '',
+            // Печатът на вписването и номерът на нотариуса в Нотариалната
+            // камара. Акт 15 ги цитира дословно („…вписан в СВ с вх. рег.
+            // №86700, акт 64, том ССXXVII, дело №67645/21 г.“), а дотук
+            // регистърът ги нямаше изобщо. (Операторът, 22.10.2026.)
+            sv: _sbVpisvane(ch),
+            notarius_nomer: String(ch.notarius_nomer || '').trim() || undefined,
         };
         if (s.sabitia.some(e => _sbEdnakvi(s, e, sabitie))) { veche++; continue; }
         s.sabitia.push(sabitie);
@@ -933,11 +1043,15 @@ function sbPredstavitelNa(lice) {
     if (!ime) { delete l.predstavitel; _sbZapishi(p, `${l.ime} — махнат представител`); return; }
     const nomer = (prompt('Пълномощно — рег. № на нотариалната заверка:', sega.nomer || '') || '').trim();
     const data = (prompt('Дата на заверката (дд.мм.гггг):', sega.data || '') || '').trim();
+    // Номерът на нотариуса в Нотариалната камара — актът го цитира („на
+    // нотариус №263 в НК“), а дотук пълномощното го нямаше. (22.10.2026)
+    const notarius = (prompt('Пред кой нотариус е заверено?' + String.fromCharCode(10, 10)
+        + 'Номерът му в Нотариалната камара, напр. 263', sega.notarius || '') || '').trim();
     const obhvat = (prompt('За какво е пълномощното?' + String.fromCharCode(10, 10)
         + 'напр. „общо“ или „да подписва актове и протоколи“',
         sega.obhvat || 'общо') || '').trim();
     const do_ = (prompt('До кога важи (дд.мм.гггг)? Празно = без срок:', sega.do || '') || '').trim();
-    l.predstavitel = { ime, nomer, data, obhvat, do: do_ };
+    l.predstavitel = { ime, nomer, data, notarius, obhvat, do: do_ };
     _sbZapishi(p, `${l.ime} — представител ${ime}`);
 }
 

@@ -2004,6 +2004,14 @@ function buildPassportRows(project, consultant, extra) {
         if (osn) add('Правно_Основание', osn);
     }
 
+    // Акт 15 иска повече от реда на ОСИП: под всеки възложител — имотите му,
+    // актът с вписването и пълномощното на подписващия. Един и същ блок влиза
+    // после в раздел А на окончателния доклад и в Акт 16. (22.10.2026)
+    if (typeof _sbOsnovaniaBlok === 'function' && project.sobstvenost) {
+        const blok = _sbOsnovaniaBlok(project, extra.data_dokument || '');
+        if (blok) add('Възложители_Основания', blok);
+    }
+
     // Раздел В на комплексния доклад — описанията от записките, по части.
     // Само потвърденото; непотвърдено не влиза в документ за подпис.
     if (typeof _blZaDokument === 'function') {
