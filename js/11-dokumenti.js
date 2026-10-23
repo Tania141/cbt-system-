@@ -65,7 +65,12 @@ function _renderGenerateSectionOsnova() {
         return;
     }
 
-    const project = appData.currentProject;
+    // ЖИВИЯТ ЗАПИС, не снимката. `appData.currentProject` е копие от момента,
+    // в който обектът е отворен; чекването, датите и потвърдените блокове се
+    // пишат в `appData.projects`. Четеше ли се снимката, Акт 15 излизаше с
+    // празно тяло, колкото и да си чеквала. (Операторът, 23.10.2026:
+    // „няма тяло, защото си излиза същото и не пълни чекнатите документи“.)
+    const project = _zhivObekt() || appData.currentProject;
     const consultant = appData.consultants.find(c => c.id == project.consultant?.id);
     if (!consultant) { content.innerHTML = `<div class="alert alert-error">⚠️ Консултантът не е намерен!</div>`; return; }
 
@@ -234,9 +239,9 @@ function _renderGenerateSectionOsnova() {
         </div>
     `;
 
-    renderSignersChecklist('gen-signers', appData.currentProject);
-    renderAkt12Parts('gen-akt12-parts', appData.currentProject,
-                     appData.consultants.find(c => c.id == appData.currentProject?.consultant?.id));
+    renderSignersChecklist('gen-signers', _zhivObekt() || appData.currentProject);
+    renderAkt12Parts('gen-akt12-parts', _zhivObekt() || appData.currentProject,
+                     appData.consultants.find(c => c.id == _zhivObekt()?.consultant?.id));
     // Регистърът има думата: заменена или анулирана книга значи, че номерът
     // в паспорта вече не е верният за документите, които се съставят сега.
     proveriZK((project?.zk || {}).number);
@@ -248,7 +253,12 @@ async function generateDocumentsViaApi() {
         return;
     }
 
-    const project = appData.currentProject;
+    // ЖИВИЯТ ЗАПИС, не снимката. `appData.currentProject` е копие от момента,
+    // в който обектът е отворен; чекването, датите и потвърдените блокове се
+    // пишат в `appData.projects`. Четеше ли се снимката, Акт 15 излизаше с
+    // празно тяло, колкото и да си чеквала. (Операторът, 23.10.2026:
+    // „няма тяло, защото си излиза същото и не пълни чекнатите документи“.)
+    const project = _zhivObekt() || appData.currentProject;
     const consultant = appData.consultants.find(c => c.id == project.consultant?.id);
     if (!project || !consultant) return;
 

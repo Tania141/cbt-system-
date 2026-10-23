@@ -201,12 +201,17 @@ function showProtokol2Form() {
         document.getElementById('p2-sastoyanie').style.display = this.checked ? 'block' : 'none';
     };
 
-    renderSignersChecklist('p2-signers', appData.currentProject);
+    renderSignersChecklist('p2-signers', _zhivObekt() || appData.currentProject);
     document.getElementById('modal-protokol2').classList.add('open');
 }
 
 async function runProtokol2Modal() {
-    const project = appData.currentProject;
+    // ЖИВИЯТ ЗАПИС, не снимката. `appData.currentProject` е копие от момента,
+    // в който обектът е отворен; чекването, датите и потвърдените блокове се
+    // пишат в `appData.projects`. Четеше ли се снимката, Акт 15 излизаше с
+    // празно тяло, колкото и да си чеквала. (Операторът, 23.10.2026:
+    // „няма тяло, защото си излиза същото и не пълни чекнатите документи“.)
+    const project = _zhivObekt() || appData.currentProject;
     const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
     const extra = window.aiSession?._pendingExtra || {};
     const consultant = window.aiSession?._pendingConsultant ||
@@ -407,7 +412,12 @@ ${akt12row('ОВК', m.akt12_ovk)}
 }
 
 async function runAkt15Modal() {
-    const project = appData.currentProject;
+    // ЖИВИЯТ ЗАПИС, не снимката. `appData.currentProject` е копие от момента,
+    // в който обектът е отворен; чекването, датите и потвърдените блокове се
+    // пишат в `appData.projects`. Четеше ли се снимката, Акт 15 излизаше с
+    // празно тяло, колкото и да си чеквала. (Операторът, 23.10.2026:
+    // „няма тяло, защото си излиза същото и не пълни чекнатите документи“.)
+    const project = _zhivObekt() || appData.currentProject;
     if (!project) { showAlert('error', 'Няма активен проект!'); return; }
 
     const v = id => document.getElementById(id)?.value?.trim() || '';
