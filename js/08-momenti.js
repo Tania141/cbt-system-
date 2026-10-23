@@ -2135,7 +2135,7 @@ function buildPassportRows(project, consultant, extra) {
     add('Ел_Захранване', extra.el || 'преносим дизелов агрегат');
 
     // Служители надзор
-    const consultantLocal = appData.consultants?.find(c => c.id === project?.consultant?.id);
+    const consultantLocal = appData.consultants?.find(c => c.id == project?.consultant?.id);
     const employees = project.employees || consultantLocal?.employees || [];
     add('Служители_Брой', employees.length);
     employees.forEach((e, i) => {

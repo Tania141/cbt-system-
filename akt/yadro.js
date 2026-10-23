@@ -23,18 +23,31 @@ const AKT_KLYUCH = 'akt_v5';
 
 let aktDanni = { projects: [], consultants: [], history: [] };
 
+// Прочетено ли е успешно. Без това всеки запис след провалено четене би
+// изсипал празни данни върху пълните: `aktDanni` си стои с празните списъци
+// от определението, а записът пише ЦЕЛИЯ обект. Старото ПВА държи тук и
+// консултантите, и историята — те не идват от сървъра при всяко зареждане.
+// (23.10.2026)
+let aktProcheteno = false;
+
 function aktZaredi() {
     try {
         const t = localStorage.getItem(AKT_KLYUCH);
         if (t) aktDanni = { ...aktDanni, ...JSON.parse(t) };
+        aktProcheteno = true;
     } catch (e) {
         console.warn('akt_v5 не се чете:', e);
+        aktProcheteno = false;
     }
     if (!Array.isArray(aktDanni.projects)) aktDanni.projects = [];
     return aktDanni;
 }
 
 function aktZapishi() {
+    if (!aktProcheteno) {
+        console.error('aktZapishi: данните не са прочетени — НЕ пиша, за да не изтрия.');
+        return false;
+    }
     try {
         aktDanni.savedAt = new Date().toISOString();
         localStorage.setItem(AKT_KLYUCH, JSON.stringify(aktDanni));

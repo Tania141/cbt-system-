@@ -210,7 +210,7 @@ async function runProtokol2Modal() {
     const railwayUrl = (appData.apiUrl || '').replace(/\/$/, '');
     const extra = window.aiSession?._pendingExtra || {};
     const consultant = window.aiSession?._pendingConsultant ||
-        appData.consultants.find(c => c.id === project?.consultant?.id);
+        appData.consultants.find(c => c.id == project?.consultant?.id);
 
     const btn = document.getElementById('p2-generate-btn');
     const status = document.getElementById('p2-modal-status');
@@ -447,7 +447,7 @@ async function runAkt15Modal() {
     resultSection.style.display = 'none';
 
     try {
-        const consultant = appData.consultants?.find(c => c.id === project.consultant?.id) || {};
+        const consultant = appData.consultants?.find(c => c.id == project.consultant?.id) || {};
         const cl = project.client || {};
         const b  = project.builder || {};
         const projectants = (project.projectants || []).map(p => `Част ${p.specialization}: ${p.title || ''} ${p.name || ''}, рег. № ${p.ppp || '—'}`.trim()).join('\n') || '—';

@@ -40,6 +40,17 @@ const DOC_CONFIG = [
     { id: 'akt16',        label: 'Акт 16 (ДПК)',               apiType: 'akt16',        group: 'completion'   },
 ];
 
+// Търсенето на консултант е с `==`, не с `===`, на ВСИЧКИТЕ места.
+//
+// Номерът му се ражда като число (`Date.now()`), но мине ли паспортът през
+// сървъра като JSON, се връща като текст. Седем места в кода отдавна търсеха
+// с `==`; пет бяха изключение и се чупеха мълчаливо — цялата секция
+// „Съставяне на актове и протоколи“ изчезваше зад „⚠️ Консултантът не е
+// намерен“, при положение че консултантът си беше в списъка и беше избран.
+//
+// Излезе наяве на 23.10.2026, когато новото ПВА почна да записва
+// `currentProject` направо в браузъра — без изглаждането, което `loadData`
+// прави на обектите, дошли от сървъра. (Операторът: „това е консултанта не е“.)
 function _renderGenerateSectionOsnova() {
     const content = document.getElementById('generate-content');
 
@@ -55,7 +66,7 @@ function _renderGenerateSectionOsnova() {
     }
 
     const project = appData.currentProject;
-    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    const consultant = appData.consultants.find(c => c.id == project.consultant?.id);
     if (!consultant) { content.innerHTML = `<div class="alert alert-error">⚠️ Консултантът не е намерен!</div>`; return; }
 
     const docs = project.generatedDocs || [];
@@ -225,7 +236,7 @@ function _renderGenerateSectionOsnova() {
 
     renderSignersChecklist('gen-signers', appData.currentProject);
     renderAkt12Parts('gen-akt12-parts', appData.currentProject,
-                     appData.consultants.find(c => c.id === appData.currentProject?.consultant?.id));
+                     appData.consultants.find(c => c.id == appData.currentProject?.consultant?.id));
     // Регистърът има думата: заменена или анулирана книга значи, че номерът
     // в паспорта вече не е верният за документите, които се съставят сега.
     proveriZK((project?.zk || {}).number);
@@ -238,7 +249,7 @@ async function generateDocumentsViaApi() {
     }
 
     const project = appData.currentProject;
-    const consultant = appData.consultants.find(c => c.id === project.consultant?.id);
+    const consultant = appData.consultants.find(c => c.id == project.consultant?.id);
     if (!project || !consultant) return;
 
     const btn = document.getElementById('generate-btn');
