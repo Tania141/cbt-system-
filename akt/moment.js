@@ -36,8 +36,7 @@ function momentOtvori(id, i, ime) {
             '<div class="pusto"><div class="pusto-ime">Този обект го няма</div></div>';
         return;
     }
-    p.tekusht_stroezh = momentIndeks;
-    aktZapishi();
+    aktZapomniObekt(p, momentIndeks);
     momentRisuvai();
     momentZaredi();
 }

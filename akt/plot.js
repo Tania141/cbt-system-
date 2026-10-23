@@ -90,8 +90,7 @@ function plotSmeniIzgled(izgled) {
 function plotOtvoriObekt(id, i) {
     const p = aktObekt(id);
     if (!p) return;
-    p.tekusht_stroezh = i;
-    aktZapishi();
+    aktZapomniObekt(p, i);
     location.hash = `#/obekt/${encodeURIComponent(id)}/${i}`;
 }
 
@@ -100,8 +99,7 @@ function plotOtvoriObekt(id, i) {
 function plotOtvoriChislo(id, i, koe) {
     const p = aktObekt(id);
     if (!p) return;
-    p.tekusht_stroezh = i;
-    aktZapishi();
+    aktZapomniObekt(p, i);
     location.hash = `#/obekt/${encodeURIComponent(id)}/${i}?chislo=${koe}`;
 }
 

@@ -240,6 +240,11 @@ b.w.obektKoeLipsva('Акт 14', 'nachalo');
 t('махнатият ред се вижда и се връща',
   /не се отнасят/.test(tekst(b.d.getElementById('obekt-kutiya-telo'))));
 
+// обектът се носи към старото ПВА
+t('отвореният обект се помни като текущ — старото ПВА чете точно това',
+  JSON.parse(b.w.localStorage.getItem('akt_v5')).currentProject.id === 'hus',
+  (JSON.parse(b.w.localStorage.getItem('akt_v5')).currentProject || {}).id);
+
 // трите връзки
 const vrazki = [...b.d.querySelectorAll('.vrazka')].map(x => tekst(x));
 t('долу има точно три връзки', vrazki.length === 3, vrazki);
@@ -247,6 +252,10 @@ t('връзките са Проектът · Собственост · Доси�
   /Проектът/.test(vrazki[0]) && /Собственост/.test(vrazki[1]) && /Досието/.test(vrazki[2]), vrazki);
 t('собствеността виси на ИМОТА, не на строежа',
   /68134\.1006\.2440/.test(vrazki[1]), vrazki[1]);
+t('връзките казват честно, че водят в старото ПВА',
+  vrazki.every(x => /в старото ПВА/.test(x)), vrazki);
+t('отварят се в нов подпрозорец, за да не се губи екранът',
+  [...b.d.querySelectorAll('.vrazka')].every(a => a.getAttribute('target') === '_blank'));
 
 // ── границата със старото ПВА ────────────────────────────────────────────────
 

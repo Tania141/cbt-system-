@@ -30,8 +30,9 @@ function obektOtvori(id, i, podchertano) {
             '<div class="pusto"><div class="pusto-ime">Този обект го няма</div></div>';
         return;
     }
-    p.tekusht_stroezh = obektIndeks;
-    aktZapishi();
+    // Пази и кой е „на масата“ — трите връзки долу водят към старото ПВА и то
+    // чете точно това, за да знае по кой обект се работи.
+    aktZapomniObekt(p, obektIndeks);
     obektRisuvai();
     obektZaredilenta();
 }
@@ -302,12 +303,21 @@ function obektArhiviraj() {
 
 // ── 5. Трите връзки ──────────────────────────────────────────────────────────
 
+// Екрани 4, 5 и 6 още не са писани, затова трите връзки водят към старото ПВА.
+// Две неща ги правят поносими, докато ги няма:
+//   · обектът се носи — `aktZapomniObekt` вече е записал кой е на масата;
+//   · отварят се в НОВ подпрозорец, за да не губиш този екран; връщаш се със
+//     затваряне, вместо да търсиш пътя назад.
+// И го пише честно, вместо да се прави, че са част от новото.
 function obektVrazkiHtml(p) {
     // Собственост и Акт 16 са на ИМОТА — затова „Собствеността“ не носи строеж.
+    const vrazka = (ime, pod) => `
+        <a class="vrazka" href="../index.html" target="_blank" rel="noopener">
+            ${_e(ime)}<span>${_e(pod)} · в старото ПВА ↗</span></a>`;
     return `
     <div class="vrazki">
-        <a class="vrazka" href="../index.html">Проектът<span>записките</span></a>
-        <a class="vrazka" href="../index.html">Собственост<span>на имота ${_e(p.pi || '')}</span></a>
-        <a class="vrazka" href="../index.html">Досието<span>всичко качено</span></a>
+        ${vrazka('Проектът', 'записките')}
+        ${vrazka('Собственост', 'на имота ' + (p.pi || ''))}
+        ${vrazka('Досието', 'всичко качено')}
     </div>`;
 }
