@@ -314,9 +314,13 @@ function obektVrazkiHtml(p) {
     const vrazka = (ime, pod) => `
         <a class="vrazka" href="../index.html" target="_blank" rel="noopener">
             ${_e(ime)}<span>${_e(pod)} · в старото ПВА ↗</span></a>`;
+    // Проектът вече е тук, в новото — затова не отпраща навън.
+    const proekt = `
+        <a class="vrazka" href="#/proekt/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Проектът<span>записките и текстовете</span></a>`;
     return `
     <div class="vrazki">
-        ${vrazka('Проектът', 'записките')}
+        ${proekt}
         ${vrazka('Собственост', 'на имота ' + (p.pi || ''))}
         ${vrazka('Досието', 'всичко качено')}
     </div>`;

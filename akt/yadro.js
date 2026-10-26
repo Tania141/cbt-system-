@@ -114,6 +114,35 @@ function aktImeStroezh(st, i) {
     return (st && st.stroej) || (i === 0 ? 'Строеж 1' : `Строеж ${i + 1}`);
 }
 
+// ── Кръговете по чл. 154 ─────────────────────────────────────────────────────
+// Записките и текстовите блокове не висят на строежа, а на КРЪГА: първият е
+// оценката по чл. 142, следващите са изменения по чл. 154, всяко със свои
+// записки за изменените части.
+//
+// Същото стои и в `js/13-krugove.js` — това тук е повторение, защото онзи
+// модул вика пет неща от стария екран. Повторението е опасно и затова
+// `proba_krugove_dvete.js` сравнява двете и пада, ако се разминат.
+
+function aktKrugove(st) {
+    return st ? [st, ...(st.krugove_dop || [])] : [];
+}
+
+function aktIndeksKrug(st) {
+    const i = Number((st && st.tekusht_krug) || 0);
+    return i >= 0 && i < aktKrugove(st).length ? i : 0;
+}
+
+// Кръгът, по който се работи. Върху него се пишат записките и блоковете.
+function aktKrug(st) {
+    return aktKrugove(st)[aktIndeksKrug(st)] || st;
+}
+
+function aktImeKrug(st, i) {
+    if (i === 0) return 'Оценка по чл. 142';
+    const k = aktKrugove(st)[i] || {};
+    return 'Изменение по чл. 154' + (k.nomer ? ' · № ' + k.nomer : ' № ' + (i + 1));
+}
+
 // ── Главата на обекта: три реда, не формуляр ─────────────────────────────────
 // Всеки ред знае КОИ полета показва и къде живеят — на имота или на строежа.
 // Клик го отваря за поправка; затова редът носи `polya`, а не готов текст.
@@ -454,5 +483,6 @@ if (typeof module !== 'undefined' && module.exports) {
         aktSastavki, aktNalichni, aktPriznaci,
         aktKakvoMozhe, aktPraviloNaMomenta, aktCenaNaFajl, aktPodskazkaOtIme,
         aktOstatak, AKT_OSTATAK,
+        aktKrugove, aktIndeksKrug, aktKrug, aktImeKrug,
     };
 }

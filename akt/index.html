@@ -37,6 +37,12 @@
         <div id="obekt-telo"></div>
     </section>
 
+    <!-- ЕКРАН 4 -->
+    <section id="ekran-proekt" hidden>
+        <h1 class="moment-ime">Проектът — записките</h1>
+        <div id="proekt-telo"></div>
+    </section>
+
     <!-- ЕКРАН 3 -->
     <section id="ekran-moment" hidden>
         <h1 class="moment-ime" id="moment-zaglavie"></h1>
@@ -71,12 +77,14 @@
 <script src="plot.js"></script>
 <script src="obekt.js"></script>
 <script src="moment.js"></script>
+<script src="proekt.js"></script>
 
 <script>
 // Къде сме:
 //   #/plot
 //   #/obekt/<id>/<строеж>[?chislo=nachalo|podpis]
 //   #/moment/<id>/<строеж>/<момент>
+//   #/proekt/<id>/<строеж>
 function aktKade() {
     const h = location.hash.replace(/^#\/?/, '');
     const [pat, opashka] = h.split('?');
@@ -90,18 +98,22 @@ function aktPokazhi() {
     const k = aktKade();
     const ekran = !k.id ? 'plot'
         : k.ekran === 'moment' && k.moment ? 'moment'
+        : k.ekran === 'proekt' ? 'proekt'
         : k.ekran === 'obekt' ? 'obekt' : 'plot';
-    for (const x of ['plot', 'obekt', 'moment'])
+    for (const x of ['plot', 'obekt', 'moment', 'proekt'])
         document.getElementById('ekran-' + x).hidden = x !== ekran;
     document.getElementById('shapka-plot').hidden = ekran !== 'plot';
     document.getElementById('shapka-nazad').hidden = ekran === 'plot';
     // От момента се връщаш в обекта, не чак на плота.
-    document.getElementById('shapka-nazad').href = ekran === 'moment'
+    // От момента и от проекта се връщаш в обекта, не чак на плота.
+    const vObekta = ekran === 'moment' || ekran === 'proekt';
+    document.getElementById('shapka-nazad').href = vObekta
         ? `#/obekt/${encodeURIComponent(k.id)}/${k.i}` : '#/plot';
-    document.getElementById('shapka-nazad').textContent = ekran === 'moment'
+    document.getElementById('shapka-nazad').textContent = vObekta
         ? '← обектът' : '← плотът';
     if (ekran === 'plot') plotRisuvai();
     else if (ekran === 'obekt') obektOtvori(k.id, k.i, k.chislo);
+    else if (ekran === 'proekt') proektOtvori(k.id, k.i);
     else {
         document.getElementById('moment-zaglavie').textContent = k.moment;
         momentOtvori(k.id, k.i, k.moment);

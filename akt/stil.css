@@ -279,7 +279,44 @@ body {
     padding: 40px 16px; overflow: auto;
 }
 
+/* ── Екран 4 · проектът ────────────────────────────────────────────────── */
+
+.chast-red {
+    display: grid; gap: 2px 12px; align-items: center;
+    grid-template-columns: minmax(0, 1.4fr) auto 1fr auto;
+    padding: 9px 0; border-bottom: 1px solid var(--border-light);
+}
+.chast-red:last-child { border-bottom: none; }
+.chast-ime { font-weight: 600; font-size: 14px; }
+.chast-kakvo { font-size: 12.5px; color: var(--slate); white-space: nowrap; }
+
+.bl-chast { margin-top: 14px; }
+.bl-chast-ime {
+    font-size: 12px; font-weight: 700; color: var(--slate);
+    padding-bottom: 5px; border-bottom: 1px solid var(--border-light); margin-bottom: 8px;
+}
+.blok {
+    padding: 10px 12px; margin-bottom: 8px; border-radius: var(--r-sm);
+    background: var(--surface); border-left: 3px solid var(--border);
+}
+.blok-predlozheno { border-left-color: var(--gold); }
+.blok-potvardeno  { border-left-color: var(--green); }
+.blok-popraveno   { border-left-color: var(--blue); }
+.blok-glava { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.blok-ime { font-weight: 600; font-size: 13.5px; }
+.blok-sastoyanie { font-size: 11.5px; color: var(--green); }
+.blok-tekst { font-size: 13px; line-height: 1.55; margin: 5px 0; white-space: pre-wrap; }
+.blok-zhestove { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 7px; }
+.blok-razminavane {
+    margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm);
+    background: var(--zhalto-light); color: var(--zhalto); font-size: 12.5px;
+}
+
 .pusto { text-align: center; padding: 48px 16px; color: var(--muted); }
+
+@media (max-width: 760px) {
+    .chast-red { grid-template-columns: 1fr; }
+}
 .pusto-ime { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--ink-2); }
 
 @media (max-width: 760px) {

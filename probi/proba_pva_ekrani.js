@@ -252,17 +252,23 @@ t('връзките са Проектът · Собственост · Доси�
   /Проектът/.test(vrazki[0]) && /Собственост/.test(vrazki[1]) && /Досието/.test(vrazki[2]), vrazki);
 t('собствеността виси на ИМОТА, не на строежа',
   /68134\.1006\.2440/.test(vrazki[1]), vrazki[1]);
-t('връзките казват честно, че водят в старото ПВА',
-  vrazki.every(x => /в старото ПВА/.test(x)), vrazki);
-t('отварят се в нов подпрозорец, за да не се губи екранът',
-  [...b.d.querySelectorAll('.vrazka')].every(a => a.getAttribute('target') === '_blank'));
+// Проектът вече е ВЪТРЕ в новото — води на Екран 4, не навън.
+const vsichki = [...b.d.querySelectorAll('.vrazka')];
+t('Проектът води вътре, на Екран 4',
+  vsichki[0].getAttribute('href') === '#/proekt/hus/0'
+  && vsichki[0].getAttribute('target') === null,
+  vsichki[0].getAttribute('href'));
+t('другите две казват честно, че водят в старото ПВА',
+  /в старото ПВА/.test(vrazki[1]) && /в старото ПВА/.test(vrazki[2]), vrazki);
+t('и се отварят в нов подпрозорец',
+  vsichki.slice(1).every(a => a.getAttribute('target') === '_blank'));
 
 // ── границата със старото ПВА ────────────────────────────────────────────────
 
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|plot|obekt|moment)\.js$/.test(s) || s === '../js/05-proverki.js'),
+  vklyucheni.every(s => /^(yadro|plot|obekt|moment|proekt)\.js$/.test(s) || s === '../js/05-proverki.js'),
   vklyucheni);
 t('всеки включен файл съществува',
   vklyucheni.every(s => fs.existsSync(path.resolve(PAPKA, s))), vklyucheni);
