@@ -1921,8 +1921,12 @@ function _bezEGN(redove) {
 
 // Вписан документ по име. Имената в чеклиста са дълги, затова се търси по
 // израз, не по съвпадение.
-function _a15Vpisan(st, kak) {
-    const red = (st.dokumenti || []).find(d => kak.test(String(d.ime || '')));
+// ВПИСАНИТЕ ДОКУМЕНТИ СА НА ОБЕКТА, не на строежа — `dokumenti` го няма в
+// `_STROEZH_POLETA`, а `_dokVpishi` пише в обекта. При един строеж двете
+// съвпадат и разликата не личи; при два — вторият строеж би се оказал без
+// изходни данни. (26.10.2026)
+function _a15Vpisan(p, kak) {
+    const red = (p.dokumenti || []).find(d => kak.test(String(d.ime || '')));
     return red ? String(red.nomer || '').trim() : '';
 }
 
@@ -1945,15 +1949,30 @@ function _a15PoIzpalnenie(st) {
     return blokove.map(b => String(b.tekst || '').trim()).filter(Boolean).join('\n');
 }
 
-// Описът на приложенията — „като чеклиста“ (операторът, 21.10.2026): същите
-// редове, които моментът вече пази като налични, с номерата им, ако ги има.
-function _a15Prilozhenia(st) {
-    const nomer = ime => {
-        const red = (st.dokumenti || []).find(d =>
-            String(d.ime || '').toLowerCase() === String(ime).toLowerCase());
-        return red && red.nomer ? ' — ' + red.nomer : '';
-    };
-    return (st.nadzor_otmetnati || []).map(ime => ime + nomer(ime));
+// Описът на приложенията — точка 4: „копия от документите съгласно описа на
+// цялата строителна документация… а именно“.
+//
+// Два извора, не един. Отметнатото в чеклиста казва КОЕ е налице, но номерът
+// и датата са във ВПИСАНИТЕ документи — списъкът, който операторът пълни на
+// страницата с документите. Четеше ли се само отметнатото, описът излизаше
+// празен при обект с цяла страница събрани документи. (26.10.2026)
+//
+// Вписаните вървят първи: те носят номер и дата, тоест са по-пълни.
+function _a15Prilozhenia(p, st) {
+    const klyuch = x => String(x || '').trim().toLowerCase();
+    const redove = [], vidyani = new Set();
+    for (const d of p.dokumenti || []) {
+        const ime = String(d.ime || '').trim();
+        if (!ime || vidyani.has(klyuch(ime))) continue;
+        vidyani.add(klyuch(ime));
+        redove.push(ime + (d.nomer ? ' — ' + String(d.nomer).trim() : ''));
+    }
+    for (const ime of st.nadzor_otmetnati || []) {
+        if (!ime || vidyani.has(klyuch(ime))) continue;
+        vidyani.add(klyuch(ime));
+        redove.push(ime);
+    }
+    return redove;
 }
 
 // Онова, което само операторът знае — пише се в остатъка на Екран 3.
@@ -1964,14 +1983,20 @@ function _a15Ostatak(st) {
 function _a15Redove(project, st) {
     const o = _a15Ostatak(st);
     const dati = st.docDates || {};
-    const dogovor = _a15NomerData(_a15Vpisan(st, /договор.*(СМР|строително-монтажни)/i));
+    // Договорът за строителство: изразът е широк нарочно. В чеклиста няма
+    // такъв ред (проверено на 26.10.2026) — вписва се на ръка и операторът го
+    // кръщава както му дойде: „Договор за СМР“, „Договор за строителство“,
+    // „Договор строително-монтажни работи“. Тесният израз не го хващаше и
+    // точка 3 на акта излизаше [___].
+    const DOGOVOR = /договор.*(смр|строите|монтаж)/i;
+    const dogovor = _a15NomerData(_a15Vpisan(project, DOGOVOR));
     // Протокол 2 при сграда, 2а при линеен — датата е една и съща в чеклиста,
     // а шаблонът има два реда и вторият изчезва, когато не му е мястото.
     const lineen = String(st.vid || '') === 'lineen';
     const redove = [
         ['Дата_Акт', o.data_akt],
-        ['Проекти_Одобрени', _a15NomerData(_a15Vpisan(st, /одобрен.*проект|проект.*одобрен/i)).data],
-        ['Договори_Списък', _a15Vpisan(st, /договор.*(СМР|строително-монтажни)/i)],
+        ['Проекти_Одобрени', _a15NomerData(_a15Vpisan(project, /одобрен.*проект|проект.*одобрен/i)).data],
+        ['Договори_Списък', _a15Vpisan(project, DOGOVOR)],
         ['Договор_СМР_Номер', dogovor.nomer],
         ['Договор_СМР_Дата', dogovor.data],
         [lineen ? 'Протокол_2а_Дата' : 'Протокол_2_Дата', dati.protokol2],
@@ -1984,7 +2009,7 @@ function _a15Redove(project, st) {
         ['Временно_Премахва', o.vremenno_premahva],
         ['Временно_Срок', o.vremenno_srok],
     ].filter(([, v]) => String(v || '').trim());
-    const pril = _a15Prilozhenia(st);
+    const pril = _a15Prilozhenia(project, st);
     if (pril.length) {
         redove.push(['Приложения_Брой', String(pril.length)]);
         pril.forEach((x, i) => redove.push(['Приложение_' + (i + 1), x]));
