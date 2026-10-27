@@ -351,11 +351,23 @@ function _sbVpisvane(ch) {
         tom:    String(ch.sv_tom    || '').trim(),
         delo:   String(ch.sv_delo   || '').trim(),
     };
-    return Object.values(v).some(Boolean) ? v : undefined;
+    if (Object.values(v).some(Boolean)) return v;
+    // ЧЕТЕЦЪТ ВЕЧЕ ГО ДАВА. На 23.10.2026 казах на оператора, че вписването го
+    // няма никъде, и добавих четирите полета по-горе. Сгрешил съм: схемата на
+    // собствеността (`rules/sobstvenost.py`) отдавна има `sluzhba` — „служба по
+    // вписванията — град, входящ рег. №, акт/том/дело“ — но като ЕДИН свободен
+    // текст, а не на четири. Липсваше само да го попитам.
+    //
+    // Затова: разбитите полета бият, защото са по-точни; няма ли ги, минава
+    // прочетеното, както е. (27.10.2026)
+    const tekst = String(ch.sluzhba || '').trim();
+    return tekst ? { tekst } : undefined;
 }
 
 function _sbVpisvaneTekst(sv) {
     if (!sv) return '';
+    // Прочетеното идва като един низ; ръчното — на четири полета.
+    if (sv.tekst) return 'вписан в СВ с ' + sv.tekst;
     const ch = [sv.vhoden && 'вх. рег. №' + sv.vhoden, sv.akt && 'акт ' + sv.akt,
                 sv.tom && 'том ' + sv.tom, sv.delo && 'дело №' + sv.delo + ' г.'].filter(Boolean);
     return ch.length ? 'вписан в СВ с ' + ch.join(', ') : '';
@@ -773,6 +785,7 @@ function _sbChetenoHtml(p) {
                     <div style="font-size:11.5px;margin:8px 0 3px;font-weight:600">
                         Вписването в Службата по вписванията</div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">
+                        ${_sbPoleHtml('sluzhba', 'както го е прочел четецът', ch.sluzhba)}
                         ${_sbPoleHtml('sv_vhoden', 'вх. рег. №', ch.sv_vhoden)}
                         ${_sbPoleHtml('sv_akt', 'акт', ch.sv_akt)}
                         ${_sbPoleHtml('sv_tom', 'том', ch.sv_tom)}
