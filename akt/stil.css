@@ -393,3 +393,45 @@ body {
     .red { grid-template-columns: 1fr; }
     .red-koga { text-align: left; }
 }
+
+/* ── ЕКРАН 7 · огледалото ──────────────────────────────────────────────────
+   Нищо в този раздел не е бутон, който пише. Само гледане. */
+
+.znaem-broevi { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.znaem-broj {
+    font-size: 12px; font-weight: 600; color: var(--ink-2);
+    background: var(--surface-2); border-radius: var(--r-sm); padding: 3px 9px;
+}
+
+.nadpis-klik { cursor: pointer; user-select: none; }
+.nadpis-klik:hover { color: var(--blue); }
+
+/* Групата, до която те е довело число — подчертана, за да се вижда защо е отворена. */
+.razdel-podchertan { box-shadow: inset 3px 0 0 var(--blue); }
+
+.znaem-redove { display: flex; flex-direction: column; gap: 2px; }
+.znaem-red {
+    display: grid; grid-template-columns: 18px minmax(0, 15em) 1fr;
+    gap: 2px 8px; align-items: baseline;
+    padding: 5px 0; border-bottom: 1px solid var(--border-light);
+}
+.znaem-red > .otkade { grid-column: 2 / -1; }
+.znaem-znak { color: var(--muted); font-size: 12px; }
+.znaem-red-potvardeno > .znaem-znak,
+.znaem-red-popraveno > .znaem-znak { color: var(--green); }
+.znaem-red-sporno > .znaem-znak { color: var(--red); }
+.znaem-red-predlozheno > .znaem-znak { color: var(--zhalto); }
+.znaem-etiket { font-size: 12.5px; color: var(--slate); }
+.znaem-stoynost { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+.znaem-prazno { color: var(--muted); font-weight: 400; font-style: italic; }
+.znaem-dokaz { color: var(--slate); }
+
+/* Разминаванията — червените. Не крещят, но не могат да се подминат. */
+.razdel-cherveno { border-color: var(--red); }
+.razminavane {
+    border-left: 3px solid var(--red); padding: 4px 0 6px 10px; margin-top: 8px;
+}
+.razminavane-ime { font-size: 13px; font-weight: 700; color: var(--red); }
+.razminavane-red { display: flex; gap: 8px; align-items: baseline; }
+.razminavane-etiket { font-size: 11.5px; color: var(--muted); min-width: 10em; }
+.razminavane-stoynost { font-size: 13px; color: var(--ink); font-weight: 600; }

@@ -245,11 +245,12 @@ t('отвореният обект се помни като текущ — ст�
   JSON.parse(b.w.localStorage.getItem('akt_v5')).currentProject.id === 'hus',
   (JSON.parse(b.w.localStorage.getItem('akt_v5')).currentProject || {}).id);
 
-// трите връзки
+// четирите връзки
 const vrazki = [...b.d.querySelectorAll('.vrazka')].map(x => tekst(x));
-t('долу има точно три връзки', vrazki.length === 3, vrazki);
-t('връзките са Проектът · Собственост · Досието',
-  /Проектът/.test(vrazki[0]) && /Собственост/.test(vrazki[1]) && /Досието/.test(vrazki[2]), vrazki);
+t('долу има точно четири връзки', vrazki.length === 4, vrazki);
+t('връзките са Проектът · Собственост · Досието · Какво знаем',
+  /Проектът/.test(vrazki[0]) && /Собственост/.test(vrazki[1])
+  && /Досието/.test(vrazki[2]) && /Какво знаем/.test(vrazki[3]), vrazki);
 // Проектът и Собствеността вече са ВЪТРЕ в новото; навън води само Досието.
 const vsichki = [...b.d.querySelectorAll('.vrazka')];
 
@@ -267,7 +268,11 @@ t('Досието също води вътре, на Екран 6',
   vsichki[2].getAttribute('href') === '#/dosie/hus/0'
   && vsichki[2].getAttribute('target') === null,
   vsichki[2].getAttribute('href'));
-t('и трите връзки вече са вътре в новото',
+t('Какво знаем води на Екран 7 — огледалото',
+  vsichki[3].getAttribute('href') === '#/znaem/hus/0'
+  && vsichki[3].getAttribute('target') === null,
+  vsichki[3].getAttribute('href'));
+t('и четирите връзки вече са вътре в новото',
   vsichki.every(a => (a.getAttribute('href') || '').startsWith('#/')),
   vsichki.map(a => a.getAttribute('href')));
 
@@ -276,7 +281,7 @@ t('и трите връзки вече са вътре в новото',
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
      '../js/07-sobstvenost.js', '../js/12b-kandidati.js'].includes(s)),
   vklyucheni);
 t('всеки включен файл съществува',

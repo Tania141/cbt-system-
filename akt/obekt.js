@@ -256,6 +256,9 @@ function obektKoeLipsva(moment, koe) {
                 <button class="bt bt-tih" onclick="obektNeSeOtnasya('${_e(d)}')"
                         title="Казваш веднъж и редът пада — процентът се вдига">не се отнася</button>
             </li>`).join('')}</ul>` : '<p>Всичко е налице.</p>'}
+        <p class="poyasnenie">
+            <a href="#/znaem/${encodeURIComponent(obektId)}/${obektIndeks}/redove"
+               onclick="obektZatvoriKutiya()">защо точно тези редове се искат →</a></p>
         ${(z.st.neotnasya || []).length ? `
             <details class="minali"><summary>не се отнасят · ${(z.st.neotnasya || []).length}</summary>
             <ul class="lipsvat">${(z.st.neotnasya || []).map(d =>
@@ -303,17 +306,10 @@ function obektArhiviraj() {
 
 // ── 5. Трите връзки ──────────────────────────────────────────────────────────
 
-// Екрани 4, 5 и 6 още не са писани, затова трите връзки водят към старото ПВА.
-// Две неща ги правят поносими, докато ги няма:
-//   · обектът се носи — `aktZapomniObekt` вече е записал кой е на масата;
-//   · отварят се в НОВ подпрозорец, за да не губиш този екран; връщаш се със
-//     затваряне, вместо да търсиш пътя назад.
-// И го пише честно, вместо да се прави, че са част от новото.
+// Четири връзки: Проектът · Собствеността · Досието · Какво знаем. Четвъртата
+// е огледалото (Екран 7) — отваря се и при клик върху число, затова от тук
+// се влиза без група и всичко стои сгънато.
 function obektVrazkiHtml(p) {
-    // Собственост и Акт 16 са на ИМОТА — затова „Собствеността“ не носи строеж.
-    const vrazka = (ime, pod) => `
-        <a class="vrazka" href="../index.html" target="_blank" rel="noopener">
-            ${_e(ime)}<span>${_e(pod)} · в старото ПВА ↗</span></a>`;
     // Проектът вече е тук, в новото — затова не отпраща навън.
     const proekt = `
         <a class="vrazka" href="#/proekt/${encodeURIComponent(obektId)}/${obektIndeks}">
@@ -328,5 +324,7 @@ function obektVrazkiHtml(p) {
         ${sobstvenost}
         <a class="vrazka" href="#/dosie/${encodeURIComponent(obektId)}/${obektIndeks}">
             Досието<span>всичко прочетено, с цитатите</span></a>
+        <a class="vrazka" href="#/znaem/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Какво знаем<span>огледалото — с откъде и от кого</span></a>
     </div>`;
 }
