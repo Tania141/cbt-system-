@@ -201,16 +201,17 @@ function obektLentaHtml() {
         ${minali.length ? `
             <details class="minali">
                 <summary>${minali.length} минали моменти</summary>
-                <div class="plochki">${minali.map(g => obektPlochkaHtml(g, z.st, false)).join('')}</div>
+                <div class="plochki">${minali.map(g => obektPlochkaHtml(g, z, false)).join('')}</div>
             </details>` : ''}
         <div class="plochki">
-            ${napred.map(g => obektPlochkaHtml(g, z.st, g.moment === tekusht)).join('')}
+            ${napred.map(g => obektPlochkaHtml(g, z, g.moment === tekusht)).join('')}
         </div>
     </div>`;
 }
 
-function obektPlochkaHtml(g, st, tekusht) {
-    const dve = aktDveChisla(g, st.neotnasya);
+function obektPlochkaHtml(g, z, tekusht) {
+    const st = z.st;
+    const dve = aktDveChisla(g, aktNeotnasya(z.p, st));
     const cvyat = aktCvyat(dve, tekusht);
     const vezna = (ime, v, koe) => `
         <button type="button" class="chislo chislo-${v === null ? 'nyama' : v.post === 100 ? 'pylno' : 'chastichno'}
@@ -237,7 +238,7 @@ function obektKoeLipsva(moment, koe) {
     if (!z || !Array.isArray(obektGrupi)) return;
     const g = obektGrupi.find(x => x.moment === moment);
     if (!g) return;
-    const dve = aktDveChisla(g, z.st.neotnasya);
+    const dve = aktDveChisla(g, aktNeotnasya(z.p, z.st));
     const v = koe === 'nachalo' ? dve.nachalo : dve.podpis;
     const telo = document.getElementById('obekt-kutiya-telo');
     document.getElementById('obekt-kutiya').classList.add('otvorena');
@@ -259,12 +260,30 @@ function obektKoeLipsva(moment, koe) {
         <p class="poyasnenie">
             <a href="#/znaem/${encodeURIComponent(obektId)}/${obektIndeks}/redove"
                onclick="obektZatvoriKutiya()">защо точно тези редове се искат →</a></p>
-        ${(z.st.neotnasya || []).length ? `
-            <details class="minali"><summary>не се отнасят · ${(z.st.neotnasya || []).length}</summary>
-            <ul class="lipsvat">${(z.st.neotnasya || []).map(d =>
-                `<li>${_e(d)} <button class="bt bt-tih"
-                    onclick="obektPakSeOtnasya('${_e(d)}')">върни</button></li>`).join('')}</ul>
-            </details>` : ''}`;
+        ${obektNeotnasyatHtml(z)}`;
+}
+
+// Какво не се отнася — и дали е казано ТУК, или е научено от други обекти със
+// същите съставки. Наученото се маха поотделно: иначе едно сбъркано „не се
+// отнася“ важи завинаги, без да се вижда откъде е дошло.
+function obektNeotnasyatHtml(z) {
+    const vsichki = aktNeotnasya(z.p, z.st);
+    if (!vsichki.length) return '';
+    return `
+    <details class="minali"><summary>не се отнасят · ${vsichki.length}</summary>
+    <ul class="lipsvat">${vsichki.map(d => {
+        const tuk = aktKazanoTuk(z.st, d);
+        const urok = typeof nauchZaRed === 'function' ? nauchZaRed(z.p, z.st, d) : null;
+        return `<li>${_e(d)}
+            ${tuk ? `<button class="bt bt-tih"
+                onclick="obektPakSeOtnasya('${_e(d)}')">върни</button>` : ''}
+            ${urok ? `<button class="bt bt-tih"
+                onclick="obektZabravi('${_e(d)}')"
+                title="Махаш урока само за този тип строеж">забрави урока</button>
+                <span class="otkade">${_e(nauchObyasnenie(urok))}</span>` : ''}
+        </li>`;
+    }).join('')}</ul>
+    </details>`;
 }
 
 function obektZatvoriKutiya() {
@@ -272,20 +291,35 @@ function obektZatvoriKutiya() {
 }
 
 // Правило 4: „не се отнася“ е равноправен отговор и ВДИГА процента.
-function obektNeSeOtnasya(dokument) {
+// И е УРОК: пази се и за профила на строежа, не само за този обект.
+async function obektNeSeOtnasya(dokument) {
     const z = obektZhiv();
     if (!z) return;
     z.st.neotnasya = [...new Set([...(z.st.neotnasya || []), dokument])];
     aktZapishi();
     obektZatvoriKutiya();
     obektZaredilenta();
+    if (typeof nauchZapomni === 'function') {
+        try { await nauchZapomni(z.p, z.st, dokument); } catch (e) { /* урокът не блокира */ }
+        obektZaredilenta();
+    }
 }
 
+// „Върни“ е за ТОЗИ обект. Урокът остава — може да е верен другаде.
 function obektPakSeOtnasya(dokument) {
     const z = obektZhiv();
     if (!z) return;
     z.st.neotnasya = (z.st.neotnasya || []).filter(x => x !== dokument);
     aktZapishi();
+    obektZatvoriKutiya();
+    obektZaredilenta();
+}
+
+// „Забрави урока“ е за ТИПА строеж. Обектът си остава както е.
+async function obektZabravi(dokument) {
+    const z = obektZhiv();
+    if (!z || typeof nauchZabravi !== 'function') return;
+    try { await nauchZabravi(z.p, z.st, dokument); } catch (e) { return; }
     obektZatvoriKutiya();
     obektZaredilenta();
 }

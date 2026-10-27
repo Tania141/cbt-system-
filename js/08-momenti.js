@@ -17,10 +17,12 @@
 // четецът не гадае вида, а това беше най-честата му грешка. Накуп си остава в
 // „Документите“: един PDF с 24 нотариални акта отговаря на десет въпроса.
 
-function _pitaneOpashka(st, r) {
+function _pitaneOpashka(st, r, obekt) {
     const otmetnati = new Set(st.nadzor_otmetnati || []);
     const nyama = new Set(st.nadzor_lipsvat || []);
-    const neotnasya = new Set(st.neotnasya || []);
+    // Наученото също не се пита — иначе въпросът пак излиза, макар системата
+    // вече да знае отговора от други обекти със същите съставки.
+    const neotnasya = new Set(_nadzorNeotnasya(obekt || _zhivObekt(), st));
     const out = [];
     for (const g of r.grupi) {
         for (const d of g.dokumenti) {
@@ -113,6 +115,20 @@ function pitaneOtgovor(ime64, kak) {
     const dumi = { ima: 'налично', nyama: 'липсва', neotnasya: 'не се отнася' }[kak] || kak;
     _s2ZapishiTiho(obekt, `${ime} — ${dumi}`);
     _prerisuvai();
+    // „Не се отнася“ е УРОК за типа строеж, не само за обекта
+    // (`js/12c-naucheno.js`). Пази се и тук, за да учи системата и когато се
+    // работи в старото ПВА — иначе наученото зависи от кой екран е казано.
+    if (kak === 'neotnasya' && typeof nauchZapomni === 'function')
+        nauchZapomni(obekt, st, ime).then(_prerisuvai).catch(() => {});
+}
+
+// Какво този строеж няма да пита: казаното тук плюс наученото за профила.
+// Същото стои и в `aktNeotnasya` (`akt/yadro.js`) — двете ПВА трябва да
+// махат едни и същи редове.
+function _nadzorNeotnasya(obekt, st) {
+    const svoi = (st && st.neotnasya) || [];
+    const nauch = typeof nauchNeotnasya === 'function' ? nauchNeotnasya(obekt, st) : [];
+    return [...new Set([...svoi, ...nauch])];
 }
 
 // „Пропусни“ не е отговор: само мести въпроса назад за този път.
@@ -200,13 +216,25 @@ function _nadzorSastavyaneHtml() {
 // не ги цъка. Акт 5 и 6 са за 1–3 категория, Акт 9 — при машини, Акт 16 — само
 // при назначена ДПК. (Операторът, 09.10.2026: „сега операторът тича по екрана“.)
 function _nadzorPriznaci(obekt, st) {
-    return {
+    const pr = {
         kategoria: st.kategoria || '',
         imaMashini: !!st.imaMashini,
         metalnaKonstrukcia: !!st.metalnaKonstrukcia,
         dpk: !!st.dpk_naznachena,
         po_poiskvane: !!st.protokol17_poiskan,
+        // Видът дотук НЕ се подаваше, а редовете, добавени от оператора,
+        // носеха условие „вид = линеен“. Тоест никога не ставаха приложими —
+        // научен ред, който мълчи. (Намерено на 27.10.2026.)
+        // И двете изписвания, защото старите условия са на кирилица.
+        vid: st.vid || '',
+        'вид': st.vid || '',
     };
+    // Съставките като признаци: `sast_shtp`, `sast_kabel_srn`… Така условието
+    // на научен ред може да каже точно при какъв строеж важи, с думите на
+    // самите съставки, вместо с грубото „вид = линеен“.
+    for (const s of (typeof _kesSastavkiNa === 'function' ? _kesSastavkiNa(obekt) : []))
+        if (s && s.kod) pr['sast_' + s.kod] = true;
+    return pr;
 }
 
 // Какво вече е събрано: от прочетените документи и от отметнатото на ръка.

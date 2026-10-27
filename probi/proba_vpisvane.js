@@ -10,11 +10,12 @@ const s = kod();
 const F = new Function(
     "const _s2esc=x=>String(x??'');let _zapisi=[],_risuvani=0;\n"
     + 'const _s2Id = d => d.id || d.fajl;\n'
-    + [grab(s, '_dokVpishi'), grab(s, '_s2Sveren'), grab(s, '_dokVpishiSverenite'),
+    + [grab(s, '_dokVpishi'), grab(s, '_dokVpisanRed'), grab(s, '_dokIme'),
+       grab(s, '_s2Sveren'), grab(s, '_dokVpishiSverenite'),
        grab(s, '_s2Fakti')].join('\n')
     + '\nconst renderDokumenti=()=>{_risuvani++};'
     + 'const _s2ZapishiTiho=(p,k)=>_zapisi.push(k);\n'
-    + 'return {_dokVpishi,_s2Sveren,_dokVpishiSverenite,zapisi:()=>_zapisi,'
+    + 'return {_dokVpishi,_dokVpisanRed,_dokIme,_s2Sveren,_dokVpishiSverenite,zapisi:()=>_zapisi,'
     + 'risuvani:()=>_risuvani};')();
 
 const dobri = [], loshi = [];
@@ -47,8 +48,12 @@ const obekt = { pi: '68134.1006.2440' };
 const n = F._dokVpishiSverenite(obekt, obekt, [DOK], potv);
 t('сверéният влиза в изходните данни', n === 1 && (obekt.dokumenti || []).length === 1,
   obekt.dokumenti);
-t('с името на реда от чеклиста',
+// 27.10.2026: в описа влиза НАИМЕНОВАНИЕТО на документа, а не името на реда.
+// Тук двете съвпадат по текст; редът, който доказва, се пази отделно.
+t('с наименованието на документа',
   obekt.dokumenti[0].ime === 'Договор за присъединяване', obekt.dokumenti[0]);
+t('и помни кой ред доказва',
+  obekt.dokumenti[0].red === 'Договор за присъединяване', obekt.dokumenti[0]);
 t('и с номера и датата си',
   /1206036213/.test(obekt.dokumenti[0].nomer) && /29\.10\.2015/.test(obekt.dokumenti[0].nomer),
   obekt.dokumenti[0].nomer);
@@ -63,11 +68,16 @@ const DRUG = { ...DOK, fajl: 'Становище.pdf', cheklist_red: 'Стано
 const n3 = F._dokVpishiSverenite(obekt, obekt, [DRUG], potv);
 t('несверен не влиза', n3 === 0 && obekt.dokumenti.length === 1, obekt.dokumenti);
 
-// Документ без ред в чеклиста не влиза, дори сверен.
-const BEZ = { ...DOK, fajl: 'Фактура.pdf', cheklist_red: '' };
+// ПРЕГРАДАТА Е ПОТВЪРЖДЕНИЕТО, НЕ ЧЕКЛИСТЪТ (операторът, 27.10.2026).
+// Дотук тази проба пазеше обратното: „сверен документ без ред НЕ влиза“. Но
+// чеклистът отговаря на „какво липсва“, а описът — на „какво имам“; минаваше
+// ли второто през първото, документът изчезваше тихо от акт 15.
+const BEZ = { ...DOK, fajl: 'Фактура.pdf', vid: 'Фактура', cheklist_red: '' };
 for (const k of kluchove) potv[`Фактура.pdf::${k}`] = { stoynost: 'x' };
-t('сверен документ без ред не влиза', F._dokVpishiSverenite(obekt, obekt, [BEZ], potv) === 0,
-  obekt.dokumenti);
+t('сверен документ БЕЗ ред в чеклиста вече ВЛИЗА',
+  F._dokVpishiSverenite(obekt, obekt, [BEZ], potv) === 1, obekt.dokumenti);
+t('и влиза с наименованието си',
+  obekt.dokumenti.some(d => d.ime === 'Фактура'), obekt.dokumenti);
 
 // ── ръчното вписване ──────────────────────────────────────────────────────
 t('празно име не се вписва', !F._dokVpishi(obekt, '  ', '1'));

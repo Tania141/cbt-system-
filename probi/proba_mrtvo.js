@@ -13,7 +13,18 @@ const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : 
 const faylove = redNaModulite();
 const tela = Object.fromEntries(faylove.map(f => [f, fs.readFileSync(path.join(JS, f), 'utf8')]));
 const html = fs.readFileSync(HTML, 'utf8');
-const vsichko = kod() + '\n' + html;
+// Новото ПВА (`akt/`) е също толкова истински викач, колкото старото: то
+// зарежда същите модули от `js/`. Без него функция, която се вика САМО от
+// новата повърхност, минава за мъртва — и следващият би я изтрил.
+// Броят се само ВИКАНИЯТА оттам; маркъпът на новото ПВА не се проверява тук,
+// защото неговите функции се определят в други файлове. (27.10.2026)
+const AKT = path.join(__dirname, '..', 'akt');
+const novoto = fs.existsSync(AKT)
+    ? fs.readdirSync(AKT).filter(f => /\.(js|html)$/.test(f))
+        .map(f => fs.readFileSync(path.join(AKT, f), 'utf8')).join('\n')
+    : '';
+
+const vsichko = kod() + '\n' + html + '\n' + novoto;
 
 const duma = ime => new RegExp('(?<![\\w$])' + ime.replace(/\$/g, '\\$') + '(?![\\w$])', 'g');
 

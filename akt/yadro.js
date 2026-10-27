@@ -247,6 +247,21 @@ function aktSastavki(p, st) {
 // Ако нито един ред не носи етап, числото „да започна“ е `null` — показва се
 // тире, а не измислена стойност. По-добре да се види, че сървърът не го казва.
 
+// Какво този строеж няма да пита: казаното на обекта ПЛЮС наученото за
+// неговия профил (`js/12c-naucheno.js`). Едно място го събира, за да не го
+// събира всеки екран по своему.
+function aktNeotnasya(p, st) {
+    const svoi = (st && st.neotnasya) || [];
+    const nauch = typeof nauchNeotnasya === 'function' ? nauchNeotnasya(p, st) : [];
+    return [...new Set([...svoi, ...nauch])];
+}
+
+// Научено ли е, или е казано тук. Екранът го различава, защото наученото
+// трябва да си личи и да се маха.
+function aktKazanoTuk(st, dokument) {
+    return ((st && st.neotnasya) || []).includes(dokument);
+}
+
 const AKT_IMAM = 'налично';
 const AKT_NE_MU_E_VREMETO = 'не му е времето';
 
@@ -395,14 +410,24 @@ function aktNalichni(st) {
     return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene])];
 }
 
-function aktPriznaci(st) {
-    return {
+// Същото стои и в `_nadzorPriznaci` (`js/08-momenti.js`) — онзи модул не се
+// зарежда тук. Повторението е опасно: разминат ли се, двете ПВА ще искат
+// различни документи за един и същ строеж. `proba_priznaci_dvete.js` ги
+// сравнява и пада.
+function aktPriznaci(p, st) {
+    const pr = {
         kategoria: st.kategoria || '',
         imaMashini: !!st.imaMashini,
         metalnaKonstrukcia: !!st.metalnaKonstrukcia,
         dpk: !!st.dpk_naznachena,
         po_poiskvane: !!st.protokol17_poiskan,
+        vid: st.vid || '',
+        'вид': st.vid || '',
     };
+    // Съставките като признаци — така научен ред казва при какъв строеж важи.
+    for (const s of (typeof aktSastavki === 'function' ? aktSastavki(p, st) : []))
+        if (s && s.kod) pr['sast_' + s.kod] = true;
+    return pr;
 }
 
 async function aktNadzor(p, st) {
@@ -410,7 +435,7 @@ async function aktNadzor(p, st) {
         pi: p.pi, faza: 'nadzor',
         nalichni: aktNalichni(st),
         tekusht: st.tekusht_moment || '',
-        priznaci: aktPriznaci(st),
+        priznaci: aktPriznaci(p, st),
         izklyucheni: st.izklyucheni_momenti || [],
     });
 }

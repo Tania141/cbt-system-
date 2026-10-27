@@ -49,14 +49,47 @@ function vpishiLipsvasht(ime64) {
 // чекваш фактите, после „Впиши“, после „Запази“. Сега документът, чиито
 // факти са сверени и който доказва ред от чеклиста, влиза сам — в обекта, не
 // само в полето на екрана.
-function _dokVpishi(p, ime, nomer) {
+function _dokVpishi(p, ime, nomer, cheklistRed) {
     const k = x => String(x || '').trim().toLowerCase();
     if (!k(ime)) return false;
     const spisak = (p.dokumenti = p.dokumenti || []);
-    const red = spisak.find(d => k(d.ime) === k(ime));
-    if (!red) { spisak.push({ ime: String(ime).trim(), nomer: String(nomer || '').trim() }); return true; }
-    if (!String(red.nomer || '').trim() && nomer) { red.nomer = String(nomer).trim(); return true; }
-    return false;
+    // Намира се по две неща: по самото име, и по реда, който доказва. Второто
+    // е заради старите записи — до 27.10.2026 тук се вписваше ИМЕТО НА РЕДА, а
+    // не наименованието на документа. Без него същият документ влизаше втори
+    // път и описът го показваше двойно.
+    let red = spisak.find(d => k(d.ime) === k(ime));
+    if (!red && k(cheklistRed))
+        red = spisak.find(d => k(d.red || '') === k(cheklistRed)
+                            || k(d.ime) === k(cheklistRed));
+    if (!red) {
+        spisak.push({ ime: String(ime).trim(), nomer: String(nomer || '').trim(),
+                      red: String(cheklistRed || '').trim() });
+        return true;
+    }
+    let pipnato = false;
+    // Наименованието бие името на реда: описът сочи документа, не рубриката.
+    if (k(red.ime) !== k(ime)) { red.ime = String(ime).trim(); pipnato = true; }
+    if (!String(red.nomer || '').trim() && nomer) { red.nomer = String(nomer).trim(); pipnato = true; }
+    if (!String(red.red || '').trim() && cheklistRed) { red.red = String(cheklistRed).trim(); pipnato = true; }
+    return pipnato;
+}
+
+// Вписан ли е вече ред от чеклиста. Търси се по ДВЕТЕ: по името (както беше
+// до 27.10.2026) и по реда, който документът доказва. Иначе всеки документ,
+// вписан с истинското си наименование, изглеждаше невписан.
+function _dokVpisanRed(p, red) {
+    const k = x => String(x || '').trim().toLowerCase();
+    if (!k(red)) return false;
+    return (p.dokumenti || []).some(d => k(d.ime) === k(red) || k(d.red) === k(red));
+}
+
+// Какво име носи документът в описа. По ред: потвърденото наименование,
+// късото заглавие от четеца, и чак накрая редът от чеклиста.
+function _dokIme(d, potv) {
+    const nai = String((d.naimenovanie || {}).stoynost || '').trim();
+    if (nai && potv[`${_s2Id(d)}::naimenovanie`]) return nai;
+    const vid = String(d.vid || '').trim();
+    return vid || nai || String(d.cheklist_red || '').trim();
 }
 
 // Кои прочетени документи са сверени докрай.
@@ -68,12 +101,21 @@ function _s2Sveren(d, potv) {
 function _dokVpishiSverenite(obekt, p, dokumenti, potv) {
     let n = 0;
     for (const d of dokumenti) {
-        const red = String(d.cheklist_red || '').trim();
-        if (!red || !_s2Sveren(d, potv)) continue;
+        // ПРЕГРАДАТА Е ПОТВЪРЖДЕНИЕТО, НЕ ЧЕКЛИСТЪТ.
+        // Операторът, 27.10.2026: „прочита документа, съобщава какъв е, ако
+        // операторът го потвърди — този потвърден факт се записва в акт 15,
+        // ОСИП, ОД или където системата иска“.
+        //
+        // Дотук се искаше и ред в чеклиста. Но чеклистът отговаря на „какво
+        // липсва“, а описът — на „какво имам“. Минаваше ли второто през
+        // първото, всеки документ без ред изчезваше тихо от акта. А чеклистът
+        // тепърва се учи от оператора и е нарочно малък — малък чеклист плюс
+        // преграда значи изгубени документи.
+        if (!_s2Sveren(d, potv)) continue;
         const nomer = [d.nomer && d.nomer.stoynost ? '№ ' + d.nomer.stoynost : '',
                        d.data && d.data.stoynost ? 'от ' + d.data.stoynost : '']
             .filter(Boolean).join(' ');
-        if (_dokVpishi(p, red, nomer)) n++;
+        if (_dokVpishi(p, _dokIme(d, potv), nomer, d.cheklist_red)) n++;
     }
     if (n) {
         renderDokumenti(p);
@@ -414,10 +456,9 @@ function _sloy2Html(r, dokumenti, potvardeni) {
     }
 
     if ((r.predlozhenie || []).length) {
-        const nalichni = new Set(readDokumenti().map(d => d.ime.toLowerCase()));
         h += zagl('За чеклиста — кои редове доказват прочетените файлове');
         h += r.predlozhenie.map(e => {
-            const vpisan = nalichni.has(e.dokument.toLowerCase());
+            const vpisan = _dokVpisanRed(_zhivObekt() || appData.currentProject || {}, e.dokument);
             // Един ред може да е доказан от няколко документа — всеки със своя
             // номер. Дотук се показваше номерът на първия до името на
             // последния файл и изглеждаше разменено. (Операторът, 20.10.2026)
@@ -469,6 +510,9 @@ const _s2Id = d => d.id || d.fajl;
 function _s2Fakti(d) {
     const out = [];
     const f = (k, etiket, obj) => { if (obj && String(obj.stoynost ?? '').trim()) out.push({ k, etiket, obj }); };
+    // Наименованието е ПЪРВИЯТ факт: то казва кой е този документ. Потвърдиш
+    // ли го, точно то влиза в описа на Акт 15 — не редът от чеклиста.
+    f('naimenovanie', 'наименование', d.naimenovanie);
     f('nomer', 'номер', d.nomer); f('data', 'дата', d.data); f('izdatel', 'издател', d.izdatel);
     f('material', 'материал/изделие', d.material); f('proizvoditel', 'производител/доставчик', d.proizvoditel);
     f('sadarzhanie', 'какво е прието', d.sadarzhanie);

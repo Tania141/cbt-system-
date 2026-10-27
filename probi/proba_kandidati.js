@@ -74,8 +74,19 @@ const DRUG = { pi: '55419.6701.3247', stroej: 'Външно електрозах
     t('с името, което операторът даде',
       /нанасяне на БКТП/.test(sobstveni[0].dokument), sobstveni[0].dokument);
     t('с етап „подпис“', sobstveni[0].etap === 'подпис');
-    t('и с условие за линеен обект, щом е срещан само там',
-      /линеен/.test(sobstveni[0].uslovie), sobstveni[0].uslovie);
+    // 27.10.2026: условието се прави от СЪСТАВКИТЕ, при които редът е видян,
+    // не от грубото „вид = линеен“. Видяно при шахтов ТП, искано при всеки
+    // линеен обект — това беше едро и неточно, а доказателството се пазеше.
+    t('условието е от съставките, при които е видян',
+      /sast_/.test(sobstveni[0].uslovie), sobstveni[0].uslovie);
+    t('и е „или“, не „и“ — видян е при различни строежи',
+      / или /.test(sobstveni[0].uslovie), sobstveni[0].uslovie);
+    t('остава за преценка, а не задължително',
+      /ако_е_приложимо/.test(sobstveni[0].uslovie), sobstveni[0].uslovie);
+    t('основанието казва при кои съставки',
+      /при строежи със:/.test(sobstveni[0].osnovanie), sobstveni[0].osnovanie);
+    t('и колко пъти е срещан',
+      /\d+ (път|пъти)/.test(sobstveni[0].osnovanie), sobstveni[0].osnovanie);
     t('основанието казва кога и къде',
       /добавен от оператора/.test(sobstveni[0].osnovanie)
       && /68134\.1006\.2440/.test(sobstveni[0].osnovanie), sobstveni[0].osnovanie);

@@ -69,7 +69,7 @@ function momentRisuvai() {
         kutiya.innerHTML = `<div class="greshka">Чеклистът не отговори: ${_e(momentGrupa.greshka)}</div>`;
         return;
     }
-    const dve = aktDveChisla(momentGrupa, z.st.neotnasya);
+    const dve = aktDveChisla(momentGrupa, aktNeotnasya(z.p, z.st));
     kutiya.innerHTML =
         momentVezniHtml(dve)
         + momentPapkaHtml()
@@ -100,7 +100,7 @@ function momentVezniHtml(dve) {
 function momentKoeLipsva(koe) {
     const z = momentZhiv();
     if (!z || !momentGrupa) return;
-    const dve = aktDveChisla(momentGrupa, z.st.neotnasya);
+    const dve = aktDveChisla(momentGrupa, aktNeotnasya(z.p, z.st));
     const v = koe === 'nachalo' ? dve.nachalo : dve.podpis;
     const telo = document.getElementById('moment-kutiya-telo');
     document.getElementById('moment-kutiya').classList.add('otvorena');
@@ -130,7 +130,7 @@ function momentRedoveZa(koe) {
 function momentImam(r) {
     const z = momentZhiv();
     return r.sastoyanie === 'налично'
-        || (z && (z.st.neotnasya || []).includes(r.dokument));
+        || (z && aktNeotnasya(z.p, z.st).includes(r.dokument));
 }
 
 // ── 2. Папката: изброява се, не се чете ──────────────────────────────────────
@@ -360,7 +360,9 @@ function momentZatvoriRed(dokument, nomer, kak) {
 }
 
 // — не се отнася: казваш веднъж и редът пада, с датата. Вдига процента.
-function momentNeSeOtnasya(k) {
+// И става УРОК за профила на строежа (`js/12c-naucheno.js`), за да не те пита
+// пак при следващия строеж със същите съставки.
+async function momentNeSeOtnasya(k) {
     const z = momentZhiv();
     if (!z) return;
     const dokument = decodeURIComponent(k);
@@ -368,6 +370,18 @@ function momentNeSeOtnasya(k) {
     (z.st.neotnasya_koga = z.st.neotnasya_koga || {})[dokument] = new Date().toISOString();
     delete momentHod[dokument];
     aktZapishi();
+    momentZaredi();
+    if (typeof nauchZapomni === 'function') {
+        try { await nauchZapomni(z.p, z.st, dokument); } catch (e) { /* урокът не блокира */ }
+        momentZaredi();
+    }
+}
+
+// Забравяне на урока — за типа строеж, не за обекта.
+async function momentZabravi(k) {
+    const z = momentZhiv();
+    if (!z || typeof nauchZabravi !== 'function') return;
+    try { await nauchZabravi(z.p, z.st, decodeURIComponent(k)); } catch (e) { return; }
     momentZaredi();
 }
 
@@ -395,6 +409,9 @@ function momentImamHtml() {
         if ((z.st.neotnasya || []).includes(ime))
             return 'не се отнася' + (z.st.neotnasya_koga && z.st.neotnasya_koga[ime]
                 ? ' · ' + aktData(z.st.neotnasya_koga[ime]) : '');
+        // Научено от друг обект със същите съставки — казва се откъде е.
+        const urok = typeof nauchZaRed === 'function' ? nauchZaRed(z.p, z.st, ime) : null;
+        if (urok) return 'не се отнася · ' + nauchObyasnenie(urok);
         return 'отметнато';
     };
     return `
