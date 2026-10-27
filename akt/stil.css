@@ -312,6 +312,38 @@ body {
     background: var(--zhalto-light); color: var(--zhalto); font-size: 12.5px;
 }
 
+/* ── Екран 5 · собствеността ───────────────────────────────────────────── */
+
+.izrechenie {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 13px 16px; margin-bottom: 16px; border-radius: var(--r);
+    font-size: 15px; line-height: 1.45;
+}
+.izrechenie-dobre  { background: var(--green-light); color: var(--green); }
+.izrechenie-lipsva { background: var(--zhalto-light); color: var(--zhalto); }
+.izrechenie-znak { font-size: 17px; }
+
+.vaz-red { padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+.vaz-red:last-child { border-bottom: none; }
+.vaz-ime { font-weight: 600; font-size: 14.5px; display: flex; gap: 9px; align-items: baseline; }
+.vaz-prava { font-size: 13px; color: var(--slate); margin-top: 2px; }
+
+.nahodka {
+    display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+    padding: 7px 0; border-bottom: 1px solid var(--border-light); font-size: 13.5px;
+}
+.nahodka:last-child { border-bottom: none; }
+.nahodka-vid {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+    color: var(--red); white-space: nowrap;
+}
+
+.sabitie { padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+.sabitie:last-child { border-bottom: none; }
+.sabitie-glava { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sabitie-vid { font-weight: 600; font-size: 13.5px; }
+.sabitie-koj { font-size: 13px; margin-top: 2px; }
+
 .pusto { text-align: center; padding: 48px 16px; color: var(--muted); }
 
 @media (max-width: 760px) {

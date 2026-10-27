@@ -250,25 +250,30 @@ const vrazki = [...b.d.querySelectorAll('.vrazka')].map(x => tekst(x));
 t('долу има точно три връзки', vrazki.length === 3, vrazki);
 t('връзките са Проектът · Собственост · Досието',
   /Проектът/.test(vrazki[0]) && /Собственост/.test(vrazki[1]) && /Досието/.test(vrazki[2]), vrazki);
-t('собствеността виси на ИМОТА, не на строежа',
-  /68134\.1006\.2440/.test(vrazki[1]), vrazki[1]);
-// Проектът вече е ВЪТРЕ в новото — води на Екран 4, не навън.
+// Проектът и Собствеността вече са ВЪТРЕ в новото; навън води само Досието.
 const vsichki = [...b.d.querySelectorAll('.vrazka')];
+
 t('Проектът води вътре, на Екран 4',
   vsichki[0].getAttribute('href') === '#/proekt/hus/0'
   && vsichki[0].getAttribute('target') === null,
   vsichki[0].getAttribute('href'));
-t('другите две казват честно, че водят в старото ПВА',
-  /в старото ПВА/.test(vrazki[1]) && /в старото ПВА/.test(vrazki[2]), vrazki);
-t('и се отварят в нов подпрозорец',
-  vsichki.slice(1).every(a => a.getAttribute('target') === '_blank'));
+t('Собствеността води вътре, на Екран 5',
+  vsichki[1].getAttribute('href') === '#/sobstvenost/hus/0'
+  && vsichki[1].getAttribute('target') === null,
+  vsichki[1].getAttribute('href'));
+t('собствеността виси на ИМОТА, не на строежа',
+  /68134\.1006\.2440/.test(vrazki[1]), vrazki[1]);
+t('Досието още казва честно, че води в старото ПВА',
+  /в старото ПВА/.test(vrazki[2]), vrazki[2]);
+t('и се отваря в нов подпрозорец',
+  vsichki[2].getAttribute('target') === '_blank');
 
 // ── границата със старото ПВА ────────────────────────────────────────────────
 
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|plot|obekt|moment|proekt)\.js$/.test(s) || s === '../js/05-proverki.js'),
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/07-sobstvenost.js'].includes(s)),
   vklyucheni);
 t('всеки включен файл съществува',
   vklyucheni.every(s => fs.existsSync(path.resolve(PAPKA, s))), vklyucheni);

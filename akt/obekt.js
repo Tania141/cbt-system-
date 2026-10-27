@@ -318,10 +318,14 @@ function obektVrazkiHtml(p) {
     const proekt = `
         <a class="vrazka" href="#/proekt/${encodeURIComponent(obektId)}/${obektIndeks}">
             Проектът<span>записките и текстовете</span></a>`;
+    // Собствеността е на ИМОТА — затова връзката ѝ не носи номер на строеж.
+    const sobstvenost = `
+        <a class="vrazka" href="#/sobstvenost/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Собственост<span>на имота ${_e(p.pi || '')}</span></a>`;
     return `
     <div class="vrazki">
         ${proekt}
-        ${vrazka('Собственост', 'на имота ' + (p.pi || ''))}
+        ${sobstvenost}
         ${vrazka('Досието', 'всичко качено')}
     </div>`;
 }
