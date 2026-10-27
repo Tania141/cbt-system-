@@ -36,8 +36,6 @@ function _stroezh(p) {
     return aktStroezh(p);
 }
 
-const _s2esc = s => _e(s);
-
 // Запис без шум. Старото пише и в историята; тук само се записва — историята
 // на новото ПВА още не е правена.
 function _s2ZapishiTiho(p, opis) {
@@ -61,6 +59,25 @@ function showAlert(vid, tekst) {
 function _lentaObekt() { return ''; }
 function _lentaStroezhi() { return ''; }
 function _obektIliIzbor() { return _zhivObekt(); }
+
+// ── за досието: какво иска кухнята на документите ───────────────────────────
+// `04-vhodni-dokumenti.js` носи сверяването („всички факти потвърдени ли са“)
+// и четенето на документи. Екран 6 ползва само първото — останалите имена са
+// от потока на четенето, който новото ПВА още не кара.
+
+// `_cheklistRows`, `_dokFaza`, `proveriDokumenti` и `renderDokumenti` ГИ НОСИ
+// самият модул 04 — не се дублират тук. Пробата ги брои и пада, ако някой ден
+// изчезнат оттам.
+function _zapishiObekt(p, kakvo) { aktZapishi(); }
+
+function fileToBase64(fajl) {
+    return new Promise((da, ne) => {
+        const r = new FileReader();
+        r.onload = () => da(String(r.result).split(',')[1]);
+        r.onerror = ne;
+        r.readAsDataURL(fajl);
+    });
+}
 
 // Двете „опресни стария екран“. В старото ПВА те пререждат други страници;
 // тук единственото вярно действие е да се пререди текущият екран. Екран 5 не

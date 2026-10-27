@@ -344,7 +344,45 @@ body {
 .sabitie-vid { font-weight: 600; font-size: 13.5px; }
 .sabitie-koj { font-size: 13px; margin-top: 2px; }
 
+/* ── Екран 6 · досието ─────────────────────────────────────────────────── */
+
+.dok { padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+.dok:last-child { border-bottom: none; }
+.dok-glava {
+    display: grid; gap: 4px 12px; align-items: baseline; cursor: pointer;
+    grid-template-columns: auto minmax(0, 1.3fr) minmax(0, 1fr) auto;
+}
+.dok-glava:hover .dok-vid, .dok-glava:focus .dok-vid { color: var(--blue); }
+.dok-znak { font-size: 14px; color: var(--muted); }
+.dok-sveren .dok-znak { color: var(--green); }
+.dok-vid { font-weight: 600; font-size: 14px; }
+.dok-nomer { font-size: 13px; color: var(--slate); }
+.dok-sverka { font-size: 12px; color: var(--muted); white-space: nowrap; text-align: right; }
+.dok-bez-red { color: var(--zhalto); }
+
+.dok-fakti {
+    margin: 8px 0 2px; padding: 9px 12px;
+    background: var(--surface); border-radius: var(--r-sm);
+}
+.fakt { padding: 5px 0; border-bottom: 1px solid var(--border-light); }
+.fakt:last-of-type { border-bottom: none; }
+.fakt-etiket { font-size: 11.5px; color: var(--muted); margin-right: 8px; }
+.fakt-stoynost { font-size: 13.5px; font-weight: 600; }
+.fakt-znak { font-size: 11.5px; color: var(--muted); margin-left: 8px; }
+.fakt-citat { font-size: 12px; color: var(--slate); margin-top: 2px; font-style: italic; }
+
+.kandidat { padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+.kandidat:last-child { border-bottom: none; }
+.kandidat-pita { border-left: 3px solid var(--gold); padding-left: 10px; }
+.kandidat-ime { font-weight: 600; font-size: 13.5px; display: flex; gap: 9px; align-items: baseline; }
+.kandidat-zhestove { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 7px; }
+
 .pusto { text-align: center; padding: 48px 16px; color: var(--muted); }
+
+@media (max-width: 760px) {
+    .dok-glava { grid-template-columns: auto 1fr; }
+    .dok-sverka { text-align: left; }
+}
 
 @media (max-width: 760px) {
     .chast-red { grid-template-columns: 1fr; }

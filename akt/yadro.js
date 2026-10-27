@@ -33,7 +33,12 @@ let aktProcheteno = false;
 function aktZaredi() {
     try {
         const t = localStorage.getItem(AKT_KLYUCH);
-        if (t) aktDanni = { ...aktDanni, ...JSON.parse(t) };
+        // ПЪЛНИ СЕ СЪЩИЯТ ОБЕКТ, не се прави нов. Кухнята държи своя показалец
+        // към него (`appData = aktDanni` в `most.js`) и го взима ПРЕДИ
+        // зареждането. Направи ли се нов обект, старият код остава да сочи
+        // празния и мълчаливо не вижда нищо: при Екран 6 кандидатите не се
+        // четяха, защото `appData.apiUrl` беше празно. (27.10.2026)
+        if (t) Object.assign(aktDanni, JSON.parse(t));
         aktProcheteno = true;
     } catch (e) {
         console.warn('akt_v5 не се чете:', e);

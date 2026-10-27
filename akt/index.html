@@ -41,6 +41,12 @@
         <div id="obekt-telo"></div>
     </section>
 
+    <!-- ЕКРАН 6 -->
+    <section id="ekran-dosie" hidden>
+        <h1 class="moment-ime">Досието</h1>
+        <div id="dosie-telo"></div>
+    </section>
+
     <!-- ЕКРАН 5 -->
     <section id="ekran-sobstvenost" hidden>
         <h1 class="moment-ime">Собствеността</h1>
@@ -84,7 +90,11 @@
 <!-- Сметките с идеалните части — най-опасното за преписване. Викат се,
      не се копират; `most.js` им показва къде са данните. -->
 <script src="../js/01-osnova.js"></script>
+<!-- Сверяването („всички факти потвърдени ли са“) и трупането на
+     „видени, но неописани“ — пак се викат, не се преписват. -->
+<script src="../js/04-vhodni-dokumenti.js"></script>
 <script src="../js/07-sobstvenost.js"></script>
+<script src="../js/12b-kandidati.js"></script>
 
 <!-- Повърхност -->
 <script src="yadro.js"></script>
@@ -94,6 +104,7 @@
 <script src="moment.js"></script>
 <script src="proekt.js"></script>
 <script src="sobstvenost.js"></script>
+<script src="dosie.js"></script>
 
 <script>
 // Къде сме:
@@ -102,6 +113,7 @@
 //   #/moment/<id>/<строеж>/<момент>
 //   #/proekt/<id>/<строеж>
 //   #/sobstvenost/<id>/<строеж>
+//   #/dosie/<id>/<строеж>
 function aktKade() {
     const h = location.hash.replace(/^#\/?/, '');
     const [pat, opashka] = h.split('?');
@@ -117,14 +129,16 @@ function aktPokazhi() {
         : k.ekran === 'moment' && k.moment ? 'moment'
         : k.ekran === 'proekt' ? 'proekt'
         : k.ekran === 'sobstvenost' ? 'sobstvenost'
+        : k.ekran === 'dosie' ? 'dosie'
         : k.ekran === 'obekt' ? 'obekt' : 'plot';
-    for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost'])
+    for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost', 'dosie'])
         document.getElementById('ekran-' + x).hidden = x !== ekran;
     document.getElementById('shapka-plot').hidden = ekran !== 'plot';
     document.getElementById('shapka-nazad').hidden = ekran === 'plot';
     // От момента се връщаш в обекта, не чак на плота.
     // От момента и от проекта се връщаш в обекта, не чак на плота.
-    const vObekta = ekran === 'moment' || ekran === 'proekt' || ekran === 'sobstvenost';
+    const vObekta = ekran === 'moment' || ekran === 'proekt' || ekran === 'sobstvenost'
+        || ekran === 'dosie';
     document.getElementById('shapka-nazad').href = vObekta
         ? `#/obekt/${encodeURIComponent(k.id)}/${k.i}` : '#/plot';
     document.getElementById('shapka-nazad').textContent = vObekta
@@ -133,6 +147,7 @@ function aktPokazhi() {
     else if (ekran === 'obekt') obektOtvori(k.id, k.i, k.chislo);
     else if (ekran === 'proekt') proektOtvori(k.id, k.i);
     else if (ekran === 'sobstvenost') sobstvenostOtvori(k.id, k.i);
+    else if (ekran === 'dosie') dosieOtvori(k.id, k.i);
     else {
         document.getElementById('moment-zaglavie').textContent = k.moment;
         momentOtvori(k.id, k.i, k.moment);

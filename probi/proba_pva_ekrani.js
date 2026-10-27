@@ -263,17 +263,21 @@ t('Собствеността води вътре, на Екран 5',
   vsichki[1].getAttribute('href'));
 t('собствеността виси на ИМОТА, не на строежа',
   /68134\.1006\.2440/.test(vrazki[1]), vrazki[1]);
-t('Досието още казва честно, че води в старото ПВА',
-  /в старото ПВА/.test(vrazki[2]), vrazki[2]);
-t('и се отваря в нов подпрозорец',
-  vsichki[2].getAttribute('target') === '_blank');
+t('Досието също води вътре, на Екран 6',
+  vsichki[2].getAttribute('href') === '#/dosie/hus/0'
+  && vsichki[2].getAttribute('target') === null,
+  vsichki[2].getAttribute('href'));
+t('и трите връзки вече са вътре в новото',
+  vsichki.every(a => (a.getAttribute('href') || '').startsWith('#/')),
+  vsichki.map(a => a.getAttribute('href')));
 
 // ── границата със старото ПВА ────────────────────────────────────────────────
 
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/07-sobstvenost.js'].includes(s)),
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
+     '../js/07-sobstvenost.js', '../js/12b-kandidati.js'].includes(s)),
   vklyucheni);
 t('всеки включен файл съществува',
   vklyucheni.every(s => fs.existsSync(path.resolve(PAPKA, s))), vklyucheni);

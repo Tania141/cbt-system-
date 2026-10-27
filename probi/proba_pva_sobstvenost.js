@@ -157,6 +157,18 @@ const nepokriti = [...vikani].filter(n => !svoi.has(n) && !dadeni.has(n) && !VGR
 t('мостът покрива всичко, което кухнята вика отвън',
   nepokriti.length === 0, nepokriti);
 
+// ЕДИН ОБЕКТ, НЕ ДВА. Мостът взима показалеца към данните ПРЕДИ зареждането
+// им. Направи ли `aktZaredi` нов обект вместо да напълни стария, кухнята
+// остава да сочи празния и мълчаливо не вижда нищо — точно това счупи
+// кандидатите на Екран 6 на 27.10.2026.
+t('кухнята и новото ПВА сочат ЕДИН И СЪЩ обект след зареждане',
+  a.w.eval('appData === aktDanni'));
+t('и кухнята вижда данните',
+  a.w.eval('(appData.projects || []).length') === 1,
+  a.w.eval('(appData.projects || []).length'));
+t('`aktZaredi` пълни обекта, не го подменя',
+  /Object\.assign\(aktDanni/.test(fs.readFileSync(path.join(PAPKA, 'yadro.js'), 'utf8')));
+
 t('мостът не смята нищо сам',
   !/_dr[A-Z]|function _sb/.test(most), 'мостът трябва само да посочва, не да смята');
 

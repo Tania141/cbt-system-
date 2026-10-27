@@ -326,6 +326,7 @@ function obektVrazkiHtml(p) {
     <div class="vrazki">
         ${proekt}
         ${sobstvenost}
-        ${vrazka('Досието', 'всичко качено')}
+        <a class="vrazka" href="#/dosie/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Досието<span>всичко прочетено, с цитатите</span></a>
     </div>`;
 }
