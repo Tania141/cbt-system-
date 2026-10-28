@@ -114,6 +114,12 @@ const fakti = [...a.d.querySelectorAll('.fakt')];
 // казва кой е документът и влиза в описа на акта. (28.10.2026)
 t('разгънатото показва фактите плюс наименованието', fakti.length === 3, fakti.length);
 t('наименованието е първо', /наименование/.test(tekst(fakti[0])), tekst(fakti[0]));
+// ✔-то е ИЗБОР за текста на акта, не само отметка (операторът, 28.10.2026).
+const razganato = tekst(a.d.querySelector('.dok-fakti'));
+t('екранът казва, че чекнатото влиза в акта',
+  /Чекнатото влиза в текста на акта/.test(razganato), razganato.slice(-160));
+t('и че нечекнатото не влиза нарочно',
+  /Нечекнатото не влиза/.test(razganato), razganato.slice(-160));
 t('и казва, че се пише от теб',
   /четецът не го е извадил/.test(tekst(fakti[0]))
   && /пише се от теб/.test(tekst(fakti[0])), tekst(fakti[0]));
