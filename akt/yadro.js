@@ -93,8 +93,36 @@ async function aktApi(pat, metod = 'GET', telo = null) {
     const r = await fetch(aktApiAdres() + pat, {
         method: metod, headers: glava, body: telo ? JSON.stringify(telo) : undefined,
     });
-    if (!r.ok) throw new Error('сървърът отказа: ' + r.status);
+    if (!r.ok) {
+        const e = new Error(r.status === 401
+            ? 'изтече ти достъпът' : 'сървърът отказа: ' + r.status);
+        e.status = r.status;
+        e.izteklo = r.status === 401;
+        throw e;
+    }
     return r.json();
+}
+
+// ИЗТЕКЪЛ ДОСТЪП НЕ Е ГРЕШКА НА ЧЕКЛИСТА.
+// Операторът, 28.10.2026, видя „Чеклистът не отговори: сървърът отказа: 401“
+// и тръгна да търси какво му е на чеклиста. Той беше невинен: токенът живее
+// 24 часа, а новото ПВА няма свой вход — ползва този, който старото е
+// оставило. Значи това се случва всяка сутрин.
+//
+// Съобщението казва какво е станало и къде се оправя, вместо да сочи
+// грешния виновник. Съобщение, което обвинява невинен, е по-скъпо от
+// мълчание: по него се работи в грешна посока.
+function aktGreshkaHtml(e, kakvoNeStana) {
+    const izteklo = e && (e.izteklo || /\b401\b|изтече/.test(String(e.message || e)));
+    if (!izteklo)
+        return `<div class="greshka">${_e(kakvoNeStana || 'Не се получи')}: ${
+            _e(String((e && e.message) || e))}</div>`;
+    return `
+    <div class="greshka">
+        <strong>Изтече ти достъпът.</strong> Новото ПВА няма свой вход —
+        влез в старото и се върни тук. Достъпът трае 24 часа.
+        <a class="bt bt-glaven" href="../index.html">влез отново</a>
+    </div>`;
 }
 
 // ── Строежите в имота ────────────────────────────────────────────────────────

@@ -66,7 +66,7 @@ function momentRisuvai() {
     const kutiya = document.getElementById('moment-telo');
     if (!momentGrupa) { kutiya.innerHTML = '<div class="chaka">Питам чеклиста…</div>'; return; }
     if (momentGrupa.greshka) {
-        kutiya.innerHTML = `<div class="greshka">Чеклистът не отговори: ${_e(momentGrupa.greshka)}</div>`;
+        kutiya.innerHTML = aktGreshkaHtml(momentGrupa.greshka, 'Чеклистът не отговори');
         return;
     }
     const dve = aktDveChisla(momentGrupa, aktNeotnasya(z.p, z.st));
@@ -205,7 +205,8 @@ async function momentProchetiOtmetnatite() {
             momentPriberiProcheteno(z, r.dokumenti || [r.dokument].filter(Boolean), f.ime);
             prochetenite++;
         } catch (e) {
-            if (hod) hod.textContent = `❌ „${f.ime}“: ${e.message}`;
+            if (hod) hod.innerHTML = e.izteklo ? aktGreshkaHtml(e)
+                : `❌ „${_e(f.ime)}“: ${_e(e.message)}`;
             return;
         }
     }
@@ -304,7 +305,7 @@ async function momentKachiFajl(dokument, fajl) {
         momentPriberiProcheteno(z, novi, fajl.name);
         momentRazbrano(dokument, novi, fajl.name);
     } catch (e) {
-        momentHod[dokument] = `❌ ${_e(e.message)}`;
+        momentHod[dokument] = e.izteklo ? aktGreshkaHtml(e) : `❌ ${_e(e.message)}`;
         momentRisuvai();
     }
 }

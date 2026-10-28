@@ -159,7 +159,8 @@ async function proektProcheti() {
             proektSleejBlokove(z.k, r);
             prochetenite++;
         } catch (e) {
-            proektHod = `❌ „${f.ime}“: ${e.message}`;
+            proektHod = e.izteklo ? aktGreshkaHtml(e)
+                : `❌ „${_e(f.ime)}“: ${_e(e.message)}`;
             proektRisuvai();
             return;
         }

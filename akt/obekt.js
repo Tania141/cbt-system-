@@ -188,8 +188,8 @@ function obektLentaHtml() {
     if (!z) return '';
     if (!obektGrupi) return '<div class="chaka">Питам чеклиста…</div>';
     if (obektGrupi.greshka)
-        return `<div class="greshka">Чеклистът не отговори: ${_e(obektGrupi.greshka)}.
-                Числата по-горе са от последното броене.</div>`;
+        return aktGreshkaHtml(obektGrupi.greshka, 'Чеклистът не отговори')
+             + '<div class="otkade">Числата по-горе са от последното броене.</div>';
 
     const tekusht = z.st.tekusht_moment || '';
     const i = obektGrupi.findIndex(g => g.moment === tekusht);
