@@ -92,6 +92,33 @@ t('връщането маха избора', a.w.localStorage.getItem('s2_chete
 t('и четецът пак е автоматичен', a.w.aktChetec() === 'auto');
 t('при автоматично НЕ се казва нищо', a.w.aktChetecHtml() === '', a.w.aktChetecHtml());
 
+// ── 1б. До всеки файл пише КОЙ ще го чете ──────────────────────────────────
+// Операторът, 28.10.2026: „не пише колко ще струва, нито кой го чете“.
+const a2 = await otvori('#/moment/hus/0/' + encodeURIComponent('Акт 15'), 'mistral');
+a2.w.momentIzbroi([
+    { name: 'skan.pdf', type: 'application/pdf' },
+    { name: 'zapiska.docx', type: '' },
+    { name: 'staro.doc', type: '' },
+]);
+const redove = [...a2.d.querySelectorAll('.fajl')].map(x => tekst(x));
+t('текстът вече не обещава цена',
+  !/какво ще струва/.test(tekst(a2.d.getElementById('moment-telo'))),
+  tekst(a2.d.getElementById('moment-telo')).slice(0, 200));
+t('а казва какво наистина показва',
+  /дали минава през АИ и кой ще го чете/.test(tekst(a2.d.getElementById('moment-telo'))));
+t('до скана пише кой ще го чете',
+  /през АИ/.test(redove[0]) && /през Mistral/.test(redove[0]), redove[0]);
+t('до файла с текст пише, че не минава през АИ',
+  /безплатно/.test(redove[1]) && /без АИ/.test(redove[1]), redove[1]);
+t('до нечетимия не се назовава четец',
+  /не се чете/.test(redove[2]) && !/през/.test(redove[2]), redove[2]);
+
+a2.w.aktVarniAvtomatichen();
+a2.w.momentIzbroi([{ name: 'skan.pdf', type: 'application/pdf' }]);
+t('при автоматично пише „през основния четец“',
+  /през основния четец/.test(tekst(a2.d.querySelector('.fajl'))),
+  tekst(a2.d.querySelector('.fajl')));
+
 // ── 2. При автоматично няма предупреждение ──────────────────────────────────
 const b = await otvori('#/moment/hus/0/' + encodeURIComponent('Акт 15'));
 t('без избор моментът мълчи', !b.d.querySelector('.predupr'));

@@ -98,8 +98,8 @@ function proektKachvaneHtml() {
     <div class="kutiya-razdel">
         <div class="nadpis">Записките по части</div>
         ${aktChetecHtml('proektRisuvai()')}
-        <p class="poyasnenie">Изброяват се, без да се четат. Чете се само отметнатото —
-           по една записка на част.</p>
+        <p class="poyasnenie">Изброяват се, без да се четат. До всяка пише дали минава през АИ
+           и кой ще я чете. Чете се само отметнатото — по една записка на част.</p>
         <input type="file" id="proekt-vhod" multiple accept=".pdf,.docx,.jpg,.jpeg,.png"
                onchange="proektIzbroi(this.files)" style="display:none">
         <div class="redica">
@@ -115,7 +115,8 @@ function proektKachvaneHtml() {
                                onchange="proektOtmetni(${i}, this.checked)">
                         <span class="fajl-ime">${_e(f.ime)}</span>
                         <span class="fajl-cena fajl-cena-${f.cena === 'безплатно' ? 'free'
-                            : f.cena === 'през АИ' ? 'ai' : 'ne'}">${_e(f.cena)} · ${_e(f.kak)}</span>
+                            : f.cena === 'през АИ' ? 'ai' : 'ne'}">${_e(f.cena)} · ${_e(f.kak)}${
+                            aktKojShteChete(f.cena) ? ' · ' + _e(aktKojShteChete(f.cena)) : ''}</span>
                     </label>`).join('')}
             </div>
             <button class="bt bt-glaven" ${otmetnati ? '' : 'disabled'}

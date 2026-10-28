@@ -371,6 +371,16 @@ function aktImeNaChetec(kod) {
              claude: 'Claude', mistral: 'Mistral' }[kod] || kod;
 }
 
+// Кой ще чете ТОЗИ файл — късо, за до името му. Безплатните не минават през
+// АИ въобще, затова при тях четец не се назовава.
+// Операторът, 28.10.2026: „не пише колко ще струва, нито кой го чете“.
+function aktKojShteChete(cena) {
+    if (cena === 'не се чете') return '';
+    if (cena === 'безплатно') return 'без АИ';
+    const kod = aktChetec();
+    return kod === 'auto' ? 'през основния четец' : 'през ' + aktImeNaChetec(kod);
+}
+
 function aktVarniAvtomatichen() {
     localStorage.removeItem('s2_chetec');
 }

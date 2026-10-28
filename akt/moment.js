@@ -142,8 +142,8 @@ function momentPapkaHtml() {
     <div class="kutiya-razdel">
         <div class="nadpis">Папката</div>
         ${aktChetecHtml('momentZaredi()')}
-        <p class="poyasnenie">Изброява се, без да се чете нищо. До всеки файл пише какво ще струва.
-           Чете се само отметнатото.</p>
+        <p class="poyasnenie">Изброява се, без да се чете нищо. До всеки файл пише дали минава
+           през АИ и кой ще го чете. Чете се само отметнатото.</p>
         <input type="file" id="moment-papka-vhod" multiple webkitdirectory
                onchange="momentIzbroi(this.files)" style="display:none">
         <input type="file" id="moment-fajlove-vhod" multiple
@@ -163,7 +163,8 @@ function momentPapkaHtml() {
                                onchange="momentOtmetni(${i}, this.checked)">
                         <span class="fajl-ime">${_e(f.ime)}</span>
                         <span class="fajl-cena fajl-cena-${f.cena === 'безплатно' ? 'free'
-                            : f.cena === 'през АИ' ? 'ai' : 'ne'}">${_e(f.cena)} · ${_e(f.kak)}</span>
+                            : f.cena === 'през АИ' ? 'ai' : 'ne'}">${_e(f.cena)} · ${_e(f.kak)}${
+                            aktKojShteChete(f.cena) ? ' · ' + _e(aktKojShteChete(f.cena)) : ''}</span>
                     </label>`).join('')}
             </div>
             <button class="bt bt-glaven" ${momentPapka.some(f => f.otmetnat) ? '' : 'disabled'}
