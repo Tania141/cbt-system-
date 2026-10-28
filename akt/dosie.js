@@ -165,10 +165,74 @@ function dosieFaktiHtml(id, fakti, potv) {
     return `
     <div class="dok-fakti">
         ${nai}
-        ${fakti.map(x => dosieFaktHtml(id, x, potv)).join('')}
+        ${dosieGrupi(fakti).map(g => dosieGrupaHtml(id, g, potv)).join('')}
         <div class="otkade">Чекнатото влиза в текста на акта. Нечекнатото не влиза —
            значи си преценила, че не е от значение.</div>
     </div>`;
+}
+
+// ── Разделите ────────────────────────────────────────────────────────────────
+// Операторът, 28.10.2026: „групово по раздел, само веднъж“.
+//
+// Разрешението за строеж изрежда всичките възложители, по четири полета на
+// човек — само те дават двайсетина факта. Двайсет и осем отделни клика за
+// един документ е работа, която никой няма да свърши до края.
+//
+// Групите не са произволни: фактите влизат в акта НА ГРУПИ. Възложителите са
+// една таблица, имотът е едно изречение. Затова и чекването е на групи — то
+// следва текста, не екрана.
+const DOSIE_RAZDELI = [
+    ['dokument',   'Документът',        k => /^(naimenovanie|nomer|data|izdatel|material|proizvoditel|sadarzhanie)$/.test(k)],
+    ['imot',       'Имотът',            k => k.startsWith('obekt.')],
+    ['uchastnici', 'Участниците',       k => /^u\d+\./.test(k)],
+    ['notarialen', 'Нотариалният акт',  k => /^(nt_|vp_|r\d+\.)/.test(k)],
+    ['pozovavania','Позоваванията',     k => /^p\d+\./.test(k)],
+];
+
+function dosieGrupi(fakti) {
+    const out = [];
+    const vzeti = new Set();
+    for (const [kod, ime, pasva] of DOSIE_RAZDELI) {
+        const svoi = fakti.filter(x => !vzeti.has(x.k) && pasva(x.k));
+        svoi.forEach(x => vzeti.add(x.k));
+        if (svoi.length) out.push({ kod, ime, fakti: svoi });
+    }
+    // Каквото не е разпознато, не изчезва — излиза в свой раздел.
+    const ostanali = fakti.filter(x => !vzeti.has(x.k));
+    if (ostanali.length) out.push({ kod: 'drugo', ime: 'Друго', fakti: ostanali });
+    return out;
+}
+
+function dosieGrupaHtml(id, g, potv) {
+    const chakat = g.fakti.filter(x => !potv[`${id}::${x.k}`]);
+    const klyuchove = encodeURIComponent(JSON.stringify(chakat.map(x => `${id}::${x.k}`)));
+    return `
+    <div class="fakt-razdel">
+        <div class="nadpis nadpis-razdel">
+            ${_e(g.ime)} <span class="otkade">${g.fakti.length - chakat.length} от ${g.fakti.length}</span>
+            ${chakat.length ? `<button class="bt bt-glaven" onclick="dosieSveriGrupa('${klyuchove}')">
+                ✔ вярно е — всички ${chakat.length}</button>` : ''}
+        </div>
+        ${g.fakti.map(x => dosieFaktHtml(id, x, potv)).join('')}
+    </div>`;
+}
+
+// Въпросът „всички ли си проверила на хартия“ се задава САМО ВЕДНЪЖ за сесия.
+// Питан на всеки раздел, той престава да е въпрос и става пречка — а пречка,
+// която се кликва машинално, не пази нищо.
+let dosiePitano = false;
+
+function dosieSveriGrupa(kl64) {
+    const kluchove = JSON.parse(decodeURIComponent(kl64));
+    if (!kluchove.length) return;
+    if (!dosiePitano) {
+        if (!confirm('Сверяваш няколко стойности наведнъж.\n\n'
+            + 'Чекнатото влиза в текста на акта. Всички ли си проверила на хартия?\n\n'
+            + 'Питам само този път.')) return;
+        dosiePitano = true;
+    }
+    for (const kl of kluchove) s2Potvardi(encodeURIComponent(kl));
+    dosieSledPotvardzhdenie();
 }
 
 function dosieFaktHtml(id, x, potv) {

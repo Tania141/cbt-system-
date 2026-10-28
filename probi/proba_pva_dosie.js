@@ -205,6 +205,69 @@ t('няма бутон „прочети“',
 t('казва, че сверяването е другаде',
   /Сверява се там, където се чете|файловете не се пазят/i.test(telo), telo.slice(0, 300));
 
+// ── РАЗДЕЛИТЕ: групово чекване, въпрос само веднъж (28.10.2026) ─────────────
+// Разрешение за строеж с шестима възложители дава двайсетина факта. Фактите
+// влизат в акта на ГРУПИ — възложителите са таблица, имотът е изречение —
+// затова и чекването е на групи.
+const RS = {
+    id: 'hus', pi: '68134.702.9889', stroej: 'Проба',
+    sloy2: { od: { potvardeni: {}, dokumenti: [{
+        id: 'rs', fajl: 'RS.pdf', vid: 'разрешение за строеж', cheklist_red: '',
+        nomer: fakt('277', '№ 277', 1), data: fakt('02.11.2023', 'от 02.11.2023', 1),
+        izdatel: fakt('Столична община', 'СТОЛИЧНА ОБЩИНА', 1),
+        obekt: { upi: fakt('IV-561', 'УПИ IV-561', 1),
+                 identifikator: fakt('68134.702.9889', 'идентификатор', 1),
+                 adres: fakt('ул. Кадемия 20', 'ул. Кадемия', 1) },
+        uchastnici: [
+            { rolya: 'възложител', ime: fakt('Валентина Алипиева', 'Валентина', 1),
+              adres: fakt('София', 'София', 1) },
+            { rolya: 'възложител', ime: fakt('Яна Алипиева', 'Яна', 1),
+              adres: fakt('София', 'София', 1) }],
+        pozovavania: [{ nomer: 'М-2953', data: '18.09.2024', citat: 'заявление', stranica: 1 }],
+    }] } },
+};
+
+const r = await otvori('#/dosie/hus/0', RS);
+t('документ с много факти се рисува без грешка', r.greshki.length === 0, r.greshki);
+let pitani = 0;
+r.w.confirm = () => { pitani++; return true; };
+r.w.dosieRazgani(encodeURIComponent('rs'));
+const razdeli = [...r.d.querySelectorAll('.fakt-razdel')];
+t('фактите са разделени на групи', razdeli.length === 4, razdeli.map(x => tekst(x).slice(0, 24)));
+const ime = i => tekst(razdeli[i]).slice(0, 40);
+t('първо е документът', /Документът/.test(ime(0)), ime(0));
+t('после имотът', /Имотът/.test(ime(1)), ime(1));
+t('после участниците', /Участниците/.test(ime(2)), ime(2));
+t('накрая позоваванията', /Позоваванията/.test(ime(3)), ime(3));
+t('всеки раздел брои своите',
+  /0 от 4/.test(tekst(razdeli[2])), tekst(razdeli[2]).slice(0, 60));
+t('и има групов бутон с броя',
+  /✔ вярно е — всички 4/.test(tekst(razdeli[2])), tekst(razdeli[2]).slice(0, 80));
+
+// Групово чекване на участниците — четирите наведнъж.
+const bt = [...razdeli[2].querySelectorAll('button')].find(b => /всички/.test(tekst(b)));
+bt.click();
+const potvRS = ((r.w.aktObekt('hus').sloy2 || {}).od || {}).potvardeni || {};
+t('груповото чекване сверява всички в раздела',
+  Object.keys(potvRS).length === 4, Object.keys(potvRS));
+t('и не пипа другите раздели',
+  !Object.keys(potvRS).some(k => /::(nomer|obekt\.)/.test(k)), Object.keys(potvRS));
+t('въпросът е зададен веднъж', pitani === 1, pitani);
+
+// Втори раздел — вече не пита.
+const razdeli2 = [...r.d.querySelectorAll('.fakt-razdel')];
+const bt2 = [...razdeli2[1].querySelectorAll('button')].find(b => /всички/.test(tekst(b)));
+bt2.click();
+t('вторият път НЕ пита пак', pitani === 1, pitani);
+t('но сверява', Object.keys(((r.w.aktObekt('hus').sloy2 || {}).od || {}).potvardeni).length === 7,
+  Object.keys(((r.w.aktObekt('hus').sloy2 || {}).od || {}).potvardeni));
+
+// Сверен раздел няма вече групов бутон.
+const razdeli3 = [...r.d.querySelectorAll('.fakt-razdel')];
+t('сверен докрай раздел губи груповия бутон',
+  !/всички/.test(tekst(razdeli3[1])), tekst(razdeli3[1]).slice(0, 80));
+t('и го казва с числа', /3 от 3/.test(tekst(razdeli3[1])), tekst(razdeli3[1]).slice(0, 60));
+
 // ── празен обект ────────────────────────────────────────────────────────────
 const c = await otvori('#/dosie/hus/0', { id: 'hus', pi: '1', stroej: 'Проба' });
 t('празно досие не гърми', c.greshki.length === 0, c.greshki);

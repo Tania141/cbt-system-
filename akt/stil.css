@@ -444,3 +444,11 @@ body {
 .fakt-sveren { background: var(--green-light); border-radius: var(--r-sm); padding: 6px 8px; }
 .fakt-zhestove { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 .fakt-zhestove .bt { font-size: 11.5px; padding: 2px 8px; }
+
+/* Разделите в досието: фактите влизат в акта на групи, затова се чекват на групи. */
+.fakt-razdel { margin-top: 10px; }
+.nadpis-razdel {
+    display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+    margin-bottom: 2px;
+}
+.nadpis-razdel .bt { font-size: 11.5px; padding: 2px 8px; margin-left: auto; }
