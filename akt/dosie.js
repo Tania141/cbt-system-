@@ -135,6 +135,8 @@ function dosieRedHtml(d, potv) {
                   + (d.chetec_izbran ? ' <strong>— избран от теб</strong>'
                      : d.zashto_rezerven ? ' — резервен, защото основният отказа' : '')
                 : ''}
+            ${(d.slyati || []).length
+                ? ` · <strong>слети ${d.slyati.length + 1} записа</strong>` : ''}
             ${d.cheklist_red
                 ? ` · доказва: <strong>${_e(d.cheklist_red)}</strong>${
                     // Вързано от кода, не от четеца — казва се, за да не изглежда
@@ -142,8 +144,62 @@ function dosieRedHtml(d, potv) {
                     d.red_ot ? ` <span class="otkade">(${_e(d.red_ot)})</span>` : ''}`
                 : ' · <span class="dok-bez-red">няма ред в чеклиста</span>'}
         </div>
+        ${dosieRazcepenHtml(dosieZhiv(), d)}
         ${otvoren ? dosieFaktiHtml(id, fakti, potv) : ''}
     </div>`;
+}
+
+// ── Разцепеният файл ─────────────────────────────────────────────────────────
+// Операторът, 28.10.2026: ревизионна книга от 14 страници стои в досието ДЕСЕТ
+// пъти. Четецът е разцепил файла по заглавията на страниците.
+//
+// Занапред това не се случва — книгите и дневниците не се цепят
+// (`rules/sloy2.py`). Но вече записаното не се оправя само, затова тук има
+// жест: „това е един документ“.
+//
+// Слятото НЕ се изтрива. Остатъчните записи се помнят в `slyati`, за да се
+// види какво е станало и да не изчезне мълчаливо.
+
+function dosieRedoveNaFajl(z, fajl) {
+    const k = x => String(x || '').trim().toLowerCase();
+    return (z.s2.dokumenti || []).filter(d => k(d.fajl) === k(fajl));
+}
+
+function dosieRazcepenHtml(z, d) {
+    const bratya = dosieRedoveNaFajl(z, d.fajl);
+    if (bratya.length < 2 || _s2Id(bratya[0]) !== _s2Id(d)) return '';
+    return `
+    <div class="predupr">
+        Този файл стои <strong>${bratya.length} пъти</strong> — четецът го е разцепил
+        на отделни документи. Книга или дневник ли е?
+        <button class="bt" onclick="dosieSlej('${encodeURIComponent(d.fajl)}')">
+            това е един документ</button>
+    </div>`;
+}
+
+// Остава записът с НАЙ-МНОГО прочетени факти — той е най-пълният. Страниците
+// се разпъват върху целия файл, за да не твърди, че е само първите две.
+function dosieSlej(fajl64) {
+    const z = dosieZhiv();
+    if (!z) return;
+    const fajl = decodeURIComponent(fajl64);
+    const bratya = dosieRedoveNaFajl(z, fajl);
+    if (bratya.length < 2) return;
+    if (!confirm(`„${fajl}“ стои ${bratya.length} пъти.\n\n`
+        + 'Ще остане един запис — онзи с най-много прочетени факти.\n'
+        + 'Останалите се помнят, но излизат от досието.')) return;
+
+    const broj = d => _s2Fakti(d).length;
+    const ostava = bratya.reduce((a, b) => (broj(b) > broj(a) ? b : a), bratya[0]);
+    const chisla = bratya.map(d => [Number(d.stranica_ot) || 1, Number(d.stranica_do) || 1]);
+    ostava.stranica_ot = Math.min(...chisla.map(x => x[0]));
+    ostava.stranica_do = Math.max(...chisla.map(x => x[1]));
+    ostava.slyati = [...(ostava.slyati || []),
+                     ...bratya.filter(d => d !== ostava).map(d => _s2Id(d))];
+    const mahnati = new Set(bratya.filter(d => d !== ostava).map(d => _s2Id(d)));
+    z.s2.dokumenti = (z.s2.dokumenti || []).filter(d => !mahnati.has(_s2Id(d)));
+    aktZapishi();
+    dosieRisuvai();
 }
 
 function dosieRazgani(id64) {

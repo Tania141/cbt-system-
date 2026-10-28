@@ -272,6 +272,54 @@ t('сверен докрай раздел губи груповия бутон',
   !/всички/.test(tekst(razdeli3[1])), tekst(razdeli3[1]).slice(0, 80));
 t('и го казва с числа', /3 от 3/.test(tekst(razdeli3[1])), tekst(razdeli3[1]).slice(0, 60));
 
+// ── РАЗЦЕПЕНИЯТ ФАЙЛ (28.10.2026) ──────────────────────────────────────────
+// Ревизионна книга от 14 страници стоеше в досието ДЕСЕТ пъти. Занапред не се
+// цепи; вече записаното се слива с жест.
+const KNIGA = {
+    id: 'hus', pi: '1', stroej: 'Проба',
+    sloy2: { od: { potvardeni: {}, dokumenti: [
+        { id: 'k1', fajl: 'Kniga.pdf', vid: 'ревизионна книга',
+          stranica_ot: 1, stranica_do: 2, nomer: fakt('1', '№ 1', 1) },
+        { id: 'k2', fajl: 'Kniga.pdf', vid: 'ревизионна книга',
+          stranica_ot: 3, stranica_do: 7, nomer: fakt('2', '№ 2', 3),
+          data: fakt('01.02.2026', 'от 01.02.2026', 3) },
+        { id: 'k3', fajl: 'Kniga.pdf', vid: 'ревизионна книга',
+          stranica_ot: 8, stranica_do: 14 },
+        { id: 'sam', fajl: 'Dogovor.pdf', vid: 'договор', nomer: fakt('5', '№ 5', 1) },
+    ] } },
+};
+
+const kn = await otvori('#/dosie/hus/0', KNIGA);
+t('разцепеният файл се рисува без грешка', kn.greshki.length === 0, kn.greshki);
+const predupr = [...kn.d.querySelectorAll('.predupr')];
+t('казва, че файлът стои няколко пъти',
+  predupr.length === 1 && /3 пъти/.test(tekst(predupr[0])), predupr.map(x => tekst(x)));
+t('и пита книга ли е', /Книга или дневник ли е/.test(tekst(predupr[0])), tekst(predupr[0]));
+t('предупреждението е само ВЕДНЪЖ, при първия запис',
+  predupr.length === 1, predupr.length);
+t('самотният документ НЕ получава предупреждение',
+  !/Dogovor/.test(tekst(predupr[0])), tekst(predupr[0]));
+
+kn.w.dosieSlej(encodeURIComponent('Kniga.pdf'));
+const ostanali = ((kn.w.aktObekt('hus').sloy2 || {}).od || {}).dokumenti || [];
+t('след сливането остава един запис за книгата',
+  ostanali.filter(d => d.fajl === 'Kniga.pdf').length === 1, ostanali.map(d => d.id));
+t('и другият документ не е пипнат',
+  ostanali.some(d => d.id === 'sam'), ostanali.map(d => d.id));
+
+const kniga = ostanali.find(d => d.fajl === 'Kniga.pdf');
+t('остава записът с НАЙ-МНОГО факти', kniga.id === 'k2', kniga.id);
+t('страниците се разпъват върху целия файл',
+  kniga.stranica_ot === 1 && kniga.stranica_do === 14,
+  [kniga.stranica_ot, kniga.stranica_do]);
+t('слятото се помни, не се губи мълчаливо',
+  (kniga.slyati || []).length === 2, kniga.slyati);
+t('и си личи на екрана',
+  /слети 3 записа/.test(tekst(kn.d.getElementById('dosie-telo'))),
+  tekst(kn.d.getElementById('dosie-telo')).slice(0, 300));
+t('предупреждението изчезва след сливането',
+  !kn.d.querySelector('.predupr'));
+
 // ── празен обект ────────────────────────────────────────────────────────────
 const c = await otvori('#/dosie/hus/0', { id: 'hus', pi: '1', stroej: 'Проба' });
 t('празно досие не гърми', c.greshki.length === 0, c.greshki);
