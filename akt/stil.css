@@ -435,3 +435,12 @@ body {
 .razminavane-red { display: flex; gap: 8px; align-items: baseline; }
 .razminavane-etiket { font-size: 11.5px; color: var(--muted); min-width: 10em; }
 .razminavane-stoynost { font-size: 13px; color: var(--ink); font-weight: 600; }
+
+/* ── Досието · сверяването по факт ─────────────────────────────────────────
+   Заданието: този екран „НЕ въвежда — само показва и поправя“. Сверяването е
+   поправяне: виждаш прочетеното с цитата и казваш вярно ли е. */
+
+.fakt { padding: 6px 0; border-bottom: 1px dotted var(--border-light); }
+.fakt-sveren { background: var(--green-light); border-radius: var(--r-sm); padding: 6px 8px; }
+.fakt-zhestove { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.fakt-zhestove .bt { font-size: 11.5px; padding: 2px 8px; }

@@ -110,13 +110,56 @@ t('документ без ред в чеклиста си личи',
 t('отначало нищо не е разгънато', !a.d.querySelector('.dok-fakti'));
 a.w.dosieRazgani(encodeURIComponent('d1'));
 const fakti = [...a.d.querySelectorAll('.fakt')];
-t('разгънатото показва фактите', fakti.length === 2, fakti.length);
+// Наименованието стои ВИНАГИ — и когато четецът не го е извадил, защото то
+// казва кой е документът и влиза в описа на акта. (28.10.2026)
+t('разгънатото показва фактите плюс наименованието', fakti.length === 3, fakti.length);
+t('наименованието е първо', /наименование/.test(tekst(fakti[0])), tekst(fakti[0]));
+t('и казва, че се пише от теб',
+  /четецът не го е извадил/.test(tekst(fakti[0]))
+  && /пише се от теб/.test(tekst(fakti[0])), tekst(fakti[0]));
 t('с етикет и стойност',
-  /номер 1/.test(tekst(fakti[0])), tekst(fakti[0]));
+  /номер 1/.test(tekst(fakti[1])), tekst(fakti[1]));
 t('с ЦИТАТА и страницата',
-  /„Протокол № 1“ · стр\. 3/.test(tekst(fakti[0])), tekst(fakti[0]));
-t('казва кое е сверено', /✓ сверено/.test(tekst(fakti[0])), tekst(fakti[0]));
+  /„Протокол № 1“ · стр\. 3/.test(tekst(fakti[1])), tekst(fakti[1]));
+t('казва кое е сверено', /✓ сверено/.test(tekst(fakti[1])), tekst(fakti[1]));
+
+// ── СВЕРЯВА СЕ ТУК (28.10.2026) ─────────────────────────────────────────────
+// Операторът отваря досието, за да чекне — а дотук нямаше с какво.
+t('сверéният факт има „отмени“, не втори ✔',
+  /отмени/.test(tekst(fakti[1])) && !/✔ вярно е/.test(tekst(fakti[1])), tekst(fakti[1]));
+t('всеки факт може да се поправи',
+  fakti.every(f => /поправи|напиши го/.test(tekst(f))), fakti.map(f => tekst(f).slice(-40)));
+
+// d2 е сверен само наполовина — там стои несвереният факт.
 a.w.dosieRazgani(encodeURIComponent('d1'));
+a.w.dosieRazgani(encodeURIComponent('d2'));
+const f2 = [...a.d.querySelectorAll('.fakt')];
+const chaka = f2.find(f => /издател/.test(tekst(f)));
+t('несвереният факт има бутон „вярно е“',
+  /✔ вярно е/.test(tekst(chaka)) && /чака ✔/.test(tekst(chaka)), tekst(chaka));
+
+// Потвърждаването на последния факт прави документа сверен докрай — и той
+// влиза в описа САМ, с наименованието си, не с името на реда.
+const predi = (a.w.aktObekt('hus').dokumenti || []).length;
+a.w.dosiePotvardi(encodeURIComponent('d2::data'));
+a.w.dosiePotvardi(encodeURIComponent('d2::izdatel'));
+const s2 = (a.w.aktObekt('hus').sloy2 || {}).od || {};
+t('потвърждаването се пази', !!s2.potvardeni['d2::izdatel'], s2.potvardeni);
+t('и казва кой го е сверил',
+  !!(s2.potvardeni['d2::izdatel'] || {}).koy, s2.potvardeni['d2::izdatel']);
+const sled = a.w.aktObekt('hus').dokumenti || [];
+// Влизат ДВАТА сверени: d1 беше сверен още от склада, d2 — току-що. Описът
+// се пълни от всичко потвърдено, не само от последното пипнато.
+t('сверените докрай документи влизат в описа САМ',
+  sled.length === predi + 2, { predi, sled: sled.map(d => d.ime) });
+t('и влиза с наименованието, не с името на реда',
+  sled.some(d => d.ime === 'договор') && !sled.some(d => d.ime === 'Договор за СМР'),
+  sled.map(d => d.ime));
+t('но помни кой ред доказва',
+  (sled.find(d => d.ime === 'договор') || {}).red === 'Договор за СМР', sled);
+t('с номера и датата си',
+  /12/.test((sled.find(d => d.ime === 'договор') || {}).nomer || ''), sled);
+a.w.dosieRazgani(encodeURIComponent('d2'));
 t('втори клик го сгъва', !a.d.querySelector('.dok-fakti'));
 
 // ── търсенето ───────────────────────────────────────────────────────────────

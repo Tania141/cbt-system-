@@ -86,6 +86,10 @@ function _dokVpisanRed(p, red) {
 // Какво име носи документът в описа. По ред: потвърденото наименование,
 // късото заглавие от четеца, и чак накрая редът от чеклиста.
 function _dokIme(d, potv) {
+    // Потвърденото бие прочетеното: операторът може да е поправил наименованието
+    // от хартията, а и да го е написал, когато четецът е върнал празно.
+    const svereno = (potv || {})[`${_s2Id(d)}::naimenovanie`];
+    if (svereno && String(svereno.stoynost || '').trim()) return String(svereno.stoynost).trim();
     const nai = String((d.naimenovanie || {}).stoynost || '').trim();
     if (nai && potv[`${_s2Id(d)}::naimenovanie`]) return nai;
     const vid = String(d.vid || '').trim();
@@ -782,7 +786,13 @@ function _s2Tog(el) {
 function _s2Namer(k64) {
     const p = _stroezh(_zhivObekt()), kl = decodeURIComponent(k64), i = kl.indexOf('::');
     const d = (p?.sloy2?.od?.dokumenti || []).find(x => _s2Id(x) === kl.slice(0, i));
-    const fakt = d ? _s2Fakti(d).find(x => x.k === kl.slice(i + 2)) : null;
+    const pole = kl.slice(i + 2);
+    let fakt = d ? _s2Fakti(d).find(x => x.k === pole) : null;
+    // Наименованието се пише и когато четецът е върнал празно — то казва кой е
+    // документът и влиза в описа на акта. Без този изход празното наименование
+    // не можеше да се поправи от никъде. (28.10.2026)
+    if (!fakt && d && pole === 'naimenovanie')
+        fakt = { k: pole, etiket: 'наименование', obj: d.naimenovanie || { stoynost: '' } };
     return { p, kl, fakt };
 }
 

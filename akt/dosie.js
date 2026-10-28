@@ -142,21 +142,101 @@ function dosieRazgani(id64) {
     dosieRisuvai();
 }
 
-// Прочетеното, с цитатите. Всяка стойност казва откъде е — правило 3.
+// Прочетеното, с цитатите — и ✔-то. Правило 3: всяка стойност казва откъде е.
+//
+// СВЕРЯВА СЕ ТУК. Заданието казва за този екран: „НЕ въвежда — само показва и
+// поправя“. Сверяването е точно поправяне: виждаш какво е разбрал четецът, до
+// него цитата, и казваш „да“ или пишеш вярното от хартията. Операторът,
+// 28.10.2026: отваря досието, за да чекне — а дотук нямаше с какво.
+//
+// По ФАКТ, не по документ: два модела прочетоха еднакво грешно една и съща
+// ръкописна дата (пробата, 15.09.2026). Един ✔ за целия документ би я пуснал.
 function dosieFaktiHtml(id, fakti, potv) {
-    if (!fakti.length) return '<div class="otkade">Четецът не е извадил нищо от този файл.</div>';
+    const nai = dosieNaimenovanieHtml(id, fakti, potv);
+    if (!fakti.length && !nai)
+        return '<div class="otkade">Четецът не е извадил нищо от този файл.</div>';
     return `
     <div class="dok-fakti">
-        ${fakti.map(x => `
-            <div class="fakt">
-                <span class="fakt-etiket">${_e(x.etiket)}</span>
-                <span class="fakt-stoynost">${_e(x.obj.stoynost)}</span>
-                <span class="fakt-znak">${potv[`${id}::${x.k}`] ? '✓ сверено' : 'чака ✔'}</span>
-                ${x.obj.citat ? `<div class="fakt-citat">„${_e(x.obj.citat)}“${
-                    x.obj.stranica ? ' · стр. ' + _e(x.obj.stranica) : ''}</div>` : ''}
-            </div>`).join('')}
-        <div class="otkade">Сверява се там, където се чете — тук само се гледа.</div>
+        ${nai}
+        ${fakti.map(x => dosieFaktHtml(id, x, potv)).join('')}
+        <div class="otkade">Сверява се с хартията. Потвърденото влиза в описа на акта.</div>
     </div>`;
+}
+
+function dosieFaktHtml(id, x, potv) {
+    const kl = `${id}::${x.k}`, k64 = encodeURIComponent(kl);
+    const v = potv[kl];
+    // Поправената стойност бие прочетената — показва се тя, а под нея цитатът.
+    const pokazvana = v && String(v.stoynost || '').trim() ? v.stoynost : x.obj.stoynost;
+    const popravena = v && String(v.stoynost || '') !== String(v.prochetena || '');
+    return `
+    <div class="fakt ${v ? 'fakt-sveren' : ''}">
+        <span class="fakt-etiket">${_e(x.etiket)}</span>
+        <span class="fakt-stoynost">${_e(pokazvana)}</span>
+        <span class="fakt-znak">${v
+            ? (popravena ? '✓ поправено' : '✓ сверено') : 'чака ✔'}</span>
+        ${x.obj.citat ? `<div class="fakt-citat">„${_e(x.obj.citat)}“${
+            x.obj.stranica ? ' · стр. ' + _e(x.obj.stranica) : ''}</div>` : ''}
+        ${popravena ? `<div class="otkade">четецът беше прочел „${_e(v.prochetena)}“</div>` : ''}
+        <div class="fakt-zhestove">
+            ${v
+                ? `<button class="bt bt-tih" onclick="dosieOtmeni('${k64}')">отмени</button>`
+                : `<button class="bt bt-glaven" onclick="dosiePotvardi('${k64}')">✔ вярно е</button>`}
+            <button class="bt bt-tih" onclick="dosiePopravi('${k64}')">поправи</button>
+        </div>
+    </div>`;
+}
+
+// Наименованието е особено: то казва КОЙ е документът и влиза в описа. Върне
+// ли четецът празно — както при скан на писмо без заглавие — редът му не се
+// показва никъде и операторът няма как да го напише. Затова стои ВИНАГИ.
+function dosieNaimenovanieHtml(id, fakti, potv) {
+    if (fakti.some(x => x.k === 'naimenovanie')) return '';
+    const kl = `${id}::naimenovanie`, k64 = encodeURIComponent(kl);
+    const v = potv[kl];
+    return `
+    <div class="fakt ${v ? 'fakt-sveren' : ''}">
+        <span class="fakt-etiket">наименование</span>
+        <span class="fakt-stoynost ${v ? '' : 'znaem-prazno'}">${
+            v ? _e(v.stoynost) : 'четецът не го е извадил'}</span>
+        <span class="fakt-znak">${v ? '✓ написано' : 'пише се от теб'}</span>
+        <div class="otkade">Това име влиза в описа на акта — затова се пише цяло,
+           както е в документа.</div>
+        <div class="fakt-zhestove">
+            <button class="bt ${v ? 'bt-tih' : 'bt-glaven'}"
+                    onclick="dosiePopravi('${k64}')">${v ? 'поправи' : 'напиши го'}</button>
+            ${v ? `<button class="bt bt-tih" onclick="dosieOtmeni('${k64}')">отмени</button>` : ''}
+        </div>
+    </div>`;
+}
+
+// ── Жестовете ────────────────────────────────────────────────────────────────
+// Сметките са на кухнята (`js/04-vhodni-dokumenti.js`): тя знае къде се пази
+// потвърждението и кога документът е сверен докрай. Тук само се вика.
+
+function dosiePotvardi(k64) {
+    s2Potvardi(k64);
+    dosieSledPotvardzhdenie();
+}
+
+function dosiePopravi(k64) {
+    s2Popravi(k64);
+    dosieSledPotvardzhdenie();
+}
+
+function dosieOtmeni(k64) {
+    s2Otmeni(k64);
+    dosieSledPotvardzhdenie();
+}
+
+// Сверен докрай документ влиза в описа САМ — без „Впиши“ и без „Запази“, и с
+// наименованието си, не с името на реда от чеклиста.
+function dosieSledPotvardzhdenie() {
+    const z = dosieZhiv();
+    if (z && typeof _dokVpishiSverenite === 'function')
+        _dokVpishiSverenite(z.p, z.p, z.s2.dokumenti || [], z.s2.potvardeni || {});
+    aktZapishi();
+    dosieRisuvai();
 }
 
 // ── Видени, но неописани ─────────────────────────────────────────────────────
