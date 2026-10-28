@@ -127,7 +127,14 @@ function dosieRedHtml(d, potv) {
                 ? `сверени ${broj} от ${fakti.length}` : 'няма извадени факти'}</span>
         </div>
         <div class="otkade">
-            ${_e(d.fajl || '')}${d.sken ? ' · скан' : ''}${d.chetec ? ' · ' + _e(d.chetec) : ''}
+            ${_e(d.fajl || '')}${d.sken ? ' · скан' : ''}${d.chetec
+                // „Резервен“ само когато ИМА причина основният да е отказал.
+                // Избереш ли четец, той не е резервен — той е избраният, а
+                // основният не е опитван. (28.10.2026)
+                ? ' · чел го е ' + _e(String(d.chetec).replace(/\s*\(резервен\)/, ''))
+                  + (d.chetec_izbran ? ' <strong>— избран от теб</strong>'
+                     : d.zashto_rezerven ? ' — резервен, защото основният отказа' : '')
+                : ''}
             ${d.cheklist_red
                 ? ` · доказва: <strong>${_e(d.cheklist_red)}</strong>${
                     // Вързано от кода, не от четеца — казва се, за да не изглежда

@@ -141,6 +141,7 @@ function momentPapkaHtml() {
     return `
     <div class="kutiya-razdel">
         <div class="nadpis">Папката</div>
+        ${aktChetecHtml('momentZaredi()')}
         <p class="poyasnenie">Изброява се, без да се чете нищо. До всеки файл пише какво ще струва.
            Чете се само отметнатото.</p>
         <input type="file" id="moment-papka-vhod" multiple webkitdirectory

@@ -97,6 +97,7 @@ function proektKachvaneHtml() {
     return `
     <div class="kutiya-razdel">
         <div class="nadpis">Записките по части</div>
+        ${aktChetecHtml('proektRisuvai()')}
         <p class="poyasnenie">Изброяват се, без да се четат. Чете се само отметнатото —
            по една записка на част.</p>
         <input type="file" id="proekt-vhod" multiple accept=".pdf,.docx,.jpg,.jpeg,.png"

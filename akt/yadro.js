@@ -353,6 +353,41 @@ function aktCenaNaFajl(ime) {
     return { cena: 'не се чете', kak: 'непознат вид' };
 }
 
+// ── Кой чете ─────────────────────────────────────────────────────────────────
+// Операторът, 28.10.2026: при една проба Claude/Mistral изборът е останал в
+// браузъра — и месеци наред ВСИЧКО се е чело с резервния. Четирите грешки в
+// едно разрешение за строеж (измислен цитат, пропуснат ред от чеклиста,
+// „няма подписи“ при два подписа) са оттам.
+//
+// Решение, взето веднъж при проба, не бива да важи мълчаливо завинаги.
+// Затова изборът се ВИЖДА на екрана, където се чете, и се връща с един клик.
+
+function aktChetec() {
+    return localStorage.getItem('s2_chetec') || 'auto';
+}
+
+function aktImeNaChetec(kod) {
+    return { auto: 'автоматично — основният, с резервен при отказ',
+             claude: 'Claude', mistral: 'Mistral' }[kod] || kod;
+}
+
+function aktVarniAvtomatichen() {
+    localStorage.removeItem('s2_chetec');
+}
+
+// Редът „Чете с: …“. При автоматично мълчи — там няма какво да се казва.
+function aktChetecHtml(sledKlik) {
+    const kod = aktChetec();
+    if (kod === 'auto') return '';
+    return `
+    <div class="predupr">
+        Чете се само с <strong>${_e(aktImeNaChetec(kod))}</strong> — избран от теб, не резервен.
+        Основният четец не се опитва.
+        <button class="bt" onclick="aktVarniAvtomatichen();${sledKlik || ''}">
+            върни автоматичния</button>
+    </div>`;
+}
+
 // Името на файла НЕ Е ДАННА. Най-многото е сива подсказка до въпроса, която
 // операторът потвърждава или пренаписва. (ЗАДАНИЕ.md)
 function aktPodskazkaOtIme(ime) {
