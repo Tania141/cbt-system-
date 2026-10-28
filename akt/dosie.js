@@ -129,7 +129,10 @@ function dosieRedHtml(d, potv) {
         <div class="otkade">
             ${_e(d.fajl || '')}${d.sken ? ' · скан' : ''}${d.chetec ? ' · ' + _e(d.chetec) : ''}
             ${d.cheklist_red
-                ? ` · доказва: <strong>${_e(d.cheklist_red)}</strong>`
+                ? ` · доказва: <strong>${_e(d.cheklist_red)}</strong>${
+                    // Вързано от кода, не от четеца — казва се, за да не изглежда
+                    // прочетено. (28.10.2026)
+                    d.red_ot ? ` <span class="otkade">(${_e(d.red_ot)})</span>` : ''}`
                 : ' · <span class="dok-bez-red">няма ред в чеклиста</span>'}
         </div>
         ${otvoren ? dosieFaktiHtml(id, fakti, potv) : ''}
