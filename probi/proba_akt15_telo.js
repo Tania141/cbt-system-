@@ -7,7 +7,12 @@ const { kod, grab } = require('./kod');
 const s = kod();
 
 const f = new Function(
-    [grab(s, '_a15Vpisan'), grab(s, '_a15NomerData'), grab(s, '_a15PoIzpalnenie'),
+    // Изразите за Протокол 2 / 2а / обр. 3 се вадят както са написани: датите
+    // вече се търсят и в сверените документи, не само в ръчното поле.
+    [['_A15_PROTOKOL_2', '_A15_PROTOKOL_2A', '_A15_OBRAZEC_3']
+        .map(ime => (new RegExp('^const ' + ime + ' = .+$', 'm').exec(s) || [''])[0]).join('\n'),
+     grab(s, '_a15Vpisan'), grab(s, '_a15NomerData'), grab(s, '_a15DataNaDokument'),
+     grab(s, '_a15PoIzpalnenie'),
      grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')
     + '\nreturn {_a15Redove,_a15NomerData,_a15PoIzpalnenie,_a15Prilozhenia,_a15Vpisan};')();
 
