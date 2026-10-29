@@ -2154,42 +2154,40 @@ function _a15AktoveProtokoli(st) {
     return redove.filter(Boolean);
 }
 
+// Едно изречение за един документ: наименование, номер, дата — както са
+// прочетени. Номерът често носи своето „№“; второ не се слага (29.10.2026 —
+// „Нотариален акт, № № 23“).
+function _a15Izrechenie(d) {
+    const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
+    const nomer = String((d.nomer || {}).stoynost || '').trim().replace(/^№\s*/, '');
+    const data = _a15DataNa(d);
+    return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
+}
+
 // 1.1 — собствеността. Нотариалните актове, както са прочетени.
 function _a15Sobstvenost(st) {
     return _a15Svereni(st)
         .filter(d => /нотариал[а-я]*\s+акт|право\s+на\s+строеж/i.test(_a15TekstNa(d)))
-        .map(d => {
-            const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
-            const nomer = String((d.nomer || {}).stoynost || '').trim();
-            const data = _a15DataNa(d);
-            return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
-        });
+        .map(_a15Izrechenie);
 }
 
 // 1.4 — скиците от кадастъра.
 function _a15Skici(st) {
     return _a15Svereni(st)
         .filter(d => /скица/i.test(_a15TekstNa(d)))
-        .map(d => {
-            const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
-            const nomer = String((d.nomer || {}).stoynost || '').trim();
-            const data = _a15DataNa(d);
-            return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
-        });
+        .map(_a15Izrechenie);
 }
 
 // 1.5 — договорите със снабдителните дружества, писмата за СВО и СКО, ДПЕРМ.
 function _a15DogovoriMrezhi(st) {
     // Пак: `\b` не хваща кирилица — „СВО“ се търси с „не е буква след него“.
-    const kak = /присъединяване|софийска\s+вода|ерм\s*запад|електроразпределител|дперм|сво(?![а-я])|ско(?![а-я])|водопроводно отклонение|канализационно отклонение/i;
+    // „сво“ и „ско“ са САМОСТОЯТЕЛНИ думи. Без лявата граница „Техническо
+    // досие“ влизаше в 1.5, защото „Техниче-СКО“ свършва на „ско“.
+    // (29.10.2026 — и трети път същият капан с кирилицата.)
+    const kak = /присъединяване|софийска\s+вода|ерм\s*запад|електроразпределител|дперм|(?<![а-я])(сво|ско)(?![а-я])|водопроводно отклонение|канализационно отклонение/i;
     return _a15Svereni(st)
         .filter(d => kak.test(_a15TekstNa(d)))
-        .map(d => {
-            const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
-            const nomer = String((d.nomer || {}).stoynost || '').trim();
-            const data = _a15DataNa(d);
-            return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
-        });
+        .map(_a15Izrechenie);
 }
 
 function _a15Redove(project, st) {

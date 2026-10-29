@@ -17,7 +17,7 @@ const f = new Function(
          (new RegExp('^const ' + ime + ' = [\\s\\S]*?\\n\\];$', 'm').exec(s) || [''])[0]).join('\n'),
      grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'), grab(s, '_s2Sveren'),
      grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
-     grab(s, '_a15Sortirai'), grab(s, '_a15Red'),
+     grab(s, '_a15Sortirai'), grab(s, '_a15Red'), grab(s, '_a15Izrechenie'),
      grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
      grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi'),
      'const _s2Id = d => d.id || d.fajl;',

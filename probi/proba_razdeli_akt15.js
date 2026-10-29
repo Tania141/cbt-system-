@@ -24,7 +24,7 @@ const F = new Function(
     }).join('\n')
     + '\n' + [grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'), grab(s, '_s2Sveren'), grab(s, '_a15Chast'),
               grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'), grab(s, '_a15Sortirai'),
-              grab(s, '_a15Red'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
+              grab(s, '_a15Red'), grab(s, '_a15Izrechenie'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
               grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _a15DataNa = d => String((d.data || {}).stoynost || "").trim();'
@@ -151,6 +151,24 @@ const r4 = F._a15DogovoriMrezhi(mr);
 t('1.5 хваща договора и писмото', r4.length === 2, r4);
 t('но НЕ договора за строителство',
   !r4.some(x => /СМР|строително-монтаж/i.test(x)), r4);
+
+// 29.10.2026, от истински акт: „Orona — Техническо досие“ влезе в 1.5, защото
+// „Техниче-СКО“ свършва на „ско“. Кирилицата няма дума-граница — трябва се пише.
+const asansьor = stroezh([
+    dok('техническо досие', '', { nomer: fakt('XBG10409UN'),
+        naimenovanie: fakt('Техническо досие на асансьор') }),
+    dok('договор за присъединяване', '14.02.2022', { nomer: fakt('93') }),
+]);
+t('„Техническо“ не минава за СКО',
+  F._a15DogovoriMrezhi(asansьor).length === 1, F._a15DogovoriMrezhi(asansьor));
+const sko = stroezh([dok('писмо', '05.04.2022',
+    { naimenovanie: fakt('Писмо за изпълнено СКО') })]);
+t('а самостоятелното СКО минава', F._a15DogovoriMrezhi(sko).length === 1);
+
+// „Нотариален акт, № № 23“ — номерът носи своето „№“.
+const dvojno = stroezh([dok('нотариален акт', '29.11.2022', { nomer: fakt('№ 23') })]);
+t('второ № не се слага', /№ 23/.test(F._a15Sobstvenost(dvojno)[0])
+  && !/№ №/.test(F._a15Sobstvenost(dvojno)[0]), F._a15Sobstvenost(dvojno)[0]);
 
 // ── подредбата на датите е по календар, не по текст ─────────────────────────
 t('датите се подреждат по календар',
