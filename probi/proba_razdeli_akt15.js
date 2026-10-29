@@ -33,7 +33,7 @@ const F = new Function(
               grab(s, '_dokRed'), grab(s, '_dokIme'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
               grab(s, 'dokIzrechenie'), grab(s, '_a15Chast'),
               grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'), grab(s, '_a15Sortirai'),
-              grab(s, '_a15Red'), grab(s, '_a15PoIzraz'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
+              grab(s, '_a15Red'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
               grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
@@ -49,7 +49,10 @@ let broj = 0;
 // Всеки документ е сверен, щом всичките му факти са потвърдени.
 const dok = (vid, data, extra) => {
     const id = 'd' + (++broj);
-    return { id, fajl: id + '.pdf', vid, data: fakt(data), ...(extra || {}) };
+    const { kod, ...ostalo } = extra || {};
+    // `kod` в пробата е кодът, който четецът връща — `vid_kod` на документа.
+    return { id, fajl: id + '.pdf', vid, data: fakt(data),
+             ...(kod ? { vid_kod: kod } : {}), ...ostalo };
 };
 const potvardi = dokumenti => {
     const p = {};
@@ -179,6 +182,32 @@ t('а самостоятелното СКО минава', F._a15DogovoriMrezhi(
 const dvojno = stroezh([dok('нотариален акт', '29.11.2022', { nomer: fakt('№ 23') })]);
 t('второ № не се слага', /№ 23/.test(F._a15Sobstvenost({}, dvojno)[0])
   && !/№ №/.test(F._a15Sobstvenost({}, dvojno)[0]), F._a15Sobstvenost({}, dvojno)[0]);
+
+// ── КОДЪТ БИЕ ДУМИТЕ ────────────────────────────────────────────────────────
+// Операторът, 29.10.2026: видът се казва веднъж, при четенето, и се потвърждава.
+// Думите остават само за реда БЕЗ код — вписаното на ръка и отметнатото.
+const kodiran = stroezh([
+    // Заглавието не съдържа „акт обр. 7“, но кодът го казва.
+    dok('приемо-предавателен акт по нива', '24.05.2022', { kod: 'AKT7' }),
+    // А това е писмо, което СЪДЪРЖА думите — кодът го спасява от 1.3.
+    dok('писмо', '01.06.2022', { kod: 'STANOVISHTE',
+        naimenovanie: fakt('Писмо относно акт обр. 7 на съседния строеж') }),
+]);
+const rk = F._a15AktoveProtokoli({}, kodiran);
+t('документ с код влиза, макар заглавието да мълчи', rk.length === 1, rk);
+t('и писмото за чужд акт обр. 7 НЕ влиза', !/Писмо/.test(rk.join(' ')), rk);
+
+const bezKod = stroezh([dok('акт обр. 7', '24.05.2022')]);
+t('без код пак се съди по думите', F._a15AktoveProtokoli({}, bezKod).length === 1);
+const drugo = stroezh([dok('акт обр. 7', '24.05.2022', { kod: 'DRUGO' })]);
+t('„DRUGO“ значи „четецът не позна“ — пак думите',
+  F._a15AktoveProtokoli({}, drugo).length === 1, F._a15AktoveProtokoli({}, drugo));
+
+// Техническото досие пак не е СКО — сега и по код.
+const dosie = stroezh([dok('техническо досие', '', { kod: 'DRUGO',
+    naimenovanie: fakt('Техническо досие на асансьор') })]);
+t('„Техническо“ не минава за СКО и с код DRUGO',
+  F._a15DogovoriMrezhi({}, dosie).length === 0, F._a15DogovoriMrezhi({}, dosie));
 
 // ── подредбата на датите е по календар, не по текст ─────────────────────────
 t('датите се подреждат по календар',

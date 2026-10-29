@@ -21,7 +21,7 @@ const f = new Function(
      grab(s, '_dokRed'), grab(s, '_dokIme'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
      grab(s, 'dokIzrechenie'),
      grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
-     grab(s, '_a15Sortirai'), grab(s, '_a15Red'), grab(s, '_a15PoIzraz'),
+     grab(s, '_a15Sortirai'), grab(s, '_a15Red'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'),
      grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
      grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi'),
      'const _s2Id = d => d.id || d.fajl;',
