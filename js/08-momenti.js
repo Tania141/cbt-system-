@@ -2025,20 +2025,40 @@ function _a15PoIzpalnenie(st) {
 // празен при обект с цяла страница събрани документи. (26.10.2026)
 //
 // Вписаните вървят първи: те носят номер и дата, тоест са по-пълни.
+// ЕДИН ИЗВОР (операторът, 29.10.2026). Описът в т. 4 и разделите 1.1–1.5 са
+// една папка, видяна от две страни: разделите казват „прегледахме“, описът —
+// „прилагаме“. Дотук идваха от различни места — описът от вписаното на ръка,
+// разделите от сверените — и описът излезе с 21 позиции срещу два реда
+// констатации. Тоест актът прилагаше документи, които никъде не е прегледал.
+//
+// Сега описът ТРЪГВА от разделите (със същото групиране: 24 акта обр. 7 са
+// един ред), а вписаното на ръка и отметнатото в чеклиста се ДОПИСВАТ — за
+// онова, което четецът не е видял.
 function _a15Prilozhenia(p, st) {
-    const klyuch = x => String(x || '').trim().toLowerCase();
-    const redove = [], vidyani = new Set();
+    // Познава се по ИМЕТО, без номера и датата след него: „Протокол обр. 2“ и
+    // „Протокол обр. 2 — № 1 от 29.03.2026 г.“ са един документ.
+    const klyuch = x => String(x || '').trim().toLowerCase().split(/\s+—\s+|,\s*№/)[0].trim();
+    // Един документ, описан веднъж от четеца и веднъж на ръка, се познава по
+    // номера си — иначе излиза два пъти с различни думи.
+    const nomerNa = red => String((String(red).match(/№\s*([^\s,;]+)/) || [])[1] || '')
+        .toLowerCase().replace(/[^0-9a-zа-я]/g, '');
+    const redove = [], vidyani = new Set(), nomera = new Set();
+    const dobavi = red => {
+        const r = String(red || '').trim();
+        if (!r || vidyani.has(klyuch(r))) return;
+        const n = nomerNa(r);
+        if (n.length > 1 && nomera.has(n)) return;
+        vidyani.add(klyuch(r));
+        if (n.length > 1) nomera.add(n);
+        redove.push(r);
+    };
+    [].concat(_a15Sobstvenost(st), _a15AktoveProtokoli(st),
+              _a15Skici(st), _a15DogovoriMrezhi(st)).forEach(dobavi);
     for (const d of p.dokumenti || []) {
         const ime = String(d.ime || '').trim();
-        if (!ime || vidyani.has(klyuch(ime))) continue;
-        vidyani.add(klyuch(ime));
-        redove.push(ime + (d.nomer ? ' — ' + String(d.nomer).trim() : ''));
+        if (ime) dobavi(ime + (d.nomer ? ' — ' + String(d.nomer).trim() : ''));
     }
-    for (const ime of st.nadzor_otmetnati || []) {
-        if (!ime || vidyani.has(klyuch(ime))) continue;
-        vidyani.add(klyuch(ime));
-        redove.push(ime);
-    }
+    for (const ime of st.nadzor_otmetnati || []) dobavi(ime);
     return redove;
 }
 
