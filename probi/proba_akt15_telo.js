@@ -11,6 +11,17 @@ const f = new Function(
     // вече се търсят и в сверените документи, не само в ръчното поле.
     [['_A15_PROTOKOL_2', '_A15_PROTOKOL_2A', '_A15_OBRAZEC_3']
         .map(ime => (new RegExp('^const ' + ime + ' = .+$', 'm').exec(s) || [''])[0]).join('\n'),
+     // Разделите 1.1, 1.3, 1.4 и 1.5 се сглобяват от сверените документи —
+     // `_a15Redove` вече ги вика, значи трябват и тук. (29.10.2026)
+     ['_A15_VIDOVE', '_A15_CHASTI'].map(ime =>
+         (new RegExp('^const ' + ime + ' = [\\s\\S]*?\\n\\];$', 'm').exec(s) || [''])[0]).join('\n'),
+     grab(s, '_s2Fakti'), grab(s, '_s2Sveren'),
+     grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
+     grab(s, '_a15Sortirai'), grab(s, '_a15Red'),
+     grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
+     grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi'),
+     'const _s2Id = d => d.id || d.fajl;',
+     'const _a15DataNa = d => String((d.data || {}).stoynost || "").trim();',
      grab(s, '_a15Vpisan'), grab(s, '_a15NomerData'), grab(s, '_a15DataNaDokument'),
      grab(s, '_a15PoIzpalnenie'),
      grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')

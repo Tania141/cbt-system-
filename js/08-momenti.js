@@ -2037,6 +2037,151 @@ function _a15Ostatak(st) {
     return st.ostatak || {};
 }
 
+// ── РАЗДЕЛИТЕ 1.1, 1.3, 1.4 и 1.5 ───────────────────────────────────────────
+// Операторът, 29.10.2026, даде точната подредба от истински свой акт и каза
+// къде стои: след „КОНСТАТИРАХМЕ“ и преди „Строежът представлява“.
+//
+// Дотук шаблонът беше по образеца на Наредба № 3 — отделни стойности, без тези
+// раздели. Затова всичко, което системата събира и операторът сверява, нямаше
+// къде да влезе.
+//
+// ОТКЪДЕ СЕ БРОИ. Не от `p.dokumenti` — там един вид документ е ЕДИН ред (24
+// акта обр. 7 се сливат в един). Брои се от ПРОЧЕТЕНИТЕ документи, където
+// всеки акт е свой запис със своята дата. И само СВЕРЕНИТЕ: чекнатото влиза в
+// акта, нечекнатото не. (Операторът, 28.10.2026)
+
+const _A15_VIDOVE = [
+    { kod: 'obr5',  kak: /акт\s*(обр\.?|образец)?\s*№?\s*5(?![\dа-я])/i,
+      ime: 'Акт Образец 5',
+      opis: 'за установяване и съгласуване на строителния терен с одобрения и даване на основен репер на строежа' },
+    { kod: 'obr6',  kak: /акт\s*(обр\.?|образец)?\s*№?\s*6(?![\dа-я])/i,
+      ime: 'Акт Образец 6',
+      opis: 'за приемане на земната основа и действителните коти на извършените изкопни работи' },
+    { kod: 'obr7',  kak: /акт\s*(обр\.?|образец)?\s*№?\s*7(?![\dа-я])/i,
+      ime: 'Акт Образец 7',
+      opis: 'за приемане на извършените СМР по нива и елементи на строителната конструкция' },
+    { kod: 'obr12', kak: /акт\s*(обр\.?|образец)?\s*№?\s*12(?![\dа-я])/i,
+      ime: 'Акт Образец 12', poChasti: true,
+      opis: 'за установяване на всички видове СМР, подлежащи на закриване, удостоверяващ, че са постигнати изискванията на проекта' },
+    { kod: 'p17',   kak: /протокол\s*(обр\.?|образец)?\s*№?\s*17(?![\dа-я])/i,
+      ime: 'Протокол Образец 17', poChasti: true,
+      opis: 'за проведена 72-часова проба при експлоатационни условия' },
+    { kod: 'beton', kak: /бетонов\s+дневник/i, ime: 'Бетонов дневник', bezData: true, opis: '' },
+    { kod: 'obr14', kak: /акт\s*(обр\.?|образец)?\s*№?\s*14(?![\dа-я])/i,
+      ime: 'Акт Образец 14', opis: 'за приемане на конструкцията' },
+];
+
+// Частта се чете от самия документ — „по част Архитектура“, „ВиК“, „Електро“.
+// `\b` и `\w` са ASCII и НЕ хващат кирилица: „ВиК“ не се намираше с „к\b“.
+// Същият капан вече е описан при съставките — границата е „не е буква“.
+const _A15_CHASTI = [
+    [/архитектур/i, 'Архитектура'], [/ви\s*к(?![а-я])|водопровод|канализац/i, 'ВиК'],
+    [/електро|ел\.\s*инстал/i, 'Електро'], [/овк|отоплен|вентилац|климат/i, 'ОВК'],
+];
+
+function _a15Chast(tekst) {
+    const t = String(tekst || '');
+    for (const [kak, ime] of _A15_CHASTI) if (kak.test(t)) return ime;
+    return '';
+}
+
+// Сверените прочетени документи — суровината на всички раздели.
+function _a15Svereni(st) {
+    const s2 = (st.sloy2 && st.sloy2.od) || {};
+    const potv = s2.potvardeni || {};
+    return (s2.dokumenti || []).filter(d => typeof _s2Sveren === 'function' && _s2Sveren(d, potv));
+}
+
+function _a15TekstNa(d) {
+    return [d.vid, (d.naimenovanie || {}).stoynost, d.cheklist_red, (d.sadarzhanie || {}).stoynost]
+        .filter(Boolean).join(' · ');
+}
+
+const _a15DataNa = d => String((d.data || {}).stoynost || '').trim();
+
+// Подрежда дати по календар, не по текст: „01.12“ не е преди „29.03“.
+function _a15Sortirai(dati) {
+    const n = s => {
+        const m = String(s).match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+        if (!m) return 0;
+        const g = m[3].length === 2 ? '20' + m[3] : m[3];
+        return Number(g) * 10000 + Number(m[2]) * 100 + Number(m[1]);
+    };
+    return dati.filter(Boolean).sort((a, b) => n(a) - n(b));
+}
+
+// „Акт Образец 7 от 24.05.2022 до 29.12.2022 за … — 24 броя“
+function _a15Red(ime, opis, dokumenti, chast, bezData) {
+    const n = dokumenti.length;
+    if (!n) return '';
+    const dati = _a15Sortirai(dokumenti.map(_a15DataNa));
+    const chastTekst = chast ? ` по част ${chast}` : '';
+    if (bezData || !dati.length) return `${ime}${chastTekst}${opis ? ' ' + opis : ''}`;
+    const kogaTekst = n > 1 && dati[0] !== dati[dati.length - 1]
+        ? `от ${dati[0]} до ${dati[dati.length - 1]} г.`
+        : `от ${dati[0]} г.`;
+    return `${ime} ${kogaTekst}${chastTekst ? ' ' + opis + chastTekst : (opis ? ' ' + opis : '')}`
+        + (n > 1 ? ` — ${n} броя` : '');
+}
+
+// 1.3 — актовете и протоколите по време на строителството.
+function _a15AktoveProtokoli(st) {
+    const svereni = _a15Svereni(st);
+    const redove = [];
+    for (const v of _A15_VIDOVE) {
+        const moi = svereni.filter(d => v.kak.test(_a15TekstNa(d)));
+        if (!moi.length) continue;
+        if (!v.poChasti) { redove.push(_a15Red(v.ime, v.opis, moi, '', v.bezData)); continue; }
+        // По части: всяка част на свой ред, с диапазон и брой.
+        const chasti = new Map();
+        for (const d of moi) {
+            const c = _a15Chast(_a15TekstNa(d));
+            if (!chasti.has(c)) chasti.set(c, []);
+            chasti.get(c).push(d);
+        }
+        for (const [c, spisak] of chasti) redove.push(_a15Red(v.ime, v.opis, spisak, c, v.bezData));
+    }
+    return redove.filter(Boolean);
+}
+
+// 1.1 — собствеността. Нотариалните актове, както са прочетени.
+function _a15Sobstvenost(st) {
+    return _a15Svereni(st)
+        .filter(d => /нотариал[а-я]*\s+акт|право\s+на\s+строеж/i.test(_a15TekstNa(d)))
+        .map(d => {
+            const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
+            const nomer = String((d.nomer || {}).stoynost || '').trim();
+            const data = _a15DataNa(d);
+            return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
+        });
+}
+
+// 1.4 — скиците от кадастъра.
+function _a15Skici(st) {
+    return _a15Svereni(st)
+        .filter(d => /скица/i.test(_a15TekstNa(d)))
+        .map(d => {
+            const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
+            const nomer = String((d.nomer || {}).stoynost || '').trim();
+            const data = _a15DataNa(d);
+            return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
+        });
+}
+
+// 1.5 — договорите със снабдителните дружества, писмата за СВО и СКО, ДПЕРМ.
+function _a15DogovoriMrezhi(st) {
+    // Пак: `\b` не хваща кирилица — „СВО“ се търси с „не е буква след него“.
+    const kak = /присъединяване|софийска\s+вода|ерм\s*запад|електроразпределител|дперм|сво(?![а-я])|ско(?![а-я])|водопроводно отклонение|канализационно отклонение/i;
+    return _a15Svereni(st)
+        .filter(d => kak.test(_a15TekstNa(d)))
+        .map(d => {
+            const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
+            const nomer = String((d.nomer || {}).stoynost || '').trim();
+            const data = _a15DataNa(d);
+            return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
+        });
+}
+
 function _a15Redove(project, st) {
     const o = _a15Ostatak(st);
     const dati = st.docDates || {};
@@ -2061,6 +2206,12 @@ function _a15Redove(project, st) {
                             lineen ? _A15_PROTOKOL_2A : _A15_PROTOKOL_2)],
         ['Образец_3_Дата',
          _a15DataNaDokument(project, dati, 'obrazec3', _A15_OBRAZEC_3)],
+        // Разделите 1.1, 1.3, 1.4 и 1.5 — сглобени от сверените документи.
+        // Празен раздел не се праща: сървърът оставя точки, вместо да твърди.
+        ['Собственост_Актове', _a15Sobstvenost(st).join('\n')],
+        ['Актове_Протоколи', _a15AktoveProtokoli(st).join('\n')],
+        ['Съответствие_Скици', _a15Skici(st).join('\n')],
+        ['Договори_Мрежи', _a15DogovoriMrezhi(st).join('\n')],
         ['Строеж_Представлява', st.stroej],
         ['Техническо_Описание', (st.tehnichesko_opisanie || {}).tekst],
         ['По_Изпълнение', _a15PoIzpalnenie(st)],
