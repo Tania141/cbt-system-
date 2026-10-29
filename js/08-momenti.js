@@ -2031,36 +2031,28 @@ function _a15PoIzpalnenie(st) {
 // разделите от сверените — и описът излезе с 21 позиции срещу два реда
 // констатации. Тоест актът прилагаше документи, които никъде не е прегледал.
 //
-// Сега описът ТРЪГВА от разделите (със същото групиране: 24 акта обр. 7 са
-// един ред), а вписаното на ръка и отметнатото в чеклиста се ДОПИСВАТ — за
-// онова, което четецът не е видял.
+// Сега и двете четат ТЕТРАДКАТА. Описът тръгва от разделите (със същото
+// групиране: 24 акта обр. 7 са един ред) и дописва останалите редове, които
+// влизат в акта, но нямат свой раздел.
 function _a15Prilozhenia(p, st) {
     // Познава се по ИМЕТО, без номера и датата след него: „Протокол обр. 2“ и
     // „Протокол обр. 2 — № 1 от 29.03.2026 г.“ са един документ.
-    const klyuch = x => String(x || '').trim().toLowerCase().split(/\s+—\s+|,\s*№/)[0].trim();
-    // Един документ, описан веднъж от четеца и веднъж на ръка, се познава по
-    // номера си — иначе излиза два пъти с различни думи.
-    const nomerNa = red => String((String(red).match(/№\s*([^\s,;]+)/) || [])[1] || '')
-        .toLowerCase().replace(/[^0-9a-zа-я]/g, '');
     const redove = [], vidyani = new Set(), nomera = new Set();
     const dobavi = red => {
         const r = String(red || '').trim();
-        if (!r || vidyani.has(klyuch(r))) return;
-        const n = nomerNa(r);
-        if (n.length > 1 && nomera.has(n)) return;
-        vidyani.add(klyuch(r));
-        if (n.length > 1) nomera.add(n);
+        if (!r) return;
+        const ki = _dokKlyuchIme(r), kn = _dokKlyuchNomer(_dokNomerOtTekst(r));
+        if (vidyani.has(ki) || (kn.length > 1 && nomera.has(kn))) return;
+        vidyani.add(ki);
+        if (kn.length > 1) nomera.add(kn);
         redove.push(r);
     };
-    [].concat(_a15Sobstvenost(st), _a15AktoveProtokoli(st),
-              _a15Skici(st), _a15DogovoriMrezhi(st)).forEach(dobavi);
-    for (const d of p.dokumenti || []) {
-        const ime = String(d.ime || '').trim();
-        if (ime) dobavi(ime + (d.nomer ? ' — ' + String(d.nomer).trim() : ''));
-    }
-    for (const ime of st.nadzor_otmetnati || []) dobavi(ime);
+    [].concat(_a15Sobstvenost(p, st), _a15AktoveProtokoli(p, st),
+              _a15Skici(p, st), _a15DogovoriMrezhi(p, st)).forEach(dobavi);
+    _a15Svereni(p, st).map(dokIzrechenie).forEach(dobavi);
     return redove;
 }
+
 
 // Онова, което само операторът знае — пише се в остатъка на Екран 3.
 function _a15Ostatak(st) {
@@ -2115,19 +2107,20 @@ function _a15Chast(tekst) {
     return '';
 }
 
-// Сверените прочетени документи — суровината на всички раздели.
-function _a15Svereni(st) {
-    const s2 = (st.sloy2 && st.sloy2.od) || {};
-    const potv = s2.potvardeni || {};
-    return (s2.dokumenti || []).filter(d => typeof _s2Sveren === 'function' && _s2Sveren(d, potv));
+// Суровината на всички раздели: редовете от ТЕТРАДКАТА, които влизат в акта.
+// Тетрадката е една (`js/04b-spisak.js`); тук не се чете от три места.
+function _a15Svereni(p, st) {
+    return typeof dokVliza === 'function' ? dokVliza(p, st) : [];
 }
 
-function _a15TekstNa(d) {
-    return [d.vid, (d.naimenovanie || {}).stoynost, d.cheklist_red, (d.sadarzhanie || {}).stoynost]
+// Всичко, по което се познава документът — от реда и от прочетеното под него.
+function _a15TekstNa(r) {
+    const d = r.izvor || {};
+    return [r.ime, r.vid, d.cheklist_red, (d.sadarzhanie || {}).stoynost]
         .filter(Boolean).join(' · ');
 }
 
-const _a15DataNa = d => String((d.data || {}).stoynost || '').trim();
+const _a15DataNa = r => String(r.data || '').trim();
 
 // Подрежда дати по календар, не по текст: „01.12“ не е преди „29.03“.
 function _a15Sortirai(dati) {
@@ -2154,61 +2147,44 @@ function _a15Red(ime, opis, dokumenti, chast, bezData) {
         + (n > 1 ? ` — ${n} броя` : '');
 }
 
+// Кои редове влизат в кой раздел — на ЕДНО място, иначе утре някой раздел пак
+// ще гледа другаде.
+const _A15_RAZDELI = {
+    sobstvenost: /нотариал[а-я]*\s+акт|право\s+на\s+строеж/i,
+    skici: /скица/i,
+    // `\b` не хваща кирилица, а „сво“ и „ско“ са САМОСТОЯТЕЛНИ думи: без лявата
+    // граница „Техниче-СКО досие“ влизаше при договорите (29.10.2026).
+    mrezhi: /присъединяване|софийска\s+вода|ерм\s*запад|електроразпределител|дперм|(?<![а-я])(сво|ско)(?![а-я])|водопроводно отклонение|канализационно отклонение/i,
+};
+
+function _a15PoIzraz(p, st, kak) {
+    return _a15Svereni(p, st).filter(r => kak.test(_a15TekstNa(r))).map(dokIzrechenie);
+}
+
 // 1.3 — актовете и протоколите по време на строителството.
-function _a15AktoveProtokoli(st) {
-    const svereni = _a15Svereni(st);
+function _a15AktoveProtokoli(p, st) {
+    const svereni = _a15Svereni(p, st);
     const redove = [];
     for (const v of _A15_VIDOVE) {
-        const moi = svereni.filter(d => v.kak.test(_a15TekstNa(d)));
+        const moi = svereni.filter(r => v.kak.test(_a15TekstNa(r)));
         if (!moi.length) continue;
         if (!v.poChasti) { redove.push(_a15Red(v.ime, v.opis, moi, '', v.bezData)); continue; }
         // По части: всяка част на свой ред, с диапазон и брой.
         const chasti = new Map();
-        for (const d of moi) {
-            const c = _a15Chast(_a15TekstNa(d));
+        for (const r of moi) {
+            const c = _a15Chast(_a15TekstNa(r));
             if (!chasti.has(c)) chasti.set(c, []);
-            chasti.get(c).push(d);
+            chasti.get(c).push(r);
         }
         for (const [c, spisak] of chasti) redove.push(_a15Red(v.ime, v.opis, spisak, c, v.bezData));
     }
     return redove.filter(Boolean);
 }
 
-// Едно изречение за един документ: наименование, номер, дата — както са
-// прочетени. Номерът често носи своето „№“; второ не се слага (29.10.2026 —
-// „Нотариален акт, № № 23“).
-function _a15Izrechenie(d) {
-    const nai = String((d.naimenovanie || {}).stoynost || '').trim() || String(d.vid || '').trim();
-    const nomer = String((d.nomer || {}).stoynost || '').trim().replace(/^№\s*/, '');
-    const data = _a15DataNa(d);
-    return [nai, nomer && '№ ' + nomer, data && 'от ' + data + ' г.'].filter(Boolean).join(', ');
-}
-
-// 1.1 — собствеността. Нотариалните актове, както са прочетени.
-function _a15Sobstvenost(st) {
-    return _a15Svereni(st)
-        .filter(d => /нотариал[а-я]*\s+акт|право\s+на\s+строеж/i.test(_a15TekstNa(d)))
-        .map(_a15Izrechenie);
-}
-
-// 1.4 — скиците от кадастъра.
-function _a15Skici(st) {
-    return _a15Svereni(st)
-        .filter(d => /скица/i.test(_a15TekstNa(d)))
-        .map(_a15Izrechenie);
-}
-
-// 1.5 — договорите със снабдителните дружества, писмата за СВО и СКО, ДПЕРМ.
-function _a15DogovoriMrezhi(st) {
-    // Пак: `\b` не хваща кирилица — „СВО“ се търси с „не е буква след него“.
-    // „сво“ и „ско“ са САМОСТОЯТЕЛНИ думи. Без лявата граница „Техническо
-    // досие“ влизаше в 1.5, защото „Техниче-СКО“ свършва на „ско“.
-    // (29.10.2026 — и трети път същият капан с кирилицата.)
-    const kak = /присъединяване|софийска\s+вода|ерм\s*запад|електроразпределител|дперм|(?<![а-я])(сво|ско)(?![а-я])|водопроводно отклонение|канализационно отклонение/i;
-    return _a15Svereni(st)
-        .filter(d => kak.test(_a15TekstNa(d)))
-        .map(_a15Izrechenie);
-}
+// 1.1 — собствеността. 1.4 — скиците. 1.5 — договорите с дружествата.
+function _a15Sobstvenost(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.sobstvenost); }
+function _a15Skici(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.skici); }
+function _a15DogovoriMrezhi(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.mrezhi); }
 
 function _a15Redove(project, st) {
     const o = _a15Ostatak(st);
@@ -2236,10 +2212,10 @@ function _a15Redove(project, st) {
          _a15DataNaDokument(project, dati, 'obrazec3', _A15_OBRAZEC_3)],
         // Разделите 1.1, 1.3, 1.4 и 1.5 — сглобени от сверените документи.
         // Празен раздел не се праща: сървърът оставя точки, вместо да твърди.
-        ['Собственост_Актове', _a15Sobstvenost(st).join('\n')],
-        ['Актове_Протоколи', _a15AktoveProtokoli(st).join('\n')],
-        ['Съответствие_Скици', _a15Skici(st).join('\n')],
-        ['Договори_Мрежи', _a15DogovoriMrezhi(st).join('\n')],
+        ['Собственост_Актове', _a15Sobstvenost(project, st).join('\n')],
+        ['Актове_Протоколи', _a15AktoveProtokoli(project, st).join('\n')],
+        ['Съответствие_Скици', _a15Skici(project, st).join('\n')],
+        ['Договори_Мрежи', _a15DogovoriMrezhi(project, st).join('\n')],
         ['Строеж_Представлява', st.stroej],
         ['Техническо_Описание', (st.tehnichesko_opisanie || {}).tekst],
         ['По_Изпълнение', _a15PoIzpalnenie(st)],
