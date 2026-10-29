@@ -13,9 +13,9 @@ const f = new Function(
         .map(ime => (new RegExp('^const ' + ime + ' = .+$', 'm').exec(s) || [''])[0]).join('\n'),
      // Разделите 1.1, 1.3, 1.4 и 1.5 се сглобяват от сверените документи —
      // `_a15Redove` вече ги вика, значи трябват и тук. (29.10.2026)
-     ['_A15_VIDOVE', '_A15_CHASTI'].map(ime =>
+     ['_A15_VIDOVE', '_A15_CHASTI', '_S2_TABLICI'].map(ime =>
          (new RegExp('^const ' + ime + ' = [\\s\\S]*?\\n\\];$', 'm').exec(s) || [''])[0]).join('\n'),
-     grab(s, '_s2Fakti'), grab(s, '_s2Sveren'),
+     grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'), grab(s, '_s2Sveren'),
      grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
      grab(s, '_a15Sortirai'), grab(s, '_a15Red'),
      grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),

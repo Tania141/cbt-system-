@@ -15,14 +15,14 @@
 const { kod, grab } = require('./kod');
 const s = kod();
 
-const imena = ['_A15_VIDOVE', '_A15_CHASTI'];
+const imena = ['_A15_VIDOVE', '_A15_CHASTI', '_S2_TABLICI'];
 const F = new Function(
     imena.map(ime => {
         const m = new RegExp('^const ' + ime + ' = [\\s\\S]*?\\n\\];$', 'm').exec(s);
         if (!m) throw new Error('няма ' + ime);
         return m[0];
     }).join('\n')
-    + '\n' + [grab(s, '_s2Fakti'), grab(s, '_s2Sveren'), grab(s, '_a15Chast'),
+    + '\n' + [grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'), grab(s, '_s2Sveren'), grab(s, '_a15Chast'),
               grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'), grab(s, '_a15Sortirai'),
               grab(s, '_a15Red'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
               grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')

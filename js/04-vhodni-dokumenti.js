@@ -97,9 +97,37 @@ function _dokIme(d, potv) {
 }
 
 // Кои прочетени документи са сверени докрай.
+// Кои факти НАИСТИНА се предлагат за сверяване на екрана: колоните на таблицата
+// за този вид плюс „Общо за обекта“ (УПИ и идентификатор).
+function _s2KlPoKoloni(d, koloni) {
+    const fakti = new Map(_s2Fakti(d).map(x => [x.k, x]));
+    const kl = [];
+    for (const [, pole] of koloni) {
+        const poleta = pole === '#razpr' ? [...fakti.keys()].filter(k => /^r\d+\./.test(k))
+                     : Array.isArray(pole) ? pole : (String(pole).startsWith('#') ? [] : [pole]);
+        for (const k of poleta) if (fakti.has(k)) kl.push(k);
+    }
+    return kl;
+}
+
+function _s2SverimiKl(d) {
+    const t = _S2_TABLICI.find(x => (x.kodove ? x.kodove.includes(d.vid_kod) : true));
+    const fakti = new Map(_s2Fakti(d).map(x => [x.k, x]));
+    const kl = t ? _s2KlPoKoloni(d, t.koloni) : [];
+    for (const k of ['obekt.upi', 'obekt.identifikator']) if (fakti.has(k)) kl.push(k);
+    return [...new Set(kl)];
+}
+
+// Сверен = потвърдено е всичко, което екранът предлага за потвърждаване.
+//
+// Дотук се искаха ВСИЧКИ факти на документа. Но таблиците показват по 3–4
+// колони; наименование, издател, позовавания и участници седят само в
+// „Подробно“ и нямат бутон. Тоест сверен документ беше невъзможен: на 29.10.2026
+// обект с 35 прочетени документа и 93 потвърдени факта даде 0 сверени, разделите
+// 1.1–1.5 излязоха на точки, а броячът горе пишеше, че всичко е сверено.
 function _s2Sveren(d, potv) {
-    const fakti = _s2Fakti(d);
-    return fakti.length > 0 && fakti.every(x => potv[`${_s2Id(d)}::${x.k}`]);
+    const kl = _s2SverimiKl(d);
+    return kl.length > 0 && kl.every(k => potv[`${_s2Id(d)}::${k}`]);
 }
 
 function _dokVpishiSverenite(obekt, p, dokumenti, potv) {
@@ -624,10 +652,12 @@ const _S2_TABLICI = [
       koloni: [['стр.', '#str'], ['обект (апартамент, гараж, паркомясто) → собственици', '#razpr']] },
     { kodove: ['DEKLARACIA'], ime: 'Декларации за материали',
       koloni: [['материал/изделие', 'material'], ['производител', 'proizvoditel'], ['№', 'nomer'], ['дата', 'data']] },
+    // Наименованието е колона, а не само в „Подробно“: то казва КОЙ е документът
+    // и точно то влиза в изречението на Акт 15. (Операторът, 28.10.2026.)
     { kodove: ['STANOVISHTE', 'PRISAEDINYAVANE', 'ENERGIEN', 'IZMERVANE'], ime: 'Становища, договори с дружества, измервания',
-      koloni: [['вид', '#vid'], ['№', 'nomer'], ['дата', 'data'], ['издател', 'izdatel']] },
+      koloni: [['вид', '#vid'], ['наименование', 'naimenovanie'], ['№', 'nomer'], ['дата', 'data'], ['издател', 'izdatel']] },
     { kodove: null, ime: 'Протоколи, актове, разрешения и други',
-      koloni: [['вид', '#vid'], ['№', 'nomer'], ['дата', 'data']] },
+      koloni: [['вид', '#vid'], ['наименование', 'naimenovanie'], ['№', 'nomer'], ['дата', 'data']] },
 ];
 
 function _s2SverkaHtml(r, dokumenti, potv) {
@@ -661,15 +691,8 @@ function _s2SverkaHtml(r, dokumenti, potv) {
         return `<span title="${_s2esc(podskazka)}" onclick="s2Popravi('${encodeURIComponent(kl)}')"
                       style="cursor:pointer;background:${fon};border-radius:3px;padding:0 3px">${znak}${_s2esc(v ? v.stoynost : f.obj.stoynost)}</span>`;
     };
-    const redKl = (d, koloni) => {
-        const kl = [];
-        for (const [, pole] of koloni) {
-            const poleta = pole === '#razpr' ? [...fakti.get(_s2Id(d)).keys()].filter(k => /^r\d+\./.test(k))
-                         : Array.isArray(pole) ? pole : (String(pole).startsWith('#') ? [] : [pole]);
-            for (const k of poleta) if (fakti.get(_s2Id(d)).has(k)) kl.push(`${_s2Id(d)}::${k}`);
-        }
-        return kl;
-    };
+    // Същият списък, който „сверен ли е“ гледа — за да не се разминат.
+    const redKl = (d, koloni) => _s2KlPoKoloni(d, koloni).map(k => `${_s2Id(d)}::${k}`);
     const bKl = (kl, pitai, tekst) => `<button type="button" class="btn btn-ghost btn-sm"
         onclick="s2PotvardiMnogo('${encodeURIComponent(JSON.stringify(kl))}', ${pitai})">${tekst}</button>`;
 

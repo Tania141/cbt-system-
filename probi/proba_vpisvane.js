@@ -10,7 +10,9 @@ const s = kod();
 const F = new Function(
     "const _s2esc=x=>String(x??'');let _zapisi=[],_risuvani=0;\n"
     + 'const _s2Id = d => d.id || d.fajl;\n'
+    + (new RegExp('^const _S2_TABLICI = [\\s\\S]*?\\n\\];$', 'm').exec(s) || [''])[0] + '\n'
     + [grab(s, '_dokVpishi'), grab(s, '_dokVpisanRed'), grab(s, '_dokIme'),
+       grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'),
        grab(s, '_s2Sveren'), grab(s, '_dokVpishiSverenite'),
        grab(s, '_s2Fakti')].join('\n')
     + '\nconst renderDokumenti=()=>{_risuvani++};'
@@ -42,6 +44,15 @@ t('сверен е, щом всичките му факти са потвърд�
 
 const chastichno = { [`${DOK.fajl}::nomer`]: { stoynost: 'x' } };
 t('частично потвърденият НЕ е сверен', !F._s2Sveren(DOK, chastichno));
+
+// На 29.10.2026 обект с 35 прочетени документа и 93 потвърдени факта даде НУЛА
+// сверени: искаха се и факти, които нито една таблица не показва и нито един
+// бутон не чеква. Сверен значи „потвърдено е всичко, което екранът предлага“.
+const SKRITI = { ...DOK,
+    pozovavania: [{ opisanie: 'РС', nomer: '277', data: '02.11.2023', stranica: 1 }],
+    uchastnici: [{ rolya: 'възложител', ime: 'ЕЛЕКТРОХОЛД ЕАД', stranica: 1 }] };
+t('скритите в „Подробно“ факти не спират сверяването',
+  F._s2Sveren(SKRITI, potv), F._s2SverimiKl ? null : Object.keys(potv));
 
 // ── вписването ────────────────────────────────────────────────────────────
 const obekt = { pi: '68134.1006.2440' };
