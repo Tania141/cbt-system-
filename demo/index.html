@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Демонстрационен обект</title>
+<style>
+    :root { --fon:#faf9f7; --mastilo:#1c1a17; --sivo:#6b6560; --ramka:#ddd8d2;
+            --zeleno:#2e7d32; --cherveno:#b3261e; --zlato:#b08d57; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+        --fon:#171614; --mastilo:#ece9e4; --sivo:#a09a93; --ramka:#36332e; } }
+    body { margin:0; background:var(--fon); color:var(--mastilo);
+           font:16px/1.6 "Times New Roman", Georgia, serif; }
+    main { max-width:46rem; margin:0 auto; padding:2.5rem 16px 4rem; }
+    h1 { font-size:1.6rem; margin:0 0 .25rem; }
+    .pod { color:var(--sivo); margin:0 0 2rem; }
+    section { border-top:1px solid var(--ramka); padding-top:1.25rem; margin-top:1.75rem; }
+    h2 { font-size:1.1rem; margin:0 0 .5rem; }
+    ul { padding-left:1.1rem; } li { margin:.2rem 0; }
+    button { font:inherit; padding:.6rem 1.2rem; margin:.35rem .5rem .35rem 0;
+             border:1px solid var(--mastilo); background:transparent;
+             color:var(--mastilo); border-radius:3px; cursor:pointer; }
+    button.glaven { background:var(--mastilo); color:var(--fon); }
+    button:hover { border-color:var(--zlato); }
+    #kazva { margin-top:1rem; padding:.75rem 1rem; border-left:3px solid var(--ramka); }
+    #kazva.ok { border-color:var(--zeleno); } #kazva.losho { border-color:var(--cherveno); }
+    code { font-family:ui-monospace, Consolas, monospace; font-size:.9em; }
+</style>
+</head>
+<body>
+<main>
+    <h1>Демонстрационен обект</h1>
+    <p class="pod">Измислен строеж с измислени лица — за показване, без данни на истински възложители.</p>
+
+    <section>
+        <h2>Какво слага</h2>
+        <ul>
+            <li>един обект „ЖИЛИЩНА СГРАДА С ГАРАЖИ — ДЕМОНСТРАЦИОНЕН ОБЕКТ“;</li>
+            <li>единайсет прочетени документа с цитат и страница;</li>
+            <li>десет от тях сверени, <strong>един нарочно оставен да чака</strong> —
+                за да се види, че нечекнатото не влиза в акта;</li>
+            <li>собственост в регистъра: двама съсобственици по идеални части.</li>
+        </ul>
+        <p>Твоите обекти не се пипат. Демото се разпознава по името си и се маха с един бутон.</p>
+    </section>
+
+    <section>
+        <h2>Какво се вижда после</h2>
+        <p>В Акт 15 разделите се пълнят сами от сверените документи — например:</p>
+        <ul>
+            <li>Акт Образец 7 <strong>от 14.03.2025 до 11.09.2025 г.</strong> … — <strong>3 броя</strong></li>
+            <li>Скица от кадастралната карта, № 15-000001-01.03.2024</li>
+        </ul>
+    </section>
+
+    <section>
+        <button class="glaven" id="slozhi">Сложи демото</button>
+        <button id="mahni">Махни демото</button>
+        <div id="kazva">Нищо не е пипано.</div>
+        <p class="pod" style="margin-top:1rem">После отвори приложението и избери обекта
+            <code>ДЕМОНСТРАЦИЯ — жилищна сграда</code>.</p>
+    </section>
+</main>
+
+<script>
+// Демото живее в същия склад като обектите (`akt_v5`), затова ДОПИСВА, а не
+// презаписва: четат се днешните данни, маха се старото демо по неговия id и се
+// добавя новото. Чужд обект не се докосва.
+const KLYUCH = 'akt_v5';
+const kazva = (tekst, kak) => {
+    const e = document.getElementById('kazva');
+    e.textContent = tekst; e.className = kak || '';
+};
+
+function danni() {
+    try { return JSON.parse(localStorage.getItem(KLYUCH) || '{}'); }
+    catch (e) { return null; }
+}
+
+function zapishi(d) {
+    localStorage.setItem(KLYUCH, JSON.stringify(d));
+}
+
+function bezDemoto(d, idObekt, idKonsultant) {
+    d.projects = (d.projects || []).filter(p => p.id !== idObekt);
+    d.consultants = (d.consultants || []).filter(c => c.id !== idKonsultant);
+    if (d.currentProject && d.currentProject.id === idObekt) delete d.currentProject;
+    return d;
+}
+
+document.getElementById('slozhi').onclick = async () => {
+    try {
+        const r = await fetch('demo-obekt.json', { cache: 'no-store' });
+        if (!r.ok) throw new Error('файлът не се сваля: ' + r.status);
+        const demo = await r.json();
+        const d = danni();
+        if (!d) { kazva('Данните в браузъра не се четат — нищо не е пипано.', 'losho'); return; }
+        bezDemoto(d, demo.obekt.id, demo.konsultant.id);
+        (d.projects = d.projects || []).push(demo.obekt);
+        (d.consultants = d.consultants || []).push(demo.konsultant);
+        zapishi(d);
+        kazva(`Готово. Обектите ти са ${d.projects.length - 1}, плюс демото.`, 'ok');
+    } catch (e) {
+        kazva('Не стана: ' + e.message, 'losho');
+    }
+};
+
+document.getElementById('mahni').onclick = async () => {
+    try {
+        const r = await fetch('demo-obekt.json', { cache: 'no-store' });
+        const demo = r.ok ? await r.json() : { obekt: { id: 'demo-obekt' }, konsultant: { id: 9001 } };
+        const d = danni();
+        if (!d) { kazva('Данните в браузъра не се четат — нищо не е пипано.', 'losho'); return; }
+        const predi = (d.projects || []).length;
+        bezDemoto(d, demo.obekt.id, demo.konsultant.id);
+        zapishi(d);
+        kazva(predi === (d.projects || []).length
+            ? 'Демото го нямаше — нищо не е махнато.'
+            : 'Махнато. Твоите обекти са непокътнати.', 'ok');
+    } catch (e) {
+        kazva('Не стана: ' + e.message, 'losho');
+    }
+};
+</script>
+</body>
+</html>

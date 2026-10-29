@@ -1,0 +1,653 @@
+{
+ "obekt": {
+  "id": "demo-obekt",
+  "pi": "00000.0000.0001",
+  "name": "ДЕМОНСТРАЦИЯ — жилищна сграда",
+  "nik": "Демо",
+  "stroej": "ЖИЛИЩНА СГРАДА С ГАРАЖИ — ДЕМОНСТРАЦИОНЕН ОБЕКТ",
+  "address": "гр. Демонстрация, УПИ I-1, кв. 1",
+  "consultant": {
+   "id": 9001
+  },
+  "vid": "сграда",
+  "kategoria": 4,
+  "kategoria_citat": "четвърта категория, съгласно чл. 137, ал. 1, т. 4 ЗУТ",
+  "zk": {
+   "number": "9001",
+   "date": "18.06.2024"
+  },
+  "docDates": {
+   "protokol2": "20.06.2024",
+   "obrazec3": "25.06.2024",
+   "akt14": "02.10.2025"
+  },
+  "sobstvenost": {
+   "lica": [
+    {
+     "id": "l1",
+     "ime": "Иван Петров Иванов",
+     "vid": "fiz"
+    },
+    {
+     "id": "l2",
+     "ime": "Мария Петрова Иванова",
+     "vid": "fiz"
+    }
+   ],
+   "obekti": [
+    {
+     "id": "o1",
+     "vid": "земя",
+     "identifikator": "00000.0000.0001",
+     "ploasht": "640"
+    }
+   ],
+   "sabitia": [
+    {
+     "id": "s1",
+     "obekt": "o1",
+     "data": "18.02.2024",
+     "vid": "покупко-продажба",
+     "ot": null,
+     "na": "l1",
+     "dyal": "1/2",
+     "dokument": "Нотариален акт № 42"
+    },
+    {
+     "id": "s2",
+     "obekt": "o1",
+     "data": "18.02.2024",
+     "vid": "покупко-продажба",
+     "ot": null,
+     "na": "l2",
+     "dyal": "1/2",
+     "dokument": "Нотариален акт № 42"
+    }
+   ]
+  },
+  "sloy2": {
+   "od": {
+    "dokumenti": [
+     {
+      "id": "demo-4.pdf",
+      "fajl": "demo-4.pdf",
+      "vid": "Нотариален акт",
+      "vid_kod": "NOT_AKT",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Документ за собственост",
+      "naimenovanie": {
+       "stoynost": "Нотариален акт за покупко-продажба на недвижим имот",
+       "citat": "Нотариален акт за покупко-продажба на недвижим имот",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "42",
+       "citat": "42",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "18.02.2024",
+       "citat": "18.02.2024",
+       "stranica": 1
+      },
+      "obekt": {
+       "identifikator": {
+        "stoynost": "00000.0000.0001",
+        "citat": "00000.0000.0001",
+        "stranica": 1
+       }
+      },
+      "razpredelenie": [
+       {
+        "obekti": {
+         "stoynost": "Поземлен имот 00000.0000.0001",
+         "citat": "Поземлен имот 00000.0000.0001",
+         "stranica": 1
+        },
+        "sobstvenici": {
+         "stoynost": "Иван Петров Иванов; Мария Петрова Иванова",
+         "citat": "Иван Петров Иванов; Мария Петрова Иванова",
+         "stranica": 1
+        }
+       }
+      ]
+     },
+     {
+      "id": "demo-5.pdf",
+      "fajl": "demo-5.pdf",
+      "vid": "Разрешение за строеж",
+      "vid_kod": "RS",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Разрешение за строеж",
+      "naimenovanie": {
+       "stoynost": "Разрешение за строеж",
+       "citat": "Разрешение за строеж",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "118",
+       "citat": "118",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "05.06.2024",
+       "citat": "05.06.2024",
+       "stranica": 1
+      },
+      "izdatel": {
+       "stoynost": "Главен архитект на Община Демонстрация",
+       "citat": "Главен архитект на Община Демонстрация",
+       "stranica": 1
+      }
+     },
+     {
+      "id": "demo-6.pdf",
+      "fajl": "demo-6.pdf",
+      "vid": "Протокол обр. 2",
+      "vid_kod": "PROTOKOL2",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Протокол обр. 2 (откриване на площадката)",
+      "naimenovanie": {
+       "stoynost": "Протокол за откриване на строителна площадка и определяне на строителна линия и ниво",
+       "citat": "Протокол за откриване на строителна площадка и определяне на строителна линия и ниво",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "1",
+       "citat": "1",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "20.06.2024",
+       "citat": "20.06.2024",
+       "stranica": 1
+      }
+     },
+     {
+      "id": "demo-1.pdf",
+      "fajl": "demo-1.pdf",
+      "vid": "Приложение № 7 към чл. 7, ал. 3, т. 7 (Образец 7)",
+      "vid_kod": "AKT7",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Акт обр. 7",
+      "naimenovanie": {
+       "stoynost": "Акт обр. 7 за приемане на извършените СМР по нива и елементи",
+       "citat": "Акт обр. 7 за приемане на извършените СМР по нива и елементи",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "14.03.2025",
+       "citat": "Днес, 14.03.2025 г., се състави настоящият акт",
+       "stranica": 1
+      },
+      "sadarzhanie": {
+       "stoynost": "ниво кота ±0,00 и плоча над сутерен",
+       "citat": "ниво кота ±0,00 и плоча над сутерен",
+       "stranica": 1
+      },
+      "obekt": {
+       "identifikator": {
+        "stoynost": "00000.0000.0001",
+        "citat": "00000.0000.0001",
+        "stranica": 1
+       }
+      }
+     },
+     {
+      "id": "demo-2.pdf",
+      "fajl": "demo-2.pdf",
+      "vid": "Приложение № 7 към чл. 7, ал. 3, т. 7 (Образец 7)",
+      "vid_kod": "AKT7",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Акт обр. 7",
+      "naimenovanie": {
+       "stoynost": "Акт обр. 7 за приемане на извършените СМР по нива и елементи",
+       "citat": "Акт обр. 7 за приемане на извършените СМР по нива и елементи",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "28.05.2025",
+       "citat": "Днес, 28.05.2025 г., се състави настоящият акт",
+       "stranica": 2
+      },
+      "sadarzhanie": {
+       "stoynost": "ниво кота ±0,00 и плоча над сутерен",
+       "citat": "ниво кота ±0,00 и плоча над сутерен",
+       "stranica": 1
+      },
+      "obekt": {
+       "identifikator": {
+        "stoynost": "00000.0000.0001",
+        "citat": "00000.0000.0001",
+        "stranica": 1
+       }
+      }
+     },
+     {
+      "id": "demo-3.pdf",
+      "fajl": "demo-3.pdf",
+      "vid": "Приложение № 7 към чл. 7, ал. 3, т. 7 (Образец 7)",
+      "vid_kod": "AKT7",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Акт обр. 7",
+      "naimenovanie": {
+       "stoynost": "Акт обр. 7 за приемане на извършените СМР по нива и елементи",
+       "citat": "Акт обр. 7 за приемане на извършените СМР по нива и елементи",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "11.09.2025",
+       "citat": "Днес, 11.09.2025 г., се състави настоящият акт",
+       "stranica": 3
+      },
+      "sadarzhanie": {
+       "stoynost": "ниво кота ±0,00 и плоча над сутерен",
+       "citat": "ниво кота ±0,00 и плоча над сутерен",
+       "stranica": 1
+      },
+      "obekt": {
+       "identifikator": {
+        "stoynost": "00000.0000.0001",
+        "citat": "00000.0000.0001",
+        "stranica": 1
+       }
+      }
+     },
+     {
+      "id": "demo-7.pdf",
+      "fajl": "demo-7.pdf",
+      "vid": "Приложение № 14 към чл. 7, ал. 3, т. 14 (Образец 14)",
+      "vid_kod": "AKT14",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Акт обр. 14",
+      "naimenovanie": {
+       "stoynost": "Акт обр. 14 за приемане на конструкцията",
+       "citat": "Акт обр. 14 за приемане на конструкцията",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "02.10.2025",
+       "citat": "02.10.2025",
+       "stranica": 1
+      }
+     },
+     {
+      "id": "demo-8.pdf",
+      "fajl": "demo-8.pdf",
+      "vid": "Скица",
+      "vid_kod": "SKICA",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Скица на поземления имот",
+      "naimenovanie": {
+       "stoynost": "Скица от кадастралната карта",
+       "citat": "Скица от кадастралната карта",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "15-000001-01.03.2024",
+       "citat": "15-000001-01.03.2024",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "01.03.2024",
+       "citat": "01.03.2024",
+       "stranica": 1
+      },
+      "izdatel": {
+       "stoynost": "СГКК — гр. Демонстрация",
+       "citat": "СГКК — гр. Демонстрация",
+       "stranica": 1
+      },
+      "obekt": {
+       "identifikator": {
+        "stoynost": "00000.0000.0001",
+        "citat": "00000.0000.0001",
+        "stranica": 1
+       }
+      }
+     },
+     {
+      "id": "demo-9.pdf",
+      "fajl": "demo-9.pdf",
+      "vid": "Договор за присъединяване",
+      "vid_kod": "PRISAEDINYAVANE",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Договор за присъединяване към електроразпределителната мрежа",
+      "naimenovanie": {
+       "stoynost": "Договор за присъединяване към електроразпределителната мрежа",
+       "citat": "Договор за присъединяване към електроразпределителната мрежа",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "ДПЕРМ 1200-000-001",
+       "citat": "ДПЕРМ 1200-000-001",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "12.07.2024",
+       "citat": "12.07.2024",
+       "stranica": 1
+      },
+      "izdatel": {
+       "stoynost": "„Електроразпределителни мрежи Запад“ ЕАД",
+       "citat": "„Електроразпределителни мрежи Запад“ ЕАД",
+       "stranica": 1
+      }
+     },
+     {
+      "id": "demo-10.pdf",
+      "fajl": "demo-10.pdf",
+      "vid": "Декларация за експлоатационни показатели",
+      "vid_kod": "DEKLARACIA",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Декларации за експлоатационни показатели",
+      "naimenovanie": {
+       "stoynost": "Декларация за експлоатационни показатели — бетон C25/30",
+       "citat": "Декларация за експлоатационни показатели — бетон C25/30",
+       "stranica": 1
+      },
+      "material": {
+       "stoynost": "Бетон C25/30",
+       "citat": "Бетон C25/30",
+       "stranica": 1
+      },
+      "proizvoditel": {
+       "stoynost": "„Бетон Демо“ ЕООД",
+       "citat": "„Бетон Демо“ ЕООД",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "7",
+       "citat": "7",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "10.03.2025",
+       "citat": "10.03.2025",
+       "stranica": 1
+      }
+     },
+     {
+      "id": "demo-11.pdf",
+      "fajl": "demo-11.pdf",
+      "vid": "Протокол от измерване",
+      "vid_kod": "IZMERVANE",
+      "stranica_ot": 1,
+      "stranica_do": 1,
+      "chetec": "Claude",
+      "sken": false,
+      "cheklist_red": "Протокол за измерване на заземителната уредба",
+      "naimenovanie": {
+       "stoynost": "Протокол от измерване на заземителна уредба",
+       "citat": "Протокол от измерване на заземителна уредба",
+       "stranica": 1
+      },
+      "nomer": {
+       "stoynost": "33",
+       "citat": "33",
+       "stranica": 1
+      },
+      "data": {
+       "stoynost": "15.10.2025",
+       "citat": "15.10.2025",
+       "stranica": 1
+      }
+     }
+    ],
+    "potvardeni": {
+     "demo-4.pdf::r0.obekti": {
+      "stoynost": "",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-4.pdf::r0.sobstvenici": {
+      "stoynost": "",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-4.pdf::obekt.identifikator": {
+      "stoynost": "00000.0000.0001",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-5.pdf::naimenovanie": {
+      "stoynost": "Разрешение за строеж",
+      "prochetena": "Разрешение за строеж",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-5.pdf::nomer": {
+      "stoynost": "118",
+      "prochetena": "118",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-5.pdf::data": {
+      "stoynost": "05.06.2024",
+      "prochetena": "05.06.2024",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-6.pdf::naimenovanie": {
+      "stoynost": "Протокол за откриване на строителна площадка и определяне на строителна линия и ниво",
+      "prochetena": "Протокол за откриване на строителна площадка и определяне на строителна линия и ниво",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-6.pdf::nomer": {
+      "stoynost": "1",
+      "prochetena": "1",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-6.pdf::data": {
+      "stoynost": "20.06.2024",
+      "prochetena": "20.06.2024",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-1.pdf::data": {
+      "stoynost": "14.03.2025",
+      "prochetena": "14.03.2025",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-1.pdf::sadarzhanie": {
+      "stoynost": "ниво кота ±0,00 и плоча над сутерен",
+      "prochetena": "ниво кота ±0,00 и плоча над сутерен",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-1.pdf::obekt.identifikator": {
+      "stoynost": "00000.0000.0001",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-2.pdf::data": {
+      "stoynost": "28.05.2025",
+      "prochetena": "28.05.2025",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-2.pdf::sadarzhanie": {
+      "stoynost": "ниво кота ±0,00 и плоча над сутерен",
+      "prochetena": "ниво кота ±0,00 и плоча над сутерен",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-2.pdf::obekt.identifikator": {
+      "stoynost": "00000.0000.0001",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-3.pdf::data": {
+      "stoynost": "11.09.2025",
+      "prochetena": "11.09.2025",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-3.pdf::sadarzhanie": {
+      "stoynost": "ниво кота ±0,00 и плоча над сутерен",
+      "prochetena": "ниво кота ±0,00 и плоча над сутерен",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-3.pdf::obekt.identifikator": {
+      "stoynost": "00000.0000.0001",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-7.pdf::naimenovanie": {
+      "stoynost": "Акт обр. 14 за приемане на конструкцията",
+      "prochetena": "Акт обр. 14 за приемане на конструкцията",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-7.pdf::data": {
+      "stoynost": "02.10.2025",
+      "prochetena": "02.10.2025",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-8.pdf::naimenovanie": {
+      "stoynost": "Скица от кадастралната карта",
+      "prochetena": "Скица от кадастралната карта",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-8.pdf::nomer": {
+      "stoynost": "15-000001-01.03.2024",
+      "prochetena": "15-000001-01.03.2024",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-8.pdf::data": {
+      "stoynost": "01.03.2024",
+      "prochetena": "01.03.2024",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-8.pdf::obekt.identifikator": {
+      "stoynost": "00000.0000.0001",
+      "prochetena": "",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-9.pdf::naimenovanie": {
+      "stoynost": "Договор за присъединяване към електроразпределителната мрежа",
+      "prochetena": "Договор за присъединяване към електроразпределителната мрежа",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-9.pdf::nomer": {
+      "stoynost": "ДПЕРМ 1200-000-001",
+      "prochetena": "ДПЕРМ 1200-000-001",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-9.pdf::data": {
+      "stoynost": "12.07.2024",
+      "prochetena": "12.07.2024",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-9.pdf::izdatel": {
+      "stoynost": "„Електроразпределителни мрежи Запад“ ЕАД",
+      "prochetena": "„Електроразпределителни мрежи Запад“ ЕАД",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-10.pdf::material": {
+      "stoynost": "Бетон C25/30",
+      "prochetena": "Бетон C25/30",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-10.pdf::proizvoditel": {
+      "stoynost": "„Бетон Демо“ ЕООД",
+      "prochetena": "„Бетон Демо“ ЕООД",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-10.pdf::nomer": {
+      "stoynost": "7",
+      "prochetena": "7",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     },
+     "demo-10.pdf::data": {
+      "stoynost": "10.03.2025",
+      "prochetena": "10.03.2025",
+      "koy": "Демонстрация",
+      "koga": "29.10.2026"
+     }
+    }
+   }
+  },
+  "dokumenti": [],
+  "ostatak": {}
+ },
+ "konsultant": {
+  "id": 9001,
+  "name": "„Надзор Демо“ ЕООД",
+  "eik": "000000001",
+  "type": "ЮЛ",
+  "address": "гр. Демонстрация, ул. Първа 1",
+  "manager": "инж. Демонстрация Демонстрова",
+  "licenseNumber": "РК-0000",
+  "licenseValidTo": "31.12.2030",
+  "employees": [
+   {
+    "name": "арх. Първан Първанов",
+    "part": "Архитектура",
+    "reg": "00001"
+   },
+   {
+    "name": "инж. Втора Вторанова",
+    "part": "Конструктивна",
+    "reg": "00002"
+   },
+   {
+    "name": "инж. Трети Третев",
+    "part": "ВиК",
+    "reg": "00003"
+   }
+  ]
+ }
+}
