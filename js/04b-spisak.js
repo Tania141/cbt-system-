@@ -26,12 +26,20 @@ function _dokKlyuchIme(x) {
     return String(x || '').trim().toLowerCase().split(/\s+—\s+|,\s*№/)[0].trim();
 }
 
+// Номерът често носи и годината или датата след наклонена черта: „967 /2023 г.“
+// и „967“ са ЕДИН номер. Без това в Акт 15 от 29.10.2026 договорът за
+// присъединяване излезе ДВА пъти — веднъж както го е прочел четецът, веднъж
+// както е вписан на ръка.
 function _dokKlyuchNomer(x) {
-    return String(x || '').toLowerCase().replace(/^№\s*/, '').replace(/[^0-9a-zа-я]/g, '');
+    return String(x || '').toLowerCase().replace(/^№\s*/, '').split('/')[0]
+        .replace(/[^0-9a-zа-я]/g, '');
 }
 
+// Номерът е до „от“ или до запетая — не до първия интервал. „№ ДПЕРМ
+// 1205463907 от 13.06.2024“ е номер „ДПЕРМ 1205463907“, а не „ДПЕРМ“.
 function _dokNomerOtTekst(tekst) {
-    return String((String(tekst || '').match(/№\s*([^\s,;]+)/) || [])[1] || '');
+    const m = String(tekst || '').match(/№\s*(.+?)(?:\s+от\s|[,;]|$)/);
+    return m ? m[1].trim() : '';
 }
 
 // Един ред на тетрадката.

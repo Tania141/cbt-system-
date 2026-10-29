@@ -21,7 +21,7 @@ const F = new Function(
        grab(s, 'dokIzrechenie')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
-    + '\nreturn {dokTetradka, dokVliza, dokIzrechenie, _dokKlyuchIme, _dokKlyuchNomer};')();
+    + '\nreturn {dokTetradka, dokVliza, dokIzrechenie, _dokKlyuchIme, _dokKlyuchNomer, _dokNomerOtTekst};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -63,6 +63,22 @@ t('прочетеното остава отгоре', td[0].otkade === 'проч
 t('с наименованието, не с името на реда',
   td[0].ime === 'Договор за присъединяване към ВиК', td[0].ime);
 
+// От истински Акт 15, 29.10.2026: договорът за присъединяване излезе ДВА пъти в
+// раздел 1.5 — веднъж както го е прочел четецът („№ 967 /2023 г.“), веднъж
+// както е вписан на ръка („№ 967“). Номерът носи и годината след чертата.
+const sGodina = stroezh([
+    prochetn('d1', 'договор за присъединяване', '19.12.2023',
+        { nomer: fakt('967 /2023 г.'),
+          naimenovanie: fakt('Договор за присъединяване към ВиК системи') }),
+]);
+const sRaka = { dokumenti: [{ ime: 'Договор за присъединяване', nomer: '№ 967 от 19.12.2023 г.' }] };
+t('номер с година и без година са един номер',
+  F.dokTetradka(sRaka, sGodina).length === 1,
+  F.dokTetradka(sRaka, sGodina).map(r => [r.ime, r.nomer]));
+t('„М-2955/19.10.26г“ се познава по частта преди чертата',
+  F._dokKlyuchNomer('М-2955/19.10.26г') === F._dokKlyuchNomer('№ М-2955'),
+  [F._dokKlyuchNomer('М-2955/19.10.26г'), F._dokKlyuchNomer('№ М-2955')]);
+
 // ── на реда пише откъде е ───────────────────────────────────────────────────
 const smesen = F.dokTetradka(
     { dokumenti: [{ ime: 'Одобрени инвестиционни проекти', nomer: 'от 12.03.2026 г.' }] },
@@ -76,6 +92,15 @@ t('вписаното на ръка не чака сверяване',
   smesen.filter(r => r.otkade !== 'прочетен').every(r => r.sveren), smesen);
 t('датата се вади и от свободния текст на вписаното',
   smesen[1].data === '12.03.2026', smesen[1]);
+
+// „№ ДПЕРМ 1205463907 от 13.06.2024“ излезе в акта като „№ ДПЕРМ“ — номерът се
+// режеше на първия интервал.
+const dperm = F.dokTetradka(
+    { dokumenti: [{ ime: 'Становище за присъединяване',
+                    nomer: '№ ДПЕРМ 1205463907 от 13.06.2024' }] }, {});
+t('номерът е до „от“, не до първия интервал',
+  dperm[0].nomer === 'ДПЕРМ 1205463907', dperm[0].nomer);
+t('и датата му пак се вади', dperm[0].data === '13.06.2024', dperm[0].data);
 
 // ── несвереното не влиза ────────────────────────────────────────────────────
 const chaka = stroezh([prochetn('x', 'акт обр. 5', '15.03.2022')], {});
