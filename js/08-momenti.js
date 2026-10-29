@@ -2189,12 +2189,26 @@ function _a15PoIzraz(p, st, pravilo) {
         .map(dokIzrechenie);
 }
 
+// ОТМЕТКАТА НЕ Е ВТОРА ХАРТИЯ (операторът, 29.10.2026).
+//
+// В истински Акт 15 излезе „Акт Образец 14 от 13.05.2025 г. … — 2 броя“ при
+// ЕДИН акт обр. 14. Вторият ред беше отметката „Акт обр. 14“ в чеклиста — тя
+// казва „такъв документ има“, а прочетеният е самият документ.
+//
+// Затова: в рамките на един вид, ако има редове с дата или номер, редовете без
+// нито едно от двете отпадат. Бетоновият дневник (`bezData`) не страда — там
+// никой ред няма дата и условието не се задейства.
+function _a15BezPovtor(spisak) {
+    const sami = spisak.filter(r => _a15DataNa(r) || String(r.nomer || '').trim());
+    return sami.length ? sami : spisak;
+}
+
 // 1.3 — актовете и протоколите по време на строителството.
 function _a15AktoveProtokoli(p, st) {
     const svereni = _a15Svereni(p, st);
     const redove = [];
     for (const v of _A15_VIDOVE) {
-        const moi = svereni.filter(r => _a15Negov(r, v));
+        const moi = _a15BezPovtor(svereni.filter(r => _a15Negov(r, v)));
         if (!moi.length) continue;
         if (!v.poChasti) { redove.push(_a15Red(v.ime, v.opis, moi, '', v.bezData)); continue; }
         // По части: всяка част на свой ред, с диапазон и брой.

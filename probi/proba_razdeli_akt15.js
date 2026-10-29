@@ -33,7 +33,7 @@ const F = new Function(
               grab(s, '_dokRed'), grab(s, '_dokIme'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
               grab(s, 'dokIzrechenie'), grab(s, '_a15Chast'),
               grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'), grab(s, '_a15Sortirai'),
-              grab(s, '_a15Red'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
+              grab(s, '_a15Red'), grab(s, '_a15BezPovtor'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
               grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
@@ -182,6 +182,29 @@ t('а самостоятелното СКО минава', F._a15DogovoriMrezhi(
 const dvojno = stroezh([dok('нотариален акт', '29.11.2022', { nomer: fakt('№ 23') })]);
 t('второ № не се слага', /№ 23/.test(F._a15Sobstvenost({}, dvojno)[0])
   && !/№ №/.test(F._a15Sobstvenost({}, dvojno)[0]), F._a15Sobstvenost({}, dvojno)[0]);
+
+// ── ОТМЕТКАТА НЕ Е ВТОРА ХАРТИЯ ─────────────────────────────────────────────
+// От истински Акт 15, 29.10.2026: „Акт Образец 14 от 13.05.2025 г. … — 2 броя“
+// при ЕДИН прочетен акт обр. 14. Вторият ред беше отметката в чеклиста.
+const sOtmetka = {
+    ...stroezh([dok('приложение № 14 (образец 14)', '13.05.2025', { kod: 'AKT14' })]),
+    nadzor_otmetnati: ['Акт обр. 14'],
+};
+const ro = F._a15AktoveProtokoli({}, sOtmetka);
+t('отметката не прави втора хартия', ro.length === 1 && !/броя/.test(ro[0]), ro);
+t('и датата на прочетеното остава', /от 13\.05\.2025 г\./.test(ro[0]), ro[0]);
+
+// Но когато документът НЕ е прочетен, отметката е единственото, което имаме.
+const samoOtmetka = { nadzor_otmetnati: ['Акт обр. 14'] };
+t('без прочетен акт отметката влиза сама',
+  F._a15AktoveProtokoli({}, samoOtmetka).length === 1,
+  F._a15AktoveProtokoli({}, samoOtmetka));
+
+// Бетоновият дневник няма дата по устройство — не бива да изчезне.
+const beton = { nadzor_otmetnati: ['Бетонов дневник'] };
+t('бетоновият дневник не пада от правилото',
+  F._a15AktoveProtokoli({}, beton).join('') === 'Бетонов дневник',
+  F._a15AktoveProtokoli({}, beton));
 
 // ── КОДЪТ БИЕ ДУМИТЕ ────────────────────────────────────────────────────────
 // Операторът, 29.10.2026: видът се казва веднъж, при четенето, и се потвърждава.
