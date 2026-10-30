@@ -508,13 +508,7 @@ function _sloy2Html(r, dokumenti, potvardeni) {
               съгласувания“ горе; запази и натисни „Провери — за Акт 15 / ОД“.</p>`;
     }
     const c = r.cheklist;
-    if (c && !c.greshka) {
-        const lipsvat = (c.redove || []).filter(x => x.sastoyanie === 'не е доказано');
-        if (lipsvat.length) {
-            h += zagl(`Не е намерено сред прочетените — ${lipsvat.length} от ${c.iziskvani}`);
-            h += lipsvat.map(x => `<div style="font-size:13px;padding:1px 0">⏳ ${_s2esc(x.dokument)}</div>`).join('');
-        }
-    }
+    if (c && !c.greshka) h += _cheklistPoOsiHtml(c);
     if ((r.bez_red || []).length) {
         h += zagl('Прочетени, без ред в чеклиста');
         h += `<div style="font-size:13px">${r.bez_red.map(_s2esc).join(' · ')}</div>`;
@@ -659,6 +653,69 @@ const _S2_TABLICI = [
     { kodove: null, ime: 'Протоколи, актове, разрешения и други',
       koloni: [['вид', '#vid'], ['наименование', 'naimenovanie'], ['№', 'nomer'], ['дата', 'data']] },
 ];
+
+// ЧЕКЛИСТЪТ ПО ТРИТЕ ОСИ (АТ, 30.10.2026).
+//
+// Дотук тук се показваше ЕДИН списък — „Не е намерено сред прочетените“ — и в
+// него влизаше само състоянието „не е доказано“. Всичко друго беше невидимо:
+// редовете, отбелязани „не се отнася“, просто ги нямаше на екрана.
+//
+// Колко струва това, се видя на истински линеен обект: липсващ акт обр. 7 за
+// фундамента на БКТП изглеждаше точно като липсващ акт обр. 14, който наистина
+// не се отнася. Едното е пропуск, другото е вярно.
+//
+// Сега трите се виждат поотделно и всяко си казва ЗАЩО е такова.
+const _CHEKLIST_GRUPI = [
+    { ime: 'Липсва', znak: '⏳', cvyat: 'var(--orange, #d97706)',
+      e: o => o.prilozhimost === 'изисква се' && o.nalichie === 'липсва',
+      pod: 'изисква се, но не е намерено' },
+    { ime: 'Частично намерено', znak: '◑', cvyat: 'var(--orange, #d97706)',
+      e: o => o.nalichie === 'частично намерено',
+      pod: 'документът го има, но не доказва онова, което се иска' },
+    { ime: 'Условно приложимо', znak: '❔', cvyat: 'var(--muted)',
+      e: o => o.prilozhimost === 'условно приложимо',
+      pod: 'става задължително, ако настъпи условие — още не е нито „трябва“, нито „не трябва“' },
+    { ime: 'Не е приложимо', znak: '—', cvyat: 'var(--muted)',
+      e: o => o.prilozhimost === 'не е приложимо',
+      pod: 'не се отнася за този строеж' },
+];
+
+function _cheklistOs(x) {
+    // Стар отговор от сървъра още носи само едното състояние.
+    if (x.osi) return x.osi;
+    const s = x.sastoyanie;
+    if (s === 'не се отнася') return { prilozhimost: 'не е приложимо', nalichie: 'не е проверено', zashto: 'оператор' };
+    if (s === 'не се изисква') return { prilozhimost: 'не е приложимо', nalichie: 'не е проверено', zashto: 'условие' };
+    if (s === 'за преценка') return { prilozhimost: 'условно приложимо', nalichie: 'не е проверено', zashto: '' };
+    if (s === 'налице') return { prilozhimost: 'изисква се', nalichie: 'намерено', zashto: '' };
+    return { prilozhimost: 'изисква се', nalichie: x.lipsva_nomer ? 'частично намерено' : 'липсва', zashto: '' };
+}
+
+const _CHEKLIST_ZASHTO = {
+    'условие': 'по признаците на строежа',
+    'оператор': 'ти си го отбелязала',
+    'група': 'доказано от друг ред в групата',
+};
+
+function _cheklistPoOsiHtml(c) {
+    const redove = (c.redove || []).map(x => ({ ...x, _os: _cheklistOs(x) }));
+    let h = '';
+    for (const g of _CHEKLIST_GRUPI) {
+        const moi = redove.filter(x => g.e(x._os));
+        if (!moi.length) continue;
+        h += `<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;
+                 letter-spacing:1px;margin:14px 0 2px">${g.ime} — ${moi.length}${
+                 g.ime === 'Липсва' ? ` от ${c.iziskvani}` : ''}</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${g.pod}</div>`;
+        h += moi.map(x => {
+            const zashto = _CHEKLIST_ZASHTO[x._os.zashto];
+            return `<div style="font-size:13px;padding:1px 0">
+                <span style="color:${g.cvyat}">${g.znak}</span> ${_s2esc(x.dokument)}${
+                zashto ? ` <span style="color:var(--muted)">— ${zashto}</span>` : ''}</div>`;
+        }).join('');
+    }
+    return h;
+}
 
 function _s2SverkaHtml(r, dokumenti, potv) {
     if (!dokumenti.length) return '';
