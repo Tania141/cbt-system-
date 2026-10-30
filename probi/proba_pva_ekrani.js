@@ -282,7 +282,8 @@ const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
   vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
-     '../js/04b-spisak.js', '../js/07-sobstvenost.js', '../js/12b-kandidati.js',
+     '../js/04b-spisak.js', '../js/04c-sabitia.js',
+     '../js/07-sobstvenost.js', '../js/12b-kandidati.js',
      '../js/12c-naucheno.js'].includes(s)),
   vklyucheni);
 t('всеки включен файл съществува',

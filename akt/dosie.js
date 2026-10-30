@@ -51,8 +51,53 @@ function dosieRisuvai() {
     if (!z) return;
     document.getElementById('dosie-telo').innerHTML =
         dosieTarseneHtml(z)
+        + dosieIstoriyaHtml(z)
         + dosieSpisakHtml(z)
         + dosieKandidatiHtml();
+}
+
+// ── Историята на строежа ─────────────────────────────────────────────────────
+//
+// Стъпка 2: моментът спря да е папка и стана СЪБИТИЕ — нещо, което се е
+// случило на дата, с опора и с приемане. Тук то се чете като история, отгоре
+// надолу, а нарушеният ред се вижда веднага.
+//
+// Трите конфликта, които блокът хваща, бяха намерени на ръка на 30.10.2026 в
+// завършен обект: акт обр. 7 ден преди приемането на земната основа; акт
+// обр. 12 месец преди откриването на площадката; доклад преди акта.
+
+function dosieIstoriyaHtml(z) {
+    if (typeof sabIstoria !== 'function') return '';
+    const istoria = sabIstoria(z.p, z.st);
+    if (!istoria.length) return '';
+    const konflikti = sabKonflikti(istoria);
+    const spornoto = new Set(konflikti.map(k => k.kysno.kod + '·' + k.kysno.chast));
+
+    const red = s => {
+        const sporno = spornoto.has(s.kod + '·' + s.chast);
+        const koga = s.data
+            ? (s.do ? `${s.data} – ${s.do}` : s.data)
+            : '<span class="tiho">без дата</span>';
+        return `<div class="istoria-red${sporno ? ' sporno' : ''}">
+            <div class="istoria-koga">${koga}</div>
+            <div class="istoria-kakvo">
+                ${sporno ? '⚠️ ' : s.priemane === 'потвърдено' ? '✔ ' : '· '}${_e(s.ime)}
+                <span class="tiho">${s.broj > 1 ? ` — ${s.broj} документа` : ''}${
+                    s.priemane !== 'потвърдено' ? ' · чака сверяване' : ''}</span>
+            </div></div>`;
+    };
+
+    return `
+    <div class="kutiya-razdel">
+        <div class="nadpis">Историята на строежа</div>
+        ${konflikti.length ? `<div class="greshka-kutiya">
+            <strong>${konflikti.length} ${konflikti.length === 1 ? 'нарушен ред' : 'нарушени реда'}</strong>
+            ${konflikti.map(k => `<div class="tiho">⚠️ ${_e(k.tekst)}</div>`).join('')}
+        </div>` : `<p class="tiho">Редът на събитията е наред.</p>`}
+        ${istoria.map(red).join('')}
+        <p class="tiho">Събитието е какво се е случило; документите под него са
+           опорите му. Прието е, когато всичките му опори са сверени.</p>
+    </div>`;
 }
 
 // ── Търсенето ────────────────────────────────────────────────────────────────
