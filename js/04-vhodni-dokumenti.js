@@ -49,24 +49,32 @@ function vpishiLipsvasht(ime64) {
 // чекваш фактите, после „Впиши“, после „Запази“. Сега документът, чиито
 // факти са сверени и който доказва ред от чеклиста, влиза сам — в обекта, не
 // само в полето на екрана.
-function _dokVpishi(p, ime, nomer, cheklistRed) {
+// `ot` е КОЙ прочетен документ е вписал реда. Без него два документа, които
+// доказват един и същ ред от чеклиста, се биеха за него: всеки го
+// преименуваше на своето наименование, всяко преименуване се броеше за
+// промяна, промяната пускаше ново сравняване — и екранът мигаше, трупайки
+// „2 сверени документа влязоха в изходните данни“ без край. (03.11.2026)
+function _dokVpishi(p, ime, nomer, cheklistRed, ot) {
     const k = x => String(x || '').trim().toLowerCase();
     if (!k(ime)) return false;
     const spisak = (p.dokumenti = p.dokumenti || []);
-    // Намира се по две неща: по самото име, и по реда, който доказва. Второто
-    // е заради старите записи — до 27.10.2026 тук се вписваше ИМЕТО НА РЕДА, а
-    // не наименованието на документа. Без него същият документ влизаше втори
-    // път и описът го показваше двойно.
-    let red = spisak.find(d => k(d.ime) === k(ime));
+    // Намира се по три неща, в този ред: по СВОЯ запис, по самото име, и по
+    // реда, който доказва. Третото е заради старите записи — до 27.10.2026
+    // тук се вписваше ИМЕТО НА РЕДА, а не наименованието на документа.
+    let red = ot ? spisak.find(d => d.ot === ot) : null;
+    if (!red) red = spisak.find(d => k(d.ime) === k(ime) && (!d.ot || !ot || d.ot === ot));
+    // По реда се връзва САМО запис, който още не е ничий — иначе чуждият ред
+    // се отнема и започва пинг-понг.
     if (!red && k(cheklistRed))
-        red = spisak.find(d => k(d.red || '') === k(cheklistRed)
-                            || k(d.ime) === k(cheklistRed));
+        red = spisak.find(d => !d.ot && (k(d.red || '') === k(cheklistRed)
+                                      || k(d.ime) === k(cheklistRed)));
     if (!red) {
         spisak.push({ ime: String(ime).trim(), nomer: String(nomer || '').trim(),
-                      red: String(cheklistRed || '').trim() });
+                      red: String(cheklistRed || '').trim(), ...(ot ? { ot } : {}) });
         return true;
     }
     let pipnato = false;
+    if (ot && !red.ot) { red.ot = ot; pipnato = true; }
     // Наименованието бие името на реда: описът сочи документа, не рубриката.
     if (k(red.ime) !== k(ime)) { red.ime = String(ime).trim(); pipnato = true; }
     if (!String(red.nomer || '').trim() && nomer) { red.nomer = String(nomer).trim(); pipnato = true; }
@@ -147,7 +155,7 @@ function _dokVpishiSverenite(obekt, p, dokumenti, potv) {
         const nomer = [d.nomer && d.nomer.stoynost ? '№ ' + d.nomer.stoynost : '',
                        d.data && d.data.stoynost ? 'от ' + d.data.stoynost : '']
             .filter(Boolean).join(' ');
-        if (_dokVpishi(p, _dokIme(d, potv), nomer, d.cheklist_red)) n++;
+        if (_dokVpishi(p, _dokIme(d, potv), nomer, d.cheklist_red, _s2Id(d))) n++;
     }
     if (n) {
         renderDokumenti(p);
@@ -388,6 +396,12 @@ function sloy2Izchisti() {
 }
 
 async function sloy2Sravni() {
+    if (_s2VSravnyavane) return;      // вж. бележката при `_s2ZapishiTiho`
+    _s2VSravnyavane = true;
+    try { return await _sloy2SravniTelo(); } finally { _s2VSravnyavane = false; }
+}
+
+async function _sloy2SravniTelo() {
     const p = _stroezh(_zhivObekt());
     const kutiya = document.getElementById('s2-rezultat');
     if (!p || !kutiya) return;
@@ -881,6 +895,17 @@ function _s2Koy() {
     catch (e) { return 'оператор'; }
 }
 
+// ЗАПИСВАНЕТО НЕ ВИКА СРАВНЯВАНЕ, КОГАТО САМО СРАВНЯВАНЕТО ГО Е ПОВИКАЛО.
+//
+// Цикълът (03.11.2026): `sloy2Sravni` вписва сверените → вписването вика
+// `_s2ZapishiTiho` → той вика пак `sloy2Sravni`. Докато вписването съобщава
+// промяна, обиколката няма край: екранът мига и трупа „N сверени документа
+// влязоха в изходните данни“.
+//
+// Пинг-понгът между два документа е поправен отделно (виж `_dokVpishi`), но
+// самата рекурсия остава грешна и без него.
+let _s2VSravnyavane = false;
+
 // Тихо: кликовете са десетки, а _zapishiObekt вдига по две съобщения на всеки.
 function _s2ZapishiTiho(p, opis) {
     p.updatedAt = new Date().toISOString();
@@ -892,7 +917,7 @@ function _s2ZapishiTiho(p, opis) {
         apiCall(`/api/passports/${p.pi}`, 'POST', { passport: zaSarvara, pi: p.pi })
             .catch(e => showAlert('error', `⚠️ Потвърждението е само в браузъра — API грешка: ${e.message}`));
     }
-    sloy2Sravni();
+    if (!_s2VSravnyavane) sloy2Sravni();
 }
 
 function s2Potvardi(k64) {

@@ -59,6 +59,7 @@ const obekt = { pi: '68134.1006.2440' };
 const n = F._dokVpishiSverenite(obekt, obekt, [DOK], potv);
 t('сверéният влиза в изходните данни', n === 1 && (obekt.dokumenti || []).length === 1,
   obekt.dokumenti);
+
 // 27.10.2026: в описа влиза НАИМЕНОВАНИЕТО на документа, а не името на реда.
 // Тук двете съвпадат по текст; редът, който доказва, се пази отделно.
 t('с наименованието на документа',
@@ -99,6 +100,32 @@ t('но празният номер се допълва',
   && F._dokVpishi(obekt, 'Скица', '№ 15-123') === true
   && obekt.dokumenti.find(d => d.ime === 'Скица').nomer === '№ 15-123',
   obekt.dokumenti);
+
+// ── ДВА ДОКУМЕНТА НА ЕДИН РЕД НЕ СЕ БИЯТ ────────────────────────────────────
+// 03.11.2026, от истински обект: екранът мигаше и трупаше „2 сверени документа
+// влязоха в изходните данни“ без край. Два документа, които доказват ЕДИН И
+// СЪЩ ред от чеклиста, си отнемаха записа — всеки го преименуваше на своето
+// наименование, преименуването се броеше за промяна, а промяната пускаше ново
+// сравняване. Обиколката нямаше край.
+//
+// Затова записът помни КОЙ документ го е вписал, а по реда се връзва само
+// запис, който още е ничий.
+const DVA = { ...DOK, fajl: 'ВиК.pdf', vid: 'Договор за присъединяване към ВиК',
+              naimenovanie: fakt('Договор за присъединяване към ВиК системи'),
+              nomer: fakt('967'), data: fakt('19.12.2023') };
+const potvDva = {};
+for (const d of [DOK, DVA])
+    for (const k of ['nomer', 'data', 'izdatel', 'naimenovanie'])
+        if (d[k]) potvDva[`${d.fajl}::${k}`] = { stoynost: 'x' };
+const dvoen = { pi: '68134.1006.2440' };
+F._dokVpishiSverenite(dvoen, dvoen, [DOK, DVA], potvDva);
+t('два документа на един ред стават ДВА записа',
+  (dvoen.dokumenti || []).length === 2, (dvoen.dokumenti || []).map(d => d.ime));
+t('всеки запис помни кой документ го е вписал',
+  (dvoen.dokumenti || []).every(d => d.ot), dvoen.dokumenti);
+t('и ВТОРАТА обиколка не променя нищо — вписването затихва',
+  F._dokVpishiSverenite(dvoen, dvoen, [DOK, DVA], potvDva) === 0,
+  (dvoen.dokumenti || []).map(d => [d.ime, d.ot]));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
