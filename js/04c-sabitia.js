@@ -57,7 +57,7 @@ const _SAB_CHASTI = [
 
 function _sabChast(r) {
     const d = r.izvor || {};
-    const t = [r.ime, r.vid, d.cheklist_red, (d.sadarzhanie || {}).stoynost]
+    const t = [r.ime, r.vid, d.cheklist_red, r.sadarzhanie || (d.sadarzhanie || {}).stoynost]
         .filter(Boolean).join(' · ');
     for (const [kak, ime] of _SAB_CHASTI) if (kak.test(t)) return ime;
     return '';

@@ -17,7 +17,7 @@ const F = new Function(
     + [grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'),
        grab(s, '_s2Sveren'), grab(s, '_dokIme'),
        grab(s, '_dokKlyuchIme'), grab(s, '_dokKlyuchNomer'), grab(s, '_dokNomerOtTekst'),
-       grab(s, '_dokRed'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
+       grab(s, '_dokStoynost'), grab(s, '_dokRed'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
        grab(s, 'dokIzrechenie')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
@@ -106,6 +106,30 @@ t('и датата му пак се вади', dperm[0].data === '13.06.2024', d
 const chaka = stroezh([prochetn('x', 'акт обр. 5', '15.03.2022')], {});
 t('прочетеното без ✔ е в тетрадката', F.dokTetradka({}, chaka).length === 1);
 t('но НЕ влиза в акта', F.dokVliza({}, chaka).length === 0);
+
+// ── ПОПРАВЕНОТО БИЕ ПРОЧЕТЕНОТО ─────────────────────────────────────────────
+// 03.11.2026, от истински обект: ръкописните години бяха прочетени като 2017,
+// 2018 и 2024; операторът ги поправи на 2022 — и историята на строежа пак
+// показа „01.07.2017 – 25.05.2024“. Тетрадката вземаше суровата стойност и
+// гледаше потвържденията само за да реши СВЕРЕН ЛИ Е документът.
+//
+// Поправка, която не стига до документа, е по-лоша от липсваща: изглежда
+// направена.
+const grehota = prochetn('p1', 'акт обр. 7', '01.07.2017',
+    { nomer: fakt('5'), sadarzhanie: fakt('плоча на кота +3,30') });
+const popraveno = {
+    'p1::data': { stoynost: '04.07.2022', prochetena: '01.07.2017', koy: 'оператор' },
+    'p1::nomer': { stoynost: '5', prochetena: '5', koy: 'оператор' },
+    'p1::sadarzhanie': { stoynost: 'плоча на кота +6,60', prochetena: 'плоча на кота +3,30', koy: 'оператор' },
+};
+const [r1] = F.dokTetradka({}, stroezh([grehota], popraveno));
+t('поправената ДАТА влиза, не прочетената', r1.data === '04.07.2022', r1.data);
+t('и поправеното СЪДЪРЖАНИЕ влиза',
+  r1.sadarzhanie === 'плоча на кота +6,60', r1.sadarzhanie);
+t('а без поправка остава прочетеното',
+  F.dokTetradka({}, stroezh([grehota], { 'p1::data': { stoynost: '' } }))[0].data === '01.07.2017');
+t('суровото се пази в опората, за да личи какво е поправено',
+  (r1.izvor.data || {}).stoynost === '01.07.2017', r1.izvor.data);
 
 // ── изречението ─────────────────────────────────────────────────────────────
 t('изречението е наименование, номер, дата',

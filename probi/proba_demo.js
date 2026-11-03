@@ -20,7 +20,7 @@ const F = new Function(
     + [grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'),
        grab(s, '_s2Sveren'), grab(s, '_dokIme'),
        grab(s, '_dokKlyuchIme'), grab(s, '_dokKlyuchNomer'), grab(s, '_dokNomerOtTekst'),
-       grab(s, '_dokRed'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'), grab(s, 'dokIzrechenie'),
+       grab(s, '_dokStoynost'), grab(s, '_dokRed'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'), grab(s, 'dokIzrechenie'),
        grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
        grab(s, '_a15Sortirai'), grab(s, '_a15Red'), grab(s, '_a15BezPovtor'),
        grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15AktoveProtokoli'),

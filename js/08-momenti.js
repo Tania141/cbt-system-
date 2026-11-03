@@ -2134,7 +2134,8 @@ function _a15Svereni(p, st) {
 // Всичко, по което се познава документът — от реда и от прочетеното под него.
 function _a15TekstNa(r) {
     const d = r.izvor || {};
-    return [r.ime, r.vid, d.cheklist_red, (d.sadarzhanie || {}).stoynost]
+    // Поправеното съдържание е на реда; суровото остава само ако няма поправка.
+    return [r.ime, r.vid, d.cheklist_red, r.sadarzhanie || (d.sadarzhanie || {}).stoynost]
         .filter(Boolean).join(' · ');
 }
 

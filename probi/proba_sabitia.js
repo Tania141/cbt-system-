@@ -23,7 +23,7 @@ const F = new Function(
      vzemi('_S2_TABLICI', '\\]'),
      grab(s, '_s2Fakti'), grab(s, '_s2KlPoKoloni'), grab(s, '_s2SverimiKl'),
      grab(s, '_s2Sveren'), grab(s, '_dokIme'), grab(s, '_dokKlyuchIme'),
-     grab(s, '_dokKlyuchNomer'), grab(s, '_dokNomerOtTekst'), grab(s, '_dokRed'),
+     grab(s, '_dokKlyuchNomer'), grab(s, '_dokNomerOtTekst'), grab(s, '_dokStoynost'), grab(s, '_dokRed'),
      grab(s, 'dokTetradka'),
      grab(s, '_sabChast'), grab(s, '_sabVid'), grab(s, '_sabChislo'),
      grab(s, 'sabIstoria'), grab(s, 'sabKonflikti')].join('\n')

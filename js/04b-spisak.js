@@ -42,6 +42,22 @@ function _dokNomerOtTekst(tekst) {
     return m ? m[1].trim() : '';
 }
 
+// ПОПРАВЕНОТО БИЕ ПРОЧЕТЕНОТО.
+//
+// Правилото е отпреди („поправи значи влиза поправеното, не прочетеното“), но
+// тетрадката го нарушаваше: вземаше суровата стойност на четеца и гледаше
+// потвържденията само за да реши СВЕРЕН ЛИ Е документът.
+//
+// Цената се видя на 03.11.2026 върху истински обект: ръкописните години бяха
+// прочетени като 2017, 2018 и 2024, операторът ги поправи на 2022 — и
+// историята на строежа пак показа „01.07.2017 – 25.05.2024“. Поправка, която
+// не стига до документа, е по-лоша от липсваща: изглежда направена.
+function _dokStoynost(d, potv, pole) {
+    const p = (potv || {})[`${_s2Id(d)}::${pole}`];
+    if (p && String(p.stoynost ?? '').trim()) return String(p.stoynost).trim();
+    return String((d[pole] || {}).stoynost || '').trim();
+}
+
 // Един ред на тетрадката.
 function _dokRed(kak) {
     return {
@@ -49,6 +65,8 @@ function _dokRed(kak) {
         nomer: String(kak.nomer || '').trim().replace(/^№\s*/, ''),
         data: String(kak.data || '').trim(),
         vid: String(kak.vid || '').trim(),
+        // Какво е прието — за частите при обр. 12 и протокол 17.
+        sadarzhanie: String(kak.sadarzhanie || '').trim(),
         kod: String(kak.kod || '').trim(),
         otkade: kak.otkade,
         sveren: !!kak.sveren,
@@ -88,9 +106,10 @@ function dokTetradka(p, st) {
     for (const d of s2.dokumenti || []) {
         dobavi(_dokRed({
             ime: typeof _dokIme === 'function' ? _dokIme(d, potv) : (d.vid || ''),
-            nomer: (d.nomer || {}).stoynost,
-            data: (d.data || {}).stoynost,
+            nomer: _dokStoynost(d, potv, 'nomer'),
+            data: _dokStoynost(d, potv, 'data'),
             vid: d.vid, kod: d.vid_kod,
+            sadarzhanie: _dokStoynost(d, potv, 'sadarzhanie'),
             otkade: _DOK_PROCHETEN,
             // Сверен значи потвърдено е онова, което екранът предлага.
             sveren: typeof _s2Sveren === 'function' && _s2Sveren(d, potv),
