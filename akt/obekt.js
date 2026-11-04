@@ -352,8 +352,14 @@ function obektVrazkiHtml(p) {
     const sobstvenost = `
         <a class="vrazka" href="#/sobstvenost/${encodeURIComponent(obektId)}/${obektIndeks}">
             Собственост<span>на имота ${_e(p.pi || '')}</span></a>`;
+    // Паспортът е ДАННИТЕ на обекта — те идват преди всеки документ, затова
+    // стои пръв. (04.11.2026)
+    const pasport = `
+        <a class="vrazka" href="#/pasport/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Паспортът<span>данните: участници, разрешение за строеж</span></a>`;
     return `
     <div class="vrazki">
+        ${pasport}
         ${proekt}
         ${sobstvenost}
         <a class="vrazka" href="#/dosie/${encodeURIComponent(obektId)}/${obektIndeks}">

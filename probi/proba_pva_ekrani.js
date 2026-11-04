@@ -76,7 +76,9 @@ async function otvori(hash) {
         pretendToBeVisual: true, virtualConsole: vc,
         beforeParse(w) {
             w.localStorage.setItem('akt_v5', JSON.stringify({
-                projects: [OBEKT, STAR], consultants: [], history: [],
+                projects: [OBEKT, STAR], history: [],
+                consultants: [{ id: 1, name: 'СиБиТи Консулт ЕООД', eik: '204024246',
+                                type: 'ЮЛ', employees: [] }],
                 apiUrl: 'http://localhost/api',
             }));
             w.localStorage.setItem('akt_token', 'proba');
@@ -247,31 +249,36 @@ t('отвореният обект се помни като текущ — ст�
 
 // четирите връзки
 const vrazki = [...b.d.querySelectorAll('.vrazka')].map(x => tekst(x));
-t('долу има точно четири връзки', vrazki.length === 4, vrazki);
-t('връзките са Проектът · Собственост · Досието · Какво знаем',
-  /Проектът/.test(vrazki[0]) && /Собственост/.test(vrazki[1])
-  && /Досието/.test(vrazki[2]) && /Какво знаем/.test(vrazki[3]), vrazki);
+// Паспортът се нареди пръв на 04.11.2026: данните идват преди документа.
+t('долу има точно пет връзки', vrazki.length === 5, vrazki);
+t('връзките са Паспортът · Проектът · Собственост · Досието · Какво знаем',
+  /Паспортът/.test(vrazki[0]) && /Проектът/.test(vrazki[1]) && /Собственост/.test(vrazki[2])
+  && /Досието/.test(vrazki[3]) && /Какво знаем/.test(vrazki[4]), vrazki);
+t('паспортът носи разрешението за строеж в подзаглавието си',
+  /разрешение за строеж/.test(vrazki[0]), vrazki[0]);
 // Проектът и Собствеността вече са ВЪТРЕ в новото; навън води само Досието.
 const vsichki = [...b.d.querySelectorAll('.vrazka')];
 
+t('Паспортът води на Екран 9',
+  vsichki[0].getAttribute('href') === '#/pasport/hus/0', vsichki[0].getAttribute('href'));
 t('Проектът води вътре, на Екран 4',
-  vsichki[0].getAttribute('href') === '#/proekt/hus/0'
-  && vsichki[0].getAttribute('target') === null,
-  vsichki[0].getAttribute('href'));
-t('Собствеността води вътре, на Екран 5',
-  vsichki[1].getAttribute('href') === '#/sobstvenost/hus/0'
+  vsichki[1].getAttribute('href') === '#/proekt/hus/0'
   && vsichki[1].getAttribute('target') === null,
   vsichki[1].getAttribute('href'));
-t('собствеността виси на ИМОТА, не на строежа',
-  /68134\.1006\.2440/.test(vrazki[1]), vrazki[1]);
-t('Досието също води вътре, на Екран 6',
-  vsichki[2].getAttribute('href') === '#/dosie/hus/0'
+t('Собствеността води вътре, на Екран 5',
+  vsichki[2].getAttribute('href') === '#/sobstvenost/hus/0'
   && vsichki[2].getAttribute('target') === null,
   vsichki[2].getAttribute('href'));
-t('Какво знаем води на Екран 7 — огледалото',
-  vsichki[3].getAttribute('href') === '#/znaem/hus/0'
+t('собствеността виси на ИМОТА, не на строежа',
+  /68134\.1006\.2440/.test(vrazki[2]), vrazki[2]);
+t('Досието също води вътре, на Екран 6',
+  vsichki[3].getAttribute('href') === '#/dosie/hus/0'
   && vsichki[3].getAttribute('target') === null,
   vsichki[3].getAttribute('href'));
+t('Какво знаем води на Екран 7 — огледалото',
+  vsichki[4].getAttribute('href') === '#/znaem/hus/0'
+  && vsichki[4].getAttribute('target') === null,
+  vsichki[4].getAttribute('href'));
 t('и четирите връзки вече са вътре в новото',
   vsichki.every(a => (a.getAttribute('href') || '').startsWith('#/')),
   vsichki.map(a => a.getAttribute('href')));
@@ -303,14 +310,40 @@ t('и четирите връзки вече са вътре в новото',
       d.getElementById('shapka-nazad').getAttribute('href'));
 }
 
+// ── ЕКРАН 9: ПАСПОРТЪТ ───────────────────────────────────────────────────────
+// Втората преместена стая. Формата е СЪЩАТА — вика се `renderPassportForm` от
+// кухнята, не се пише нова. Разрешението за строеж е пренесено отделно, защото
+// в старото живее на друга страница.
+{
+    const { d, greshki } = await otvori('#/pasport/hus/0');
+    t('паспортът се отваря без грешки', !greshki.length, greshki[0]);
+    const telo = d.getElementById('pasport-telo');
+    t('и се рисува', (telo.textContent || '').trim().length > 0);
+    t('СЪЩАТА форма се рисува, не нова',
+      !!d.getElementById('fp-pi') && !!d.getElementById('fp-stroej'),
+      [...telo.querySelectorAll('input')].map(x => x.id).slice(0, 8));
+    t('възложителите ги има', !!d.getElementById('clients-container'));
+    t('упълномощеният представител вече има място', !!d.getElementById('fp-upalnomoshten'));
+    for (const id of ['fp-permit-num', 'fp-permit-date', 'fp-permit-effective', 'fp-permit-issuer'])
+        t(`разрешението за строеж: ${id}`, !!d.getElementById(id));
+    t('и предупреждението за преписването е дошло с него',
+      /сбъркана цифра не личи никъде/.test(telo.textContent));
+    t('има бутон „Запази“',
+      [...telo.querySelectorAll('button')].some(b => /Запази/.test(b.textContent)),
+      [...telo.querySelectorAll('button')].map(b => b.textContent));
+    t('от паспорта се връщаш в обекта',
+      d.getElementById('shapka-nazad').getAttribute('href') === '#/obekt/hus/0');
+}
+
 // ── границата със старото ПВА ────────────────────────────────────────────────
 
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti|pasport)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
      '../js/04b-spisak.js', '../js/04c-sabitia.js',
-     '../js/03-obshti.js', '../js/08-momenti.js', '../js/09-akt15.js',
+     '../js/03-obshti.js', '../js/10-obekti.js', '../js/08-momenti.js',
+     '../js/09-akt15.js',
      '../js/11-dokumenti.js',
      '../js/11b-generirane.js',
      '../js/07-sobstvenost.js', '../js/12b-kandidati.js',
