@@ -333,6 +333,30 @@ t('и четирите връзки вече са вътре в новото',
       [...telo.querySelectorAll('button')].map(b => b.textContent));
     t('от паспорта се връщаш в обекта',
       d.getElementById('shapka-nazad').getAttribute('href') === '#/obekt/hus/0');
+    // Операторът, 04.11.2026: „в секция РС да се чете РС?“ — същият жест като
+    // при договора за строителство.
+    t('разрешението може и да се ПРОЧЕТЕ, не само да се препише',
+      !!d.getElementById('pas-rs-fajl'), '');
+    t('а видът на преместената форма не е гол',
+      /#pasport-telo \.form-input/.test(fs.readFileSync(path.join(PAPKA, 'stil.css'), 'utf8')), '');
+}
+
+// ── НОВ ОБЕКТ СЕ ЗАВЕЖДА ТУК ─────────────────────────────────────────────────
+// Дотук бутонът на плота просто те изпращаше в старото ПВА.
+{
+    const plot = fs.readFileSync(path.join(PAPKA, 'plot.js'), 'utf8');
+    const nov = /function plotNovObekt\(\)[\s\S]*?\n}/.exec(plot)[0];
+    t('„Нов обект“ НЕ праща в старото ПВА', !/index\.html/.test(nov), nov);
+    t('а отваря паспорта за нов', /#\/pasport\/nov/.test(nov), nov);
+
+    const { d, greshki } = await otvori('#/pasport/nov/0');
+    t('паспортът за НОВ обект се отваря без грешки', !greshki.length, greshki[0]);
+    t('и показва празна форма, не чужди данни',
+      !!d.getElementById('fp-pi') && !d.getElementById('fp-pi').value,
+      d.getElementById('fp-pi') && d.getElementById('fp-pi').value);
+    t('и се представя като нов',
+      /Нов обект/.test(d.getElementById('form-page-title').textContent),
+      d.getElementById('form-page-title').textContent);
 }
 
 // ── границата със старото ПВА ────────────────────────────────────────────────

@@ -49,8 +49,10 @@ function obektRisuvai() {
         obektGlavaHtml(z.p, z.st)
         + obektSastavkiHtml(z.p, z.st)
         + obektStroezhiHtml(z.p)
-        + '<div id="obekt-lenta">' + obektLentaHtml() + '</div>'
-        + obektVrazkiHtml(z.p);
+        // Паспортът стои НАД моментите: данните идват преди документа, а дотук
+        // връзката му беше най-долу, след всички актове. (04.11.2026)
+        + obektVrazkiHtml(z.p)
+        + '<div id="obekt-lenta">' + obektLentaHtml() + '</div>';
 }
 
 // ── 1. Главата: три реда текст ───────────────────────────────────────────────
