@@ -132,6 +132,13 @@ t('паспортът се рисува без грешка', ps.greshki.length 
 const rachno = ps.d.getElementById('karta-vazlozhiteli-rachno');
 t('ръчните полета за възложител са скрити', !rachno || rachno.style.display === 'none');
 t('упълномощеният остава в DOM-а — записът не го трие', !!ps.d.getElementById('fp-upalnomoshten'));
+// Обектът има регистър — значи формата рисува и картата със списъка от него.
+const regKarta = ps.d.querySelector('[onclick*="\'sobstvenost\'"]');
+t('и списъкът от регистъра НЕ се показва в паспорта',
+  !!regKarta && regKarta.closest('.card').style.display === 'none', regKarta && regKarta.outerHTML);
+const vidimi = [...ps.d.querySelectorAll('#pasport-telo .card')]
+    .filter(k => k.style.display !== 'none' && /Станчев/.test(k.textContent));
+t('никъде в паспорта не стои име на възложител', vidimi.length === 0, vidimi.map(k => k.id));
 const bt = ps.d.querySelector('#pas-vazlozhiteli a');
 t('на тяхно място — бутон към Собствеността',
   !!bt && bt.getAttribute('href') === '#/sobstvenost/hus/0', bt && bt.outerHTML);
