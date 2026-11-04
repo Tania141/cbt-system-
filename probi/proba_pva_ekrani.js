@@ -315,7 +315,7 @@ t('и четирите връзки вече са вътре в новото',
 // кухнята, не се пише нова. Разрешението за строеж е пренесено отделно, защото
 // в старото живее на друга страница.
 {
-    const { d, greshki } = await otvori('#/pasport/hus/0');
+    const { w, d, greshki } = await otvori("#/pasport/hus/0");
     t('паспортът се отваря без грешки', !greshki.length, greshki[0]);
     const telo = d.getElementById('pasport-telo');
     t('и се рисува', (telo.textContent || '').trim().length > 0);
@@ -337,6 +337,15 @@ t('и четирите връзки вече са вътре в новото',
     // при договора за строителство.
     t('разрешението може и да се ПРОЧЕТЕ, не само да се препише',
       !!d.getElementById('pas-rs-fajl'), '');
+    // Операторът, 04.11.2026: „ако има бутон към собствеността, няма смисъл от
+    // други полета за възложител. Добре е бутонът да работи.“
+    t('бутонът „Към Собственост“ работи — мостът превежда името в адрес',
+      typeof w.navigateTo === 'function', typeof w.navigateTo);
+    t('и води на екрана на собствеността',
+      (() => { w.navigateTo('sobstvenost'); return /#\/sobstvenost\//.test(w.location.hash); })(),
+      w.location.hash);
+    t('непозната страница не чупи нищо',
+      (() => { try { w.navigateTo('няма такава'); return true; } catch (e) { return false; } })());
     t('а видът на преместената форма не е гол',
       /#pasport-telo \.form-input/.test(fs.readFileSync(path.join(PAPKA, 'stil.css'), 'utf8')), '');
 }

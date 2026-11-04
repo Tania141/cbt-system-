@@ -149,5 +149,9 @@ function pasportZapazi() {
     }
     if (typeof savePassport === 'function') savePassport();
     aktZapishi();
-    location.hash = `#/obekt/${encodeURIComponent(pasId)}/${pasI}`;
+    // При нов обект още няма към кого да се върнем — взима се току-що
+    // записаният. `savePassport` го оставя в `currentProject`.
+    const kam = pasportNov() ? ((aktDanni.currentProject || {}).id || '') : pasId;
+    if (kam) location.hash = `#/obekt/${encodeURIComponent(kam)}/${pasportNov() ? 0 : pasI}`;
+    else location.hash = '#/plot';
 }

@@ -42,6 +42,32 @@ function _s2ZapishiTiho(p, opis) {
     aktZapishi();
 }
 
+// СТАРИТЕ ЕКРАНИ СЕ ВИКАТ ПО ИМЕ; НОВИТЕ — ПО АДРЕС.
+//
+// Преместените форми носят своите бутони („🔑 Към Собственост“), а те викат
+// `navigateTo('sobstvenost')` — функция на старата повърхност. Тук няма такава
+// и бутонът просто не правеше нищо. (Операторът, 04.11.2026: „добре е бутонът
+// да работи“.)
+//
+// Мостът превежда имената в адреси. Това е преместване, не преправяне: самата
+// форма остава непипната.
+const _MOST_STRANICI = {
+    sobstvenost: (id, i) => `#/sobstvenost/${encodeURIComponent(id)}/${i}`,
+    dokumentite: (id, i) => `#/dosie/${encodeURIComponent(id)}/${i}`,
+    proekt: (id, i) => `#/proekt/${encodeURIComponent(id)}/${i}`,
+    'new-passport': () => '#/pasport/nov/0',
+    passports: () => '#/plot',
+    projects: () => '#/plot',
+};
+
+function navigateTo(stranica) {
+    const kade = _MOST_STRANICI[stranica];
+    // Непозната страница не чупи нищо: тя просто още не е преместена.
+    if (!kade) return;
+    const p = _zhivObekt();
+    location.hash = kade(p ? p.id : '', aktIndeksStroezh(p || {}));
+}
+
 // Прерисуване. Кой екран е отворен, знае самият екран.
 function _prerisuvai() {
     if (typeof sobstvenostRisuvai === 'function'
