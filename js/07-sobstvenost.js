@@ -265,6 +265,15 @@ function _sbNahodki(p) {
         if (!s.sabitia.some(e => e.obekt === koren.id)) {
             out.push({ vid: 'prazno', obekt: koren.id,
                 tekst: `${ime} — няма нито едно събитие. Качи акта, с който е придобит.` });
+        } else if (sabrano.n > sabrano.d && !_drBlizoEdno(sabrano)) {
+            // ПОВЕЧЕ ОТ ЦЯЛОТО. Дотук пишеше „липсва -1“ — вярно като сметка,
+            // безполезно като изречение. Казва се кой какво държи: обикновено
+            // някой е продал, без дялът му да е изваден. (04.11.2026)
+            const darzhat = [...salda].filter(([, f]) => f.n > 0)
+                .map(([l, f]) => `${_sbImeImeBezopasno(s, l)} ${_drTekst(f)}`).join(' · ');
+            out.push({ vid: 'nadvishava', obekt: koren.id,
+                tekst: `${ime} — събрани ${_drTekst(sabrano)}, с ${_drTekst(_drIzvadi(sabrano, { n: 1, d: 1 }))} `
+                     + `повече от цялото. Държат: ${darzhat}. Някой е продал, без дялът му да е изваден.` });
         } else if (!_drBlizoEdno(sabrano)) {
             const lipsva = _drIzvadi({ n: 1, d: 1 }, sabrano);
             out.push({ vid: 'nepalno', obekt: koren.id,

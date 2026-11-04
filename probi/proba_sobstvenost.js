@@ -281,6 +281,18 @@ s8.sabitia.push(akt('upi', { vid: 'първоначално', data: '16.06.2009'
     pridobivashti: [{ lice: 'a', dyal: '8,38%' }, { lice: 'b', dyal: '91,62%' }] }));
 t('8,38 % + 91,62 % дават цяло', F._sbNahodki(p8).length === 0, F._sbNahodki(p8));
 
+// Повече от цялото: продавачът продава, но не е свързан с акта — дялът му остава.
+const p9 = nov();
+const s9 = p9.sobstvenost;
+s9.lica.push({ id: 'a', ime: 'Продавач' }, { id: 'b', ime: 'Купувач' });
+s9.obekti.push({ id: 'upi', vid: 'земя', identifikator: 'III-12' });
+s9.sabitia.push(akt('upi', { vid: 'първоначално', data: '01.01.2009', pridobivashti: [{ lice: 'a', dyal: '1' }] }));
+s9.sabitia.push(akt('upi', { vid: 'покупко-продажба', data: '01.01.2020', ot_opisanie: 'Продавач',
+    pridobivashti: [{ lice: 'b', dyal: '1' }] }));
+const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
+t('над цялото казва кой какво държи, не „липсва -1“',
+  !!n9 && /събрани 2, с 1 повече/.test(n9.tekst) && /Продавач 1/.test(n9.tekst) && /Купувач 1/.test(n9.tekst), n9);
+
 // ── край ───────────────────────────────────────────────────────────────────
 // ── правното основание ────────────────────────────────────────────────────
 // В ОСИП, раздел Б: „Правно основание: ......“. Актът е в регистъра — пише се

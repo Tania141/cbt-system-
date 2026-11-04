@@ -146,7 +146,7 @@ function sobstvenostVazlozhiteliHtml(p) {
 // Кодът съди, но само за това, което има значение. От сто акта обикновено три.
 
 const SOBSTVENOST_VID = {
-    prazno: 'няма събитие', nepalno: 'непълна верига', minus: 'прехвърлено повече',
+    prazno: 'няма събитие', nepalno: 'непълна верига', nadvishava: 'повече от цялото', minus: 'прехвърлено повече',
     pochinal: 'починал собственик', prazen_akt: 'акт без номер',
 };
 
