@@ -44,6 +44,33 @@ function pasportRisuvai() {
     // Фазата крие и показва — включително картата с разрешението за строеж.
     // Вика се СЛЕД формата, защото тя рисува бутоните на фазата.
     if (typeof setFaza === 'function') setFaza((p && p.faza) || 'osip');
+    pasportVazlozhiteliBuuton(p);
+}
+
+// ВЪЗЛОЖИТЕЛИТЕ НЕ СЕ ПИШАТ В ПАСПОРТА. Операторът, 04.11.2026: полетата вън,
+// остава само бутон, който води в Собствеността — там те се извеждат.
+//
+// Двете карти на формата се СКРИВАТ, не се махат: `savePassport` чете
+// редовете и упълномощения от DOM-а. Махнати, записът би изтрил писаното на
+// ръка в старите обекти — а то още влиза в документите, докато регистърът е
+// празен. Скрити, то се пази непипнато.
+function pasportVazlozhiteliBuuton(p) {
+    const rachno = document.getElementById('karta-vazlozhiteli-rachno');
+    if (!rachno) return;
+    rachno.style.display = 'none';
+    const otRegistara = rachno.parentNode.querySelector('[onclick*="\'sobstvenost\'"]');
+    const kartaReg = otRegistara && otRegistara.closest('.card');
+    if (kartaReg) kartaReg.style.display = 'none';
+    const buton = document.createElement('div');
+    buton.className = 'card';
+    buton.id = 'pas-vazlozhiteli';
+    buton.innerHTML = p
+        ? `<div class="card-header"><div class="card-title" style="flex:1">Възложители</div>
+            <a class="btn btn-secondary btn-sm" href="#/sobstvenost/${encodeURIComponent(p.id)}/${pasI}">
+                Към Собствеността →</a></div>`
+        : `<div class="card-title">Възложители</div>
+           <p class="tiho">Водят се в Собствеността — първо запази паспорта.</p>`;
+    rachno.parentNode.insertBefore(buton, rachno);
 }
 
 // Разрешението за строеж. Текстът на предупреждението е дословно от стария

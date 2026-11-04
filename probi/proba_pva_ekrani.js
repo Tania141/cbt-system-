@@ -359,7 +359,7 @@ t('и четирите връзки вече са вътре в новото',
     w.setFaza('stroitelstvo');
     t('в строителство се показва', rsKarta.style.display !== 'none', rsKarta.style.display);
     t('а видът на преместената форма не е гол',
-      /#pasport-telo \.form-input/.test(fs.readFileSync(path.join(PAPKA, 'stil.css'), 'utf8')), '');
+      /#pasport-telo[^{]*\.form-input/.test(fs.readFileSync(path.join(PAPKA, 'stil.css'), 'utf8')), '');
 }
 
 // ── НОВ ОБЕКТ СЕ ЗАВЕЖДА ТУК ─────────────────────────────────────────────────

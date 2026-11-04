@@ -491,38 +491,55 @@ body {
    не се преправя“. Но тя носи своите класове, а този лист не ги познаваше и
    полетата излизаха голи. Тук им се дава видът на новата повърхност; HTML-ът
    остава непипнат.                                                        */
-#pasport-telo .card {
+:is(#pasport-telo, #sobstvenost-telo) .card {
     background: var(--hartiya, #fff); border: 1px solid var(--ramka, #e5e5e5);
     border-radius: 6px; padding: 14px 16px; margin: 0 0 12px;
 }
-#pasport-telo .card-title {
+:is(#pasport-telo, #sobstvenost-telo) .card-title {
     font-size: 12px; font-weight: 700; color: var(--muted);
     text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
 }
-#pasport-telo .card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-#pasport-telo .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-#pasport-telo .form-grid-full { grid-column: 1 / -1; }
-#pasport-telo .form-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
-#pasport-telo .form-label { font-size: 12px; color: var(--muted); }
-#pasport-telo .form-label.required::after { content: ' *'; color: var(--red); }
-#pasport-telo .form-input,
-#pasport-telo select,
-#pasport-telo input[type="text"],
-#pasport-telo input[type="date"],
-#pasport-telo textarea {
+:is(#pasport-telo, #sobstvenost-telo) .card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+:is(#pasport-telo, #sobstvenost-telo) .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+:is(#pasport-telo, #sobstvenost-telo) .form-grid-full { grid-column: 1 / -1; }
+:is(#pasport-telo, #sobstvenost-telo) .form-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+:is(#pasport-telo, #sobstvenost-telo) .form-label { font-size: 12px; color: var(--muted); }
+:is(#pasport-telo, #sobstvenost-telo) .form-label.required::after { content: ' *'; color: var(--red); }
+:is(#pasport-telo, #sobstvenost-telo) .form-input,
+:is(#pasport-telo, #sobstvenost-telo) select,
+:is(#pasport-telo, #sobstvenost-telo) input[type="text"],
+:is(#pasport-telo, #sobstvenost-telo) input[type="date"],
+:is(#pasport-telo, #sobstvenost-telo) textarea {
     width: 100%; padding: 6px 9px; font: inherit; font-size: 13.5px;
     border: 1px solid var(--ramka, #ccc); border-radius: 4px;
     background: var(--hartiya, #fff); color: inherit;
 }
-#pasport-telo .form-input:focus, #pasport-telo select:focus { outline: 2px solid var(--blue); }
-#pasport-telo .btn {
+:is(#pasport-telo, #sobstvenost-telo) .form-input:focus, :is(#pasport-telo, #sobstvenost-telo) select:focus { outline: 2px solid var(--blue); }
+:is(#pasport-telo, #sobstvenost-telo) .btn {
     font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
     border: 1px solid var(--mastilo, #333); border-radius: 4px;
     background: transparent; color: inherit;
 }
-#pasport-telo .btn-primary { background: var(--mastilo, #333); color: var(--hartiya, #fff); }
-#pasport-telo .btn-secondary { border-color: var(--ramka, #ccc); color: var(--muted); }
-#pasport-telo .btn-sm { font-size: 12px; padding: 3px 8px; }
-#pasport-telo .faza-btn { flex: 1; }
-#pasport-telo .empty-state { text-align: center; padding: 20px; color: var(--muted); }
+:is(#pasport-telo, #sobstvenost-telo) .btn-primary { background: var(--mastilo, #333); color: var(--hartiya, #fff); }
+:is(#pasport-telo, #sobstvenost-telo) .btn-secondary { border-color: var(--ramka, #ccc); color: var(--muted); }
+:is(#pasport-telo, #sobstvenost-telo) .btn-sm { font-size: 12px; padding: 3px 8px; }
+:is(#pasport-telo, #sobstvenost-telo) .faza-btn { flex: 1; }
+:is(#pasport-telo, #sobstvenost-telo) .empty-state { text-align: center; padding: 20px; color: var(--muted); }
 @media (max-width: 600px) { #pasport-telo .form-grid { grid-template-columns: 1fr; } }
+
+/* ── Регистърът на собствеността, преместен цял (04.11.2026) ───────────────
+   Картите идват от кухнята (`js/07-sobstvenost.js`) с класовете си; тук само
+   им се дава видът. HTML-ът е непипнат.                                     */
+#sobstvenost-telo .sb-registar .card { border-color: var(--border-light); }
+#sobstvenost-telo .card-subtitle { font-size: 12px; color: var(--muted); }
+#sobstvenost-telo details.card > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+#sobstvenost-telo .btn-ghost { border-color: transparent; color: var(--muted); padding: 2px 6px; }
+#sobstvenost-telo .btn-ghost:hover { color: var(--red); }
+#sobstvenost-telo .alert { border-radius: 6px; padding: 10px 12px; font-size: 13px; }
+#sobstvenost-telo .alert-warning { background: var(--zhalto-light); color: var(--zhalto); }
+#sobstvenost-telo .alert-success { background: var(--green-light); color: var(--green); }
+#sobstvenost-telo input[type="file"] { font-size: 13px; }
+.vh-data { width: 110px; padding: 3px 7px; font: inherit; font-size: 13px;
+           border: 1px solid var(--ramka, #ccc); border-radius: 4px; }
+.vaz-pred { margin-left: auto; font-weight: 400; cursor: pointer; }
+.lipsva-dyal { color: var(--zhalto); font-size: 12px; }

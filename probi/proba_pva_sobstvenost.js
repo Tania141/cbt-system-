@@ -30,13 +30,13 @@ function stranica() {
 // Земята е придобита наполовина от двама; строи се в нея.
 
 const OBEKT = {
-    id: 'hus', pi: '68134.1006.2440', nik: 'ХЪС', stroej: 'Жилищна сграда',
+    id: 'hus', consultant: { id: 1, name: 'Консулт ЕООД' }, pi: '68134.1006.2440', nik: 'ХЪС', stroej: 'Жилищна сграда',
     sobstvenost: {
         koren: 'o1',
         lica: [{ id: 'l1', ime: 'Иван Станчев Станчев', vid: 'физическо' },
                { id: 'l2', ime: 'Мария Иванова Петрова', vid: 'физическо',
                  predstavitel: { ime: 'Димитри Петракиев', nomer: '4676', data: '19.11.2021' } }],
-        obekti: [{ id: 'o1', identifikator: '68134.1006.2440' }],
+        obekti: [{ id: 'o1', vid: 'земя', identifikator: '68134.1006.2440' }],
         sabitia: [{
             id: 'e1', obekt: 'o1', vid: 'покупко-продажба', data: '12.11.2021',
             dokument: 'Нотариален акт № 143, том IV', ot_opisanie: 'Продавачите',
@@ -55,7 +55,7 @@ async function otvori(hash, obekt) {
         beforeParse(w) {
             w.localStorage.setItem('akt_v5', JSON.stringify({
                 projects: [JSON.parse(JSON.stringify(obekt || OBEKT))],
-                consultants: [], apiUrl: 'http://localhost/api',
+                consultants: [{ id: 1, name: 'Консулт ЕООД', employees: [] }], apiUrl: 'http://localhost/api',
             }));
             w.localStorage.setItem('akt_token', 'proba');
             w.fetch = async () => ({ ok: true, status: 200, json: async () => ({ grupi: [] }) });
@@ -85,17 +85,56 @@ t('веригата връзва и го казва',
 
 // ── възложителите — извеждат се, не се въвеждат ─────────────────────────────
 const telo = tekst(a.d.getElementById('sobstvenost-telo'));
-t('двамата възложители излизат',
-  /Иван Станчев Станчев/.test(telo) && /Мария Иванова Петрова/.test(telo), telo.slice(0, 200));
-t('с дяловете си', (telo.match(/1\/2/g) || []).length >= 2, telo.slice(0, 300));
+t('двамата възложители излизат с ДВЕТЕ имена',
+  /Иван Станчев представител/.test(telo), telo.slice(0, 300));
+t('и Мария', /Мария Петрова/.test(telo), telo.slice(0, 300));
+t('трите имена стоят в подсказката',
+  !!a.d.querySelector('.vaz-ime [title="Иван Станчев Станчев"]'));
+t('казва какво притежават', /собственик на 1\/2 от земята/.test(telo), telo.slice(0, 400));
 t('казва, че не се въвеждат, а се извеждат', /не се въвеждат/i.test(telo), telo.slice(0, 260));
 t('пълномощникът се вижда при подписващия',
   /подписва Димитри Петракиев/.test(telo) && /4676/.test(telo), telo);
 
-// ── веригата ────────────────────────────────────────────────────────────────
-t('веригата излиза', /Веригата · 1 събитие/.test(telo), telo);
+// ── регистърът — преместен цял ──────────────────────────────────────────────
+t('регистърът е тук: лица, обекти, актове',
+  /Лица \(2\)/.test(telo) && /Обекти \(1\)/.test(telo) && /Актове за придобиване/.test(telo), telo);
 t('със самия акт', /Нотариален акт № 143, том IV/.test(telo));
 t('и с прехвърлителя', /Продавачите/.test(telo));
+t('четенето на документ е на екрана', !!a.d.getElementById('sb-fajl'));
+t('бутоните за добавяне са тук',
+  !!a.d.querySelector('[onclick="sbDobaviLice()"]') && !!a.d.querySelector('[onclick="sbDobaviSabitie()"]'));
+t('няма вече връзка към старото ПВА', !/в старото ПВА/.test(telo), telo);
+t('Акт 15 подписват 2', /Акт 15 подписват 2/.test(telo), telo);
+
+// ── без дял: пак възложител (операторът, 04.11.2026) ────────────────────────
+const BEZ = JSON.parse(JSON.stringify(OBEKT));
+BEZ.sobstvenost.lica.push({ id: 'l3', ime: 'Мария Димитрова Йорданова', vid: 'физическо' });
+BEZ.sobstvenost.obekti.push({ id: 'o2', vid: 'самостоятелен обект', opisanie: 'АП3' });
+BEZ.sobstvenost.sabitia.push({ id: 'e2', obekt: 'o2', vid: 'покупко-продажба', data: '01.02.2023',
+    dokument: 'НА № 9', pridobivashti: [{ lice: 'l3', dyal: '' }] });
+const z = await otvori('#/sobstvenost/hus/0', BEZ);
+const zt = tekst(z.d.getElementById('sobstvenost-telo'));
+t('без дял лицето НЕ изпада', /Мария Йорданова/.test(zt), zt.slice(0, 500));
+t('и се казва, че дялът не е вписан', /АП3 \(дялът не е вписан\)/.test(zt), zt.slice(0, 500));
+t('Акт 15 подписват вече 3', /Акт 15 подписват 3/.test(zt), zt);
+// прехвърлил после — вече не е
+BEZ.sobstvenost.lica.push({ id: 'l4', ime: 'Петър Иванов Колев', vid: 'физическо' });
+BEZ.sobstvenost.sabitia.push({ id: 'e3', obekt: 'o2', vid: 'покупко-продажба', data: '01.02.2024',
+    ot: 'l3', pridobivashti: [{ lice: 'l4', dyal: '1/1' }] });
+const z2 = await otvori('#/sobstvenost/hus/0', BEZ);
+const zt2 = tekst(z2.d.getElementById('sobstvenost-telo'));
+t('прехвърлилият после вече не е възложител',
+  !/Мария Йорданова/.test(zt2.split('Регистърът')[0]) && /Петър Колев/.test(zt2), zt2.slice(0, 500));
+
+// ── паспортът: само бутон ───────────────────────────────────────────────────
+const ps = await otvori('#/pasport/hus/0');
+t('паспортът се рисува без грешка', ps.greshki.length === 0, ps.greshki);
+const rachno = ps.d.getElementById('karta-vazlozhiteli-rachno');
+t('ръчните полета за възложител са скрити', !rachno || rachno.style.display === 'none');
+t('упълномощеният остава в DOM-а — записът не го трие', !!ps.d.getElementById('fp-upalnomoshten'));
+const bt = ps.d.querySelector('#pas-vazlozhiteli a');
+t('на тяхно място — бутон към Собствеността',
+  !!bt && bt.getAttribute('href') === '#/sobstvenost/hus/0', bt && bt.outerHTML);
 
 // ── какво не връзва ─────────────────────────────────────────────────────────
 t('при здрава верига няма раздел „какво не връзва“',

@@ -194,16 +194,41 @@ function _sbSabrano(p, obektId, doData) {
 // ── ролята „възложител“ ────────────────────────────────────────────────────
 // Не се въвежда. Всеки, който към тази дата държи вещно право в който и да е
 // обект на имота, е възложител по ЗУТ — включително суперфициарът.
+//
+// БЕЗ ВПИСАН ДЯЛ ЛИЦЕТО ПАК Е ВЪЗЛОЖИТЕЛ. Дотук се броеше само положителното
+// салдо, а актът без дял не дава салдо — и лицето изпадаше мълчаливо (три от
+// четири акта на 04.11.2026). Операторът, същия ден: „всеки който владее
+// собственост, може и без дял от земята“. Затова: придобил е в акт, дялът не
+// се чете, и после не е прехвърлял от същия обект — държи право. Сметката до
+// 1/1 обаче НЕ го брои; дупката излиза в находките, не тук.
 function _sbVazlozhiteli(p, data) {
     const s = _sbDanni(p);
+    const pred = data ? _sbRed(data) : '99999999';
     const out = new Map();
-    for (const o of s.obekti)
-        for (const [lice, f] of _sbSmetka(p, o.id, data))
-            if (f.n > 0) {
-                const red = out.get(lice) || { lice, prava: [] };
-                red.prava.push({ obekt: o.id, dyal: f });
-                out.set(lice, red);
-            }
+    const dobavi = (lice, obekt, dyal) => {
+        const red = out.get(lice) || { lice, prava: [] };
+        red.prava.push({ obekt, dyal, bezDyal: !dyal });
+        out.set(lice, red);
+    };
+    for (const o of s.obekti) {
+        const salda = _sbSmetka(p, o.id, data);
+        for (const [lice, f] of salda) if (f.n > 0) dobavi(lice, o.id, f);
+        const redove = s.sabitia
+            .filter(e => e.obekt === o.id && _sbRed(e.data) <= pred)
+            .sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)));
+        const bezDyal = new Map();
+        redove.forEach((e, i) => {
+            for (const pr of e.pridobivashti || [])
+                if (pr.lice && !_dr(pr.dyal)) bezDyal.set(pr.lice, i);
+        });
+        for (const [lice, i] of bezDyal) {
+            const f = salda.get(lice);
+            if (f && f.n > 0) continue;
+            const dalPosle = redove.slice(i + 1)
+                .some(e => e.ot === lice || (e.ot_lica || []).includes(lice));
+            if (!dalPosle) dobavi(lice, o.id, null);
+        }
+    }
     return [...out.values()].map(r => ({ ...r, ime: _sbImeLice(s, r.lice) }));
 }
 
@@ -257,10 +282,15 @@ function _sbNahodki(p) {
             out.push({ vid: 'prazen_akt', sabitie: e.id,
                 tekst: `${_sbImeAkt(e)} няма придобиващ — кой получава правото?` });
         for (const pr of e.pridobivashti || []) {
-            if (!_dr(pr.dyal))
-                out.push({ vid: 'dyal', sabitie: e.id,
-                    tekst: `Дялът „${pr.dyal || ''}“ в ${_sbImeAkt(e)} не се чете `
-                         + `— пиши дроб (1/2) или процент (8,38%).` });
+            if (_dr(pr.dyal)) continue;
+            // Празният дял и нечетимият са различни неща: първото е липса в
+            // акта или в четенето, второто — правописна грешка.
+            const koj = _sbImeImeBezopasno(s, pr.lice);
+            out.push({ vid: 'dyal', sabitie: e.id, tekst: String(pr.dyal || '').trim()
+                ? `Дялът „${pr.dyal}“ на ${koj} в ${_sbImeAkt(e)} не се чете `
+                  + `— пиши дроб (1/2) или процент (8,38%).`
+                : `В ${_sbImeAkt(e)} дялът на ${koj} не е вписан — той е възложител, `
+                  + `но сметката до 1/1 не го брои.` });
         }
     }
     // Събитие, което сочи изтрито лице или обект. Не бива да се случва след
@@ -556,7 +586,14 @@ function _sbIzchistiEgn(s) {
 const _skritoEgn = v => skriiEGN(v);
 
 // ── екранът ────────────────────────────────────────────────────────────────
-const _sbDnes = () => new Date().toLocaleDateString('bg-BG').replace(/\s/g, '');
+// Днешната дата във вида, който `_sbRed` чете: дд.мм.гггг. Дотук беше
+// `toLocaleDateString('bg-BG')`, а той дава „4.11.2026 г.“ — `_sbRed` не го
+// разпознава, датата ставаше 00000000 и „към днес“ никой не беше възложител.
+// (04.11.2026)
+const _sbDnes = () => {
+    const d = new Date(), dv = n => String(n).padStart(2, '0');
+    return dv(d.getDate()) + '.' + dv(d.getMonth() + 1) + '.' + d.getFullYear();
+};
 
 function renderSobstvenostPage() {
     const p = _obektIliIzbor('sobstvenost-content', 'sobstvenost', 'Изберете имота');
@@ -614,7 +651,7 @@ function _sbHtml(p) {
             ${vaz.length ? `<div style="font-size:13.5px;line-height:1.9">
                 ${vaz.map(v => `<div><strong>${esc(v.ime)}</strong>
                     <span style="color:var(--muted)">— ${v.prava.map(pr =>
-                        `${_drTekst(pr.dyal)} от ${esc(_sbImeObekt(s, pr.obekt))}`).join(' · ')}</span>
+                        `${pr.dyal ? _drTekst(pr.dyal) : 'дял не е вписан'} от ${esc(_sbImeObekt(s, pr.obekt))}`).join(' · ')}</span>
                     <label style="margin-left:8px;font-size:11.5px;color:var(--muted);cursor:pointer">
                         <input type="radio" name="sb-pred" ${s.predstavitel === v.lice
                             || (!s.predstavitel && v === vaz[0]) ? 'checked' : ''}
@@ -641,7 +678,14 @@ function _sbHtml(p) {
                 Към ${esc(data)} никой не държи вещно право — виж находките горе.</div>`}
         </div>` : '';
 
-    const chetene = `
+    const chetene = _sbCheteneHtml();
+    return glava + _sbChetenoHtml(p) + chetene + vazlozhiteli + _sbTablici(p);
+}
+
+// Картата за четене на документ. Отделна функция, за да я рисуват и двете
+// повърхности — същата карта, същите id-та, същото `sbCheti`. (04.11.2026)
+function _sbCheteneHtml() {
+    return `
         <div class="card" style="margin-bottom:16px">
             <div class="card-title" style="margin-bottom:6px">\u{1F916} Прочети документ за собственост</div>
             <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
@@ -668,7 +712,6 @@ function _sbHtml(p) {
             </div>
             <div id="sb-hod" style="font-size:12.5px;color:var(--muted);margin-top:8px"></div>
         </div>`;
-    return glava + _sbChetenoHtml(p) + chetene + vazlozhiteli + _sbTablici(p);
 }
 
 function _sbTablici(p) {
