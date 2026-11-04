@@ -276,13 +276,37 @@ t('и четирите връзки вече са вътре в новото',
   vsichki.every(a => (a.getAttribute('href') || '').startsWith('#/')),
   vsichki.map(a => a.getAttribute('href')));
 
+// ── ЕКРАН 8: ДОКУМЕНТИТЕ ─────────────────────────────────────────────────────
+// Първата стая, преместена от старото ПВА (04.11.2026). Дотук бутонът
+// „Съставѝ документа“ просто изхвърляше оператора в другото приложение.
+{
+    const { d, greshki } = await otvori('#/dokumenti/hus/0/Акт%2014');
+    t('екранът на документите се отваря без грешки', !greshki.length, greshki[0]);
+    const telo = d.getElementById('dokumenti-telo');
+    t('и се рисува', (telo.textContent || '').trim().length > 0);
+    t('показва момента като заглавие', /Акт 14/.test(telo.textContent), tekst(telo).slice(0, 80));
+    t('предлага документа на момента',
+      [...telo.querySelectorAll('.dok-ime')].some(x => /Акт 14/.test(x.textContent)),
+      [...telo.querySelectorAll('.dok-ime')].map(x => x.textContent));
+    t('има бутон „Съставѝ“',
+      [...telo.querySelectorAll('button')].some(b => /Съставѝ/.test(b.textContent)),
+      [...telo.querySelectorAll('button')].map(b => b.textContent));
+    t('и казва какво ще влезе, преди да се натисне',
+      /Какво ще влезе/.test(telo.textContent) || /няма избран консултант/.test(telo.textContent),
+      tekst(telo).slice(0, 120));
+    t('от документите се връщаш в ОБЕКТА, не на плота',
+      d.getElementById('shapka-nazad').getAttribute('href') === '#/obekt/hus/0',
+      d.getElementById('shapka-nazad').getAttribute('href'));
+}
+
 // ── границата със старото ПВА ────────────────────────────────────────────────
 
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
      '../js/04b-spisak.js', '../js/04c-sabitia.js',
+     '../js/08-momenti.js', '../js/11-dokumenti.js', '../js/11b-generirane.js',
      '../js/07-sobstvenost.js', '../js/12b-kandidati.js',
      '../js/12c-naucheno.js'].includes(s)),
   vklyucheni);

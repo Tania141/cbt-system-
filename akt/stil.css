@@ -470,3 +470,13 @@ body {
 @media (max-width: 600px) {
     .istoria-red { grid-template-columns: 1fr; gap: 0; }
 }
+
+/* ── Документите на момента (04.11.2026) ───────────────────────────────── */
+.dok-red {
+    display: flex; gap: 8px; align-items: baseline;
+    padding: 5px 0; border-bottom: 1px dotted var(--ramka, #e5e5e5);
+    font-size: 13.5px; cursor: pointer;
+}
+.dok-red:last-of-type { border-bottom: 0; }
+.dok-ime { flex: 1; }
+.gotov { color: var(--green, #2e7d32); font-size: 12px; }

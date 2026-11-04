@@ -65,6 +65,12 @@
         <div id="znaem-telo"></div>
     </section>
 
+    <!-- ЕКРАН 8 — документите на момента; първата стая, преместена от старото -->
+    <section id="ekran-dokumenti" hidden>
+        <h1 class="moment-ime">Документите</h1>
+        <div id="dokumenti-telo"></div>
+    </section>
+
     <!-- ЕКРАН 3 -->
     <section id="ekran-moment" hidden>
         <h1 class="moment-ime" id="moment-zaglavie"></h1>
@@ -101,6 +107,11 @@
 <script src="../js/04-vhodni-dokumenti.js"></script>
 <script src="../js/04b-spisak.js"></script>
 <script src="../js/04c-sabitia.js"></script>
+<!-- Кухнята на генерирането. Тези три са КУХНЯ, не стари екрани: сглобяването
+     на паспорта, списъкът с видове документи и самото генериране. -->
+<script src="../js/08-momenti.js"></script>
+<script src="../js/11-dokumenti.js"></script>
+<script src="../js/11b-generirane.js"></script>
 <script src="../js/07-sobstvenost.js"></script>
 <script src="../js/12b-kandidati.js"></script>
 <!-- „Не се отнася“ като урок за типа строеж, не само за обекта. -->
@@ -116,6 +127,7 @@
 <script src="sobstvenost.js"></script>
 <script src="dosie.js"></script>
 <script src="znaem.js"></script>
+<script src="dokumenti.js"></script>
 
 <script>
 // Къде сме:
@@ -143,15 +155,16 @@ function aktPokazhi() {
         : k.ekran === 'sobstvenost' ? 'sobstvenost'
         : k.ekran === 'dosie' ? 'dosie'
         : k.ekran === 'znaem' ? 'znaem'
+        : k.ekran === 'dokumenti' && k.moment ? 'dokumenti'
         : k.ekran === 'obekt' ? 'obekt' : 'plot';
-    for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost', 'dosie', 'znaem'])
+    for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost', 'dosie', 'znaem', 'dokumenti'])
         document.getElementById('ekran-' + x).hidden = x !== ekran;
     document.getElementById('shapka-plot').hidden = ekran !== 'plot';
     document.getElementById('shapka-nazad').hidden = ekran === 'plot';
     // От момента се връщаш в обекта, не чак на плота.
     // От момента и от проекта се връщаш в обекта, не чак на плота.
     const vObekta = ekran === 'moment' || ekran === 'proekt' || ekran === 'sobstvenost'
-        || ekran === 'dosie' || ekran === 'znaem';
+        || ekran === 'dosie' || ekran === 'znaem' || ekran === 'dokumenti';
     document.getElementById('shapka-nazad').href = vObekta
         ? `#/obekt/${encodeURIComponent(k.id)}/${k.i}` : '#/plot';
     document.getElementById('shapka-nazad').textContent = vObekta
@@ -161,6 +174,8 @@ function aktPokazhi() {
     else if (ekran === 'proekt') proektOtvori(k.id, k.i);
     else if (ekran === 'sobstvenost') sobstvenostOtvori(k.id, k.i);
     else if (ekran === 'dosie') dosieOtvori(k.id, k.i);
+    // Четвъртата част на адреса при документите е МОМЕНТЪТ.
+    else if (ekran === 'dokumenti') dokumentiOtvori(k.id, k.i, k.moment);
     // Четвъртата част на адреса при огледалото е ГРУПАТА, не момент.
     else if (ekran === 'znaem') znaemOtvori(k.id, k.i, k.moment);
     else {

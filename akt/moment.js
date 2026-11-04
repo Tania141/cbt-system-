@@ -471,10 +471,12 @@ function momentSastaviHtml(dve) {
 // Съставянето си остава в кухнята — шаблоните, подписите и сглобяването на
 // паспорта живеят там и не се преписват тук. Екран 3 решава ДАЛИ може и
 // отпраща. (Екранът не се кърпи — само се ползва.)
+// Дотук този бутон просто те изхвърляше в старото ПВА: „Съставѝ документа“
+// значеше „иди другаде“. От 04.11.2026 документът се съставя тук.
 function momentSastavi() {
     const z = momentZhiv();
     if (!z) return;
     z.st.tekusht_moment = momentIme;
     aktZapishi();
-    location.href = '../index.html';
+    location.hash = `#/dokumenti/${encodeURIComponent(momentId)}/${momentIndeks}/${encodeURIComponent(momentIme)}`;
 }
