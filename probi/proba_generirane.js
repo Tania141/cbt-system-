@@ -77,6 +77,54 @@ t('и повторното генериране ПРЕЗАПИСВА запис�
 t('празен резултат не оставя следа',
   (() => { const q = {}; F.genZapishi(q, []); return !q.generatedDocs; })());
 
+// ── СТАЯТА СЕ МЕСТИ ЦЯЛА, С МЕБЕЛИТЕ ────────────────────────────────────────
+// 04.11.2026: генерирането беше преместено наполовина. Липсваха изборът кой
+// подписва, котите на Протокол 2 и частите на Акт 12 — тоест документът
+// излизаше без подпис, без коти и без части, а аз го нарекох „работи“.
+const ekran = fs.readFileSync(path.join(KOREN, 'akt', 'dokumenti.js'), 'utf8');
+t('екранът пита КОЙ ПОДПИСВА', /renderSignersChecklist\('dok-signers'/.test(ekran));
+t('и праща избора към сглобяването',
+  /readSigners\('dok-signers'\)/.test(ekran) && /passportExtra: \{ signers/.test(ekran));
+t('екранът пита за ЧАСТИТЕ на Акт 12', /renderAkt12Parts\('dok-akt12'/.test(ekran));
+t('и не съставя Акт 12 без нито една част',
+  /отбележи поне една част/.test(ekran));
+t('екранът пита за КОТИТЕ на Протокол 2', /p2-kota-izkop/.test(ekran));
+t('и ползва СЪЩИТЕ полета като стария прозорец, за да работят същите помощници',
+  /_napalniKoti\('p2-'\)/.test(ekran));
+t('мебелите се четат ПРЕДИ рисуването, иначе се изтриват',
+  ekran.indexOf("readSigners('dok-signers')") < ekran.indexOf('dokRaboti = true'), '');
+
+// ── допълнителните редове на Протокол 2 ─────────────────────────────────────
+const G = new Function(
+    "const P2_STANDARTNI = { darvesenost: 'СТАНДАРТНА ДЪРВЕСНОСТ', merki_pbz: 'СТАНДАРТНИ МЕРКИ' };\n"
+    + "const SASTOYANIE_DEFAULT = 'СТАНДАРТНО СЪСТОЯНИЕ';\n"
+    + grab(s, 'genRedoveP2') + '\nreturn {genRedoveP2};')();
+const p2 = v => Object.fromEntries(G.genRedoveP2(v));
+
+t('котите влизат както са въведени',
+  p2({ izkop: '-4,25', cokul: '+0,15', korniz: '+17,10', bilo: '+21,50' })['Kota_Izkop'] === '-4,25');
+t('реперът също', p2({ reperNomer: '12', reperKota: '559.38' })['Reper_Kota'] === '559.38');
+t('празна дървесност дава СТАНДАРТНИЯ текст, не празен ред',
+  p2({})['Darvesenost'] === 'СТАНДАРТНА ДЪРВЕСНОСТ', p2({})['Darvesenost']);
+t('а отметната дървесност дава въведеното',
+  p2({ imaDarvesenost: true, darvesenost: 'две липи' })['Darvesenost'] === 'две липи');
+t('отметната, но непопълнена, пак дава стандартния',
+  p2({ imaDarvesenost: true, darvesenost: '  ' })['Darvesenost'] === 'СТАНДАРТНА ДЪРВЕСНОСТ');
+t('състоянието наоколо е стандартно по подразбиране',
+  p2({})['Sastoyanie_Okolo'] === 'СТАНДАРТНО СЪСТОЯНИЕ');
+t('мерките по ПБЗ са винаги стандартните',
+  p2({})['Merki_PBZ'] === 'СТАНДАРТНИ МЕРКИ');
+
+// Същите ключове, които слага старият прозорец — иначе шаблонът ще получи
+// други имена и ще излезе празен.
+const star = fs.readFileSync(path.join(KOREN, 'js', '09-akt15.js'), 'utf8');
+const vStaria = [...star.matchAll(/\['(Opisanie_Ploshtadka|Kota_\w+|Reper_\w+|Darvesenost|Sastoyanie_Okolo|Merki_PBZ)'/g)]
+    .map(m => m[1]);
+const vNovia = G.genRedoveP2({}).map(r => r[0]);
+t('ключовете са същите като в стария прозорец',
+  vStaria.every(k => vNovia.includes(k)) && vStaria.length === vNovia.length,
+  [vStaria, vNovia]);
+
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
 console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — генерирането се премести`);

@@ -294,6 +294,10 @@ t('и четирите връзки вече са вътре в новото',
     t('и казва какво ще влезе, преди да се натисне',
       /Какво ще влезе/.test(telo.textContent) || /няма избран консултант/.test(telo.textContent),
       tekst(telo).slice(0, 120));
+    t('и пита кой подписва долу',
+      /Кой подписва долу/.test(telo.textContent), tekst(telo).slice(0, 200));
+    t('а котите на Протокол 2 не се показват при чужд документ',
+      !d.getElementById('p2-kota-izkop'), '');
     t('от документите се връщаш в ОБЕКТА, не на плота',
       d.getElementById('shapka-nazad').getAttribute('href') === '#/obekt/hus/0',
       d.getElementById('shapka-nazad').getAttribute('href'));
@@ -306,7 +310,9 @@ const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m
 t('новата повърхност включва само своите файлове и прочетената кухня',
   vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
      '../js/04b-spisak.js', '../js/04c-sabitia.js',
-     '../js/08-momenti.js', '../js/11-dokumenti.js', '../js/11b-generirane.js',
+     '../js/03-obshti.js', '../js/08-momenti.js', '../js/09-akt15.js',
+     '../js/11-dokumenti.js',
+     '../js/11b-generirane.js',
      '../js/07-sobstvenost.js', '../js/12b-kandidati.js',
      '../js/12c-naucheno.js'].includes(s)),
   vklyucheni);

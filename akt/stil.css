@@ -480,3 +480,8 @@ body {
 .dok-red:last-of-type { border-bottom: 0; }
 .dok-ime { flex: 1; }
 .gotov { color: var(--green, #2e7d32); font-size: 12px; }
+.p2-mrezha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.p2-pole { display: block; font-size: 12px; color: var(--muted); margin: 6px 0; }
+.p2-pole input { display: block; width: 100%; margin-top: 2px; }
+.p2-chek { display: flex; gap: 8px; align-items: center; font-size: 13px; margin: 8px 0; cursor: pointer; }
+@media (max-width: 600px) { .p2-mrezha { grid-template-columns: 1fr 1fr; } }

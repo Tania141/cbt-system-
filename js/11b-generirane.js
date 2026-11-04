@@ -37,6 +37,8 @@ async function genDokument(project, consultant, apiType, extra) {
     if (typeof buildPassportRows !== 'function')
         throw new Error('липсва сглобяването на паспорта');
     const redove = buildPassportRows(project, consultant, dop.passportExtra || {});
+    // Протокол 2 носи своите коти и стандартни текстове — вж. genRedoveP2.
+    if (dop.p2) redove.push(...genRedoveP2(dop.p2));
     const telo = { passport: redove, pi: project.pi };
     if (dop.chast) { telo.chast = dop.chast; telo.akt12_number = dop.akt12_number; }
 
@@ -84,6 +86,36 @@ function genZapishi(project, rezultati) {
     }
     if (typeof addHistory === 'function')
         addHistory('generate', project.pi, `Генерирани .docx: ${rezultati.map(r => r.type).join(', ')}`);
+}
+
+// ДОПЪЛНИТЕЛНИТЕ РЕДОВЕ НА ПРОТОКОЛ 2.
+//
+// Протокол 2 не се съставя само от паспорта: той носи котите на контролните
+// нива, реперите, описанието на площадката и три стандартни текста. Дотук това
+// живееше вътре в прозореца на стария екран (`showProtokol2Form`), затова
+// документът, съставен отдругаде, излизаше без коти.
+//
+// Тук е чиста функция: дава ѝ се какво е въвел операторът, връща редовете.
+// Стандартните текстове са по подразбиране, а не празно поле — операторът,
+// 14.10.2026: „пишат се само когато случаят е различен“.
+function genRedoveP2(v) {
+    const d = v || {};
+    const text = x => String(x || '').trim();
+    const standartni = typeof P2_STANDARTNI !== 'undefined' ? P2_STANDARTNI : { darvesenost: '', merki_pbz: '' };
+    const okolo = typeof SASTOYANIE_DEFAULT !== 'undefined' ? SASTOYANIE_DEFAULT : '';
+    return [
+        ['Opisanie_Ploshtadka', text(d.opisanie)],
+        ['Kota_Izkop', text(d.izkop)],
+        ['Kota_Cokul', text(d.cokul)],
+        ['Kota_Korniz', text(d.korniz)],
+        ['Kota_Bilo', text(d.bilo)],
+        ['Reper_Nomer', text(d.reperNomer)],
+        ['Reper_Kota', text(d.reperKota)],
+        // Дървесност: „няма“ не значи празен ред, а стандартната формулировка.
+        ['Darvesenost', (d.imaDarvesenost && text(d.darvesenost)) || standartni.darvesenost],
+        ['Sastoyanie_Okolo', (d.svoeSastoyanie && text(d.sastoyanie)) || okolo],
+        ['Merki_PBZ', standartni.merki_pbz],
+    ];
 }
 
 // Акт 12 се съставя ПО ЧАСТИ — една задача за всяка част.
