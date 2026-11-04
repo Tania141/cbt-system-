@@ -41,6 +41,9 @@ function pasportRisuvai() {
     </div>`;
     // СЪЩАТА форма, не нова. Ако някой ден се смени оттатък, се сменя и тук.
     if (typeof renderPassportForm === 'function') renderPassportForm(p ? p.id : null);
+    // Фазата крие и показва — включително картата с разрешението за строеж.
+    // Вика се СЛЕД формата, защото тя рисува бутоните на фазата.
+    if (typeof setFaza === 'function') setFaza((p && p.faza) || 'osip');
 }
 
 // Разрешението за строеж. Текстът на предупреждението е дословно от стария
@@ -51,8 +54,15 @@ function pasportRazreshenieHtml(p) {
     const pole = (id, etiket, stoynost, mysto) => `
         <label class="p2-pole"><span>${etiket}</span>
             <input type="text" id="${id}" value="${_e(stoynost || '')}" placeholder="${mysto || ''}"></label>`;
+    // Показва се само във фаза „Строителство“. Преди разрешението да е
+    // издадено, тези полета нямат какво да съдържат — а празно поле на екрана
+    // изглежда като нещо, което си пропуснала. (Операторът, 04.11.2026)
+    //
+    // `data-faza` е механизмът на самата форма: `setFaza` крие и показва по
+    // него. Затова картата се подчинява на бутоните „Проектна“ / „Строителство“
+    // без нито ред нов код там.
     return `
-    <div class="kutiya-razdel">
+    <div class="kutiya-razdel" data-faza="stroitelstvo">
         <div class="nadpis">Разрешение за строеж</div>
         <p class="tiho"><strong>Номерът и датата се преписват на ръка от самото
             разрешение.</strong> Те влизат в акт 7, акт 14, акт 15 и окончателния

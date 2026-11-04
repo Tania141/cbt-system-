@@ -346,6 +346,18 @@ t('и четирите връзки вече са вътре в новото',
       w.location.hash);
     t('непозната страница не чупи нищо',
       (() => { try { w.navigateTo('няма такава'); return true; } catch (e) { return false; } })());
+
+    // Операторът, 04.11.2026: полетата по РС да се виждат само във фаза
+    // „Строителство“ — преди разрешението те нямат какво да съдържат, а празно
+    // поле изглежда като пропуск.
+    const rsKarta = d.getElementById('fp-permit-num').closest('[data-faza]');
+    t('картата с разрешението виси на фазата',
+      !!rsKarta && rsKarta.dataset.faza === 'stroitelstvo',
+      rsKarta && rsKarta.dataset.faza);
+    w.setFaza('osip');
+    t('в проектна фаза е скрита', rsKarta.style.display === 'none', rsKarta.style.display);
+    w.setFaza('stroitelstvo');
+    t('в строителство се показва', rsKarta.style.display !== 'none', rsKarta.style.display);
     t('а видът на преместената форма не е гол',
       /#pasport-telo \.form-input/.test(fs.readFileSync(path.join(PAPKA, 'stil.css'), 'utf8')), '');
 }
