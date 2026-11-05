@@ -450,6 +450,12 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     t('„махни целия акт“ маха всички записи с № 178', s.sabitia.length === 1 && s.sabitia[0].dokument === d148,
       s.sabitia.map(e => e.dokument));
     t('и АП 9 става 1/1', F._drTekst(F._sbSabrano(p, 'ap')) === '1');
+    s.obekti.push({ id: 'g', vid: 'самостоятелен обект', opisanie: 'Г52' });
+    s.sabitia.push(akt('g', { vid: 'обезщетение', dokument: d178, pridobivashti: [{ lice: 'm', dyal: '1/1' }] }),
+                   akt('ap', { vid: 'обезщетение', dokument: d178, pridobivashti: [{ lice: 'm', dyal: '1/1' }] }));
+    F.sbMahniAkt(s.sabitia[1].id);
+    t('празният обект си отива с акта', !s.obekti.some(o => o.id === 'g'), s.obekti.map(o => o.opisanie));
+    t('обектът „тук се строи“ остава', s.obekti.some(o => o.id === 'ap'));
 }
 {
     // Люлин: „Борис Серафимов, като пълномощник на ВАСИЛКА СТОИМЕНОВА“.
@@ -457,6 +463,37 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
         + 'ВАСИЛКА АЛЕКСАНДРОВА СТОИМЕНОВА, Ваня Тошкова Александрова');
     t('пълномощникът преди страната не е страна', !st.some(x => /Серафимов/.test(x)), st);
     t('страните са три, Василка е сред тях', st.length === 3 && st.some(x => /Стоименова/i.test(x)), st);
+}
+{
+    // Люлин, второ четене: измислени квоти, паркомясто с дял от гаража,
+    // предварителният договор наобратно и две тирета. (05.11.2026)
+    const p = nov(), s = p.sobstvenost;
+    s.obekti.push({ id: 'z', vid: 'земя', identifikator: '68134.4354.781' });
+    s.koren = 'z';
+    const L = '«ЛЮЛИН ИНВЕСТ ГРУП 22» ЕООД, представлявано от управителя Р. Начев';
+    p._sb_procheteno = { fajl: 'l.pdf', nomer: '81', delo: '242/2022', data: '22.12.2022',
+        lica: [{ ime: 'Димитър Киров', kvota_zemya: '1/9' }, { ime: 'Анелия Янкова – Христова', kvota_zemya: '1/9' },
+               { ime: 'Илия Илиев', kvota_zemya: '1/9' }],
+        obekti: [{ identifikator: '68134.4354.781', vid: 'земя' }],
+        prehvarliania: [
+            { vid: 'учредяване право на строеж', ot: 'Димитър Киров, Анелия Янкова – Христова, Илия Илиев',
+              na: L, dyal: '1/1', obekt: '68134.4354.781' },
+            { vid: 'обезщетение', ot: L, na: 'Димитър Киров', dyal: '23,72/151,40', obekt: 'паркомясто А6' },
+            { vid: 'обезщетение', ot: L, na: 'Анелия Янкова - Христова', dyal: '1/1', obekt: 'апартамент А32' },
+            { vid: 'обезщетение', ot: 'Димитър Киров, Анелия Янкова – Христова, Илия Илиев', na: L,
+              dyal: '12,50/7146', obekt: 'външно паркомясто Г52' },
+            { vid: 'обезщетение', ot: L, na: L, dyal: '1/1', obekt: 'всички останали обекти' }] };
+    F.set(p); F.sbPriemi();
+    const u = s.sabitia.find(e => /учредяв/.test(e.vid));
+    t('квоти, които не дават 1/1, не се пазят', !u.kvoti, u.kvoti);
+    t('редовете към суперфициара отпадат', !s.obekti.some(o => /Г52|всички останали/.test(o.opisanie || ''))
+      && s.sabitia.length === 3, s.sabitia.map(e => e.vid + ' ' + e.obekt));
+    const a6 = s.obekti.find(o => o.opisanie === 'паркомясто А6');
+    t('паркомясто с дял от гаража е цяло', a6 && F._drTekst(F._sbSabrano(p, a6.id)) === '1');
+    t('двете тирета са едно лице', s.lica.filter(l => /Христова/.test(l.ime)).length === 1, s.lica.map(l => l.ime));
+    const vaz = F._sbVazlozhiteli(p, '05.11.2026');
+    t('учредителите са по 1/3, с „!“', vaz.filter(v => v.prava.some(x => x.posochen && x.ravni
+      && F._drTekst(x.dyal) === '1/3')).length === 3, vaz.map(v => v.ime));
 }
 {
     // При четене правото отива направо в отделния обект.

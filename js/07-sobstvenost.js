@@ -162,7 +162,7 @@ function _sbKojPodpisva(tekst) {
 // Имената се сравняват без оглед на интервали и главни букви.
 // Кавичките не са част от името: „АРКОН ИНВЕСТ“ ООД и «АРКОН ИНВЕСТ» ООД са
 // една фирма — актовете ги пишат различно. (05.11.2026)
-const _sbZnIme = x => String(x || '').replace(/[\u201E\u201C\u201D\u0022\u00AB\u00BB\u0027\u2018\u2019\u0060]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
+const _sbZnIme = x => String(x || '').replace(/[\u201E\u201C\u201D\u0022\u00AB\u00BB\u0027\u2018\u2019\u0060]/g, '').replace(/\s*[\u2013\u2014-]\s*/g, '-').trim().toLowerCase().replace(/\s+/g, ' ');
 
 const _sbNovId = () => 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -1150,8 +1150,19 @@ function sbPriemi() {
     // Квотите на учредителите в земята — пише ги актът за учредяване, а
     // нотариусът ги е проверил. От тях земята се събира до 1/1 от датата на
     // учредяването нататък. (Операторът, 05.11.2026)
-    const kvoti = (ch.lica || []).filter(l => l && l.ime && _dr(l.kvota_zemya))
+    let kvoti = (ch.lica || []).filter(l => l && l.ime && _dr(l.kvota_zemya))
         .map(l => ({ ime: _sbStrana(l.ime), dyal: String(l.kvota_zemya).trim() }));
+    // Квоти, които не дават 1/1, не са прочетени — измислени са. Люлин: актът
+    // не ги пише, четецът сложи „1/9“ на деветнайсет души. Тогава важи
+    // предположението за равни дялове, с „!“. (05.11.2026)
+    if (kvoti.length) {
+        let sb = _NULA;
+        for (const k of kvoti) sb = _drSabi(sb, _dr(k.dyal));
+        if (!_drBlizoEdno(sb)) kvoti = [];
+    }
+    // Суперфициарите — онези, които получават правото на строеж в този акт.
+    const superficiari = new Set((ch.prehvarliania || [])
+        .filter(x => /учредяв/i.test(x.vid || '')).flatMap(x => imena(x.na).map(klyuch)));
     // ЕДИН АКТ — ЕДНО СЪБИТИЕ. Дяловете са вътре в него, не са отделни
     // събития. (Операторът, 15.10.2026: „ако събитие е НА, то това събитие е
     // 1, а не 2“.)
@@ -1182,6 +1193,11 @@ function sbPriemi() {
     for (const x of (sdelki.length ? sdelki : redove)) {
         const poluchateli = imena(x.na);
         if (!poluchateli.length) continue;
+        // ОБЕЗЩЕТЕНИЕТО ВЪРВИ ОТ СУПЕРФИЦИАРА КЪМ УЧРЕДИТЕЛЯ, никога обратно.
+        // Ред към суперфициара е или обещание (предварителният договор за
+        // външните паркоместа на Люлин), или „всички останали обекти“ — а те
+        // са негови и без ред. (05.11.2026)
+        if (/обезщет/i.test(x.vid || '') && poluchateli.some(na => superficiari.has(klyuch(na)))) continue;
         const dava = imena(x.ot);
         let obektId = obekt(x.obekt);
         // ПРАВОТО НА СТРОЕЖ НЕ Е ЗЕМЯТА. Четецът вписва учреденото право
@@ -1198,7 +1214,9 @@ function sbPriemi() {
         // идеалните му части от сградата („6,302 %“) и Мария излизаше
         // собственик на 6 % от АП 9. Обектът се получава цял; съсобственост
         // при обезщетение се пише с дроб. (АРКОН, 05.11.2026)
-        const dyalTekst = /обезщет/i.test(x.vid || '') && /%/.test(String(x.dyal || '')) ? '1/1' : x.dyal;
+        // Също и „23,72/151,40“ — делът на паркомястото от гаража.
+        const dyalTekst = /обезщет/i.test(x.vid || '') && (/%/.test(String(x.dyal || ''))
+            || !_dr(x.dyal)) ? '1/1' : x.dyal;
         const dyal = _drDeli(dyalTekst, poluchateli.length);
         // Прехвърлителите стават лица САМО ако вече са в регистъра — тогава
         // салдата им трябва да паднат. Иначе остават имена върху акта.
@@ -1435,7 +1453,14 @@ function sbMahniAkt(sabitieId) {
 
 ${e.dokument}`)) return;
     s.sabitia = s.sabitia.filter(x => !zapisi.includes(x));
-    _sbZapishi(p, `махнат ${_sbImeAkt(e)} — ${zapisi.length} записа`);
+    // Обектите, които актът е донесъл и които сега нямат нито един акт, се
+    // махат с него — иначе остават „събрани 0“. Земята и обектът, в който се
+    // строи, остават. (Люлин, 05.11.2026)
+    const zasegnati = new Set(zapisi.map(x => x.obekt));
+    const prazni = s.obekti.filter(o => zasegnati.has(o.id) && o.vid !== 'земя' && o.id !== s.koren
+        && !s.sabitia.some(x => x.obekt === o.id));
+    s.obekti = s.obekti.filter(o => !prazni.includes(o));
+    _sbZapishi(p, `махнат ${_sbImeAkt(e)} — ${zapisi.length} записа${prazni.length ? `, ${prazni.length} празни обекта` : ''}`);
 }
 
 // Едно лице, записано два пъти — „АРКОН ИНВЕСТ“ и «АРКОН ИНВЕСТ» — се слива:
