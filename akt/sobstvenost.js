@@ -79,7 +79,8 @@ function _sobPritezhava(s, prava) {
     for (const x of prava) {
         const o = (s.obekti || []).find(y => y.id === x.obekt) || {};
         const ime = _sobImeObekt(s, x.obekt);
-        const t = x.bezDyal ? `${ime} <span class="lipsva-dyal">(дялът не е вписан)</span>`
+        const t = x.posochen ? `${_e(ime)} <span class="lipsva-dyal">(посочен в акта за право на строеж — неговият акт не е качен)</span>`
+            : x.bezDyal ? `${_e(ime)} <span class="lipsva-dyal">(дялът не е вписан)</span>`
             : _drEdno(x.dyal) ? _e(ime)
             : `<strong>${_e(_drTekst(x.dyal))}</strong> от ${_e(ime)}`;
         (/право на строеж/i.test(o.vid || '') ? pravo : sobst).push(t);
@@ -125,8 +126,8 @@ function sobstvenostVazlozhiteliHtml(p) {
             <div class="vaz-red">
                 <div class="vaz-ime"><span title="${_e(v.ime)}">${_e(_sbDveImena(v.ime))}</span>${
                     l.vid === 'юридическо' ? '<span class="otkade">юридическо лице</span>' : ''}
-                    <label class="otkade vaz-pred"><input type="radio" name="sb-pred" ${izbran ? 'checked' : ''}
-                        onchange="sbPredstavitel('${_e(v.lice)}')"> представител в Протокол 2</label>
+                    ${v.lice ? `<label class="otkade vaz-pred"><input type="radio" name="sb-pred" ${izbran ? 'checked' : ''}
+                        onchange="sbPredstavitel('${_e(v.lice)}')"> представител в Протокол 2</label>` : ''}
                 </div>
                 <div class="vaz-prava">${_sobPritezhava(s, v.prava)}</div>
                 ${pr ? `<div class="otkade">подписва ${_e(pr.ime)}${
@@ -146,7 +147,7 @@ function sobstvenostVazlozhiteliHtml(p) {
 // Кодът съди, но само за това, което има значение. От сто акта обикновено три.
 
 const SOBSTVENOST_VID = {
-    prazno: 'няма събитие', nepalno: 'непълна верига', nadvishava: 'повече от цялото', pravo_varhu_zemya: 'право на строеж върху земята', dyal: 'дял', minus: 'прехвърлено повече',
+    prazno: 'няма събитие', nepalno: 'непълна верига', nadvishava: 'повече от цялото', posocheni: 'само посочени', pravo_varhu_zemya: 'право на строеж върху земята', dyal: 'дял', minus: 'прехвърлено повече',
     pochinal: 'починал собственик', prazen_akt: 'акт без номер',
 };
 

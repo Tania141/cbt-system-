@@ -22,7 +22,7 @@ const F = new Function(
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
-       grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -342,6 +342,27 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
                           na: '«БИЛДИНГ ЕКСПРЕС-90 Р» ООД', dyal: '1/1', obekt: '68134.702.9889' }] };
     F.sbPriemi();
     t('прочетеното учредяване за целия имот не сяда на АП603', sq.sabitia[0].obekt !== 'a603', sq.sabitia[0]);
+}
+{
+    // АРКОН ИНВЕСТ: земята без акт, учредителите само в текста. (05.11.2026)
+    const p = nov(), s = p.sobstvenost;
+    s.lica.push({ id: 'ar', ime: '„АРКОН ИНВЕСТ“ ООД', vid: 'юридическо' });
+    s.obekti.push({ id: 'z', vid: 'земя', identifikator: '68134.4337.718' },
+                  { id: 'ps', vid: 'право на строеж', cyalo: true, identifikator: '68134.4337.718',
+                    opisanie: 'право на строеж върху целия имот 68134.4337.718' });
+    s.koren = 'z';
+    s.sabitia.push(akt('ps', { vid: 'учредяване право на строеж', data: '28.05.2024',
+        ot_opisanie: 'Мария Арсова Пенева, Славчо Арсов Славков', pridobivashti: [{ lice: 'ar', dyal: '1/1' }] }));
+    const vaz = F._sbVazlozhiteli(p, '05.11.2026');
+    t('учредителите излизат като посочени собственици на земята',
+      vaz.some(v => v.posochen && v.ime === 'Мария Арсова Пенева') && vaz.some(v => v.ime === 'Славчо Арсов Славков'),
+      vaz.map(v => v.ime));
+    t('и фирмата си остава', vaz.some(v => v.lice === 'ar'));
+    t('посочените НЕ стават лица', s.lica.length === 1, s.lica.map(l => l.ime));
+    const n = F._sbNahodki(p);
+    t('находката ги назовава', n.some(x => x.vid === 'posocheni' && /Мария Арсова Пенева/.test(x.tekst)), n);
+    const kl = F._sbKlienti(p, '05.11.2026');
+    t('в документите влизат с имената си', kl.some(k => k.dveImena === 'Мария Пенева'), kl.map(k => k.dveImena));
 }
 {
     // При четене правото отива направо в отделния обект.

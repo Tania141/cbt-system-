@@ -244,7 +244,37 @@ function _sbVazlozhiteli(p, data) {
             if (!dalPosle) dobavi(lice, o.id, null);
         }
     }
-    return [...out.values()].map(r => ({ ...r, ime: _sbImeLice(s, r.lice) }));
+    const gotovi = [...out.values()].map(r => ({ ...r, ime: _sbImeLice(s, r.lice) }));
+    // ПОСОЧЕНИТЕ. Земя без нито един акт, а върху нея е учредено право на
+    // строеж: актът казва кой го учредява — собствениците на земята. Те са
+    // възложители, но недоказани, докато не се качи техният акт. (Операторът,
+    // 05.11.2026: „Да, като посочени“.) Не стават лица — лице се създава,
+    // когато придобива.
+    for (const o of s.obekti) {
+        if (o.vid !== 'земя' || s.sabitia.some(e => e.obekt === o.id)) continue;
+        const pos = _sbPosocheni(s, o, pred);
+        for (const ime of pos.imena) {
+            if (gotovi.some(g => _sbZnIme(g.ime) === _sbZnIme(ime))) continue;
+            gotovi.push({ lice: null, ime, posochen: true,
+                          prava: [{ obekt: o.id, dyal: null, bezDyal: true, posochen: true }] });
+        }
+    }
+    return gotovi;
+}
+
+// Кои са посочени като учредители на право на строеж върху тази земя — и в
+// кой акт. Само по текста на акта; нищо не се смята.
+function _sbPosocheni(s, zemya, pred) {
+    const akt = s.sabitia
+        .filter(e => /учредяв/i.test(e.vid || '') && (!pred || _sbRed(e.data) <= pred))
+        .find(e => { const o = _sbObekt(s, e.obekt) || {};
+                     return o.vid === 'право на строеж' && o.cyalo
+                         && (o.varhu === zemya.id || (zemya.identifikator && o.identifikator === zemya.identifikator)); });
+    if (!akt) return { akt: null, imena: [] };
+    const imena = akt.ot ? [_sbImeLice(s, akt.ot)]
+        : (akt.ot_lica || []).length ? akt.ot_lica.map(l => _sbImeLice(s, l))
+        : _sbStrani(akt.ot_opisanie);
+    return { akt, imena };
 }
 
 // ── находките ──────────────────────────────────────────────────────────────
@@ -263,8 +293,13 @@ function _sbNahodki(p) {
         const sabrano = _sbSabrano(p, koren.id);
         const ime = _sbImeObekt(s, koren.id);
         if (!s.sabitia.some(e => e.obekt === koren.id)) {
-            out.push({ vid: 'prazno', obekt: koren.id,
-                tekst: `${ime} — няма нито едно събитие. Качи акта, с който е придобит.` });
+            const pos = _sbPosocheni(s, koren);
+            out.push(pos.imena.length
+                ? { vid: 'posocheni', obekt: koren.id,
+                    tekst: `${ime} — собствениците са само посочени в ${_sbImeAkt(pos.akt)}: `
+                         + `${pos.imena.join(', ')}. Качи акта, с който са я придобили.` }
+                : { vid: 'prazno', obekt: koren.id,
+                    tekst: `${ime} — няма нито едно събитие. Качи акта, с който е придобит.` });
         } else if (sabrano.n > sabrano.d && !_drBlizoEdno(sabrano)) {
             // ПОВЕЧЕ ОТ ЦЯЛОТО. Дотук пишеше „липсва -1“ — вярно като сметка,
             // безполезно като изречение. Казва се кой какво държи: обикновено
@@ -512,8 +547,8 @@ function _sbKlienti(p, data) {
         const pr = l.predstavitel || null;
         return {
             type: yur ? 'ЮЛ' : 'ФЛ',
-            name: l.ime || '',
-            dveImena: _sbDveImena(l.ime),
+            name: l.ime || v.ime || '',
+            dveImena: _sbDveImena(l.ime || v.ime),
             eik: l.egn || '',
             ot_registar: true,
             podpisva: pr ? pr.ime : '',
@@ -531,7 +566,7 @@ function _sbPredstavitel(p, data) {
     const spisak = _sbVazlozhiteli(p, data);
     if (!spisak.length) return '';
     const izbran = spisak.find(v => v.lice === s.predstavitel) || spisak[0];
-    return _sbDveImena(_sbImeLice(s, izbran.lice));
+    return _sbDveImena(izbran.ime);
 }
 
 // ── чеклистът ─────────────────────────────────────────────────────────────
