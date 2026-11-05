@@ -79,7 +79,8 @@ function _sobPritezhava(s, prava) {
     for (const x of prava) {
         const o = (s.obekti || []).find(y => y.id === x.obekt) || {};
         const ime = _sobImeObekt(s, x.obekt);
-        const t = x.posochen ? `${_e(ime)} <span class="lipsva-dyal">(посочен в акта за право на строеж — неговият акт не е качен)</span>`
+        const t = x.posochen ? `${x.dyal ? '<strong>' + _e(_drTekst(x.dyal)) + '</strong> от ' : ''}${_e(ime)} `
+                + `<span class="otkade">(по акта за учредяване)</span>`
             : x.bezDyal ? `${_e(ime)} <span class="lipsva-dyal">(дялът не е вписан)</span>`
             : _drEdno(x.dyal) ? _e(ime)
             : `<strong>${_e(_drTekst(x.dyal))}</strong> от ${_e(ime)}`;

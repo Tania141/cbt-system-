@@ -254,9 +254,13 @@ function _sbVazlozhiteli(p, data) {
         if (o.vid !== 'земя' || s.sabitia.some(e => e.obekt === o.id)) continue;
         const pos = _sbPosocheni(s, o, pred);
         for (const ime of pos.imena) {
-            if (gotovi.some(g => _sbZnIme(g.ime) === _sbZnIme(ime))) continue;
-            gotovi.push({ lice: null, ime, posochen: true,
-                          prava: [{ obekt: o.id, dyal: null, bezDyal: true, posochen: true }] });
+            const f = _dr((pos.kvoti.find(k => _sbZnIme(k.ime) === _sbZnIme(ime)) || {}).dyal);
+            const pravo = { obekt: o.id, dyal: f, bezDyal: !f, posochen: true, akt: pos.akt.id };
+            // Учредител, който е получил обезщетение, вече е лице — правото
+            // върху земята се добавя при него, не става втори ред.
+            const veche = gotovi.find(g => _sbZnIme(g.ime) === _sbZnIme(ime));
+            if (veche) { veche.prava.push(pravo); veche.uchreditelAkt = pos.akt.id; continue; }
+            gotovi.push({ lice: null, ime, posochen: true, uchreditelAkt: pos.akt.id, prava: [pravo] });
         }
     }
     return gotovi;
@@ -270,11 +274,14 @@ function _sbPosocheni(s, zemya, pred) {
         .find(e => { const o = _sbObekt(s, e.obekt) || {};
                      return o.vid === 'право на строеж' && o.cyalo
                          && (o.varhu === zemya.id || (zemya.identifikator && o.identifikator === zemya.identifikator)); });
-    if (!akt) return { akt: null, imena: [] };
+    if (!akt) return { akt: null, imena: [], kvoti: [], sbor: _NULA };
     const imena = akt.ot ? [_sbImeLice(s, akt.ot)]
         : (akt.ot_lica || []).length ? akt.ot_lica.map(l => _sbImeLice(s, l))
         : _sbStrani(akt.ot_opisanie);
-    return { akt, imena };
+    const kvoti = akt.kvoti || [];
+    let sbor = _NULA;
+    for (const k of kvoti) { const f = _dr(k.dyal); if (f) sbor = _drSabi(sbor, f); }
+    return { akt, imena, kvoti, sbor };
 }
 
 // ── находките ──────────────────────────────────────────────────────────────
@@ -293,13 +300,21 @@ function _sbNahodki(p) {
         const sabrano = _sbSabrano(p, koren.id);
         const ime = _sbImeObekt(s, koren.id);
         if (!s.sabitia.some(e => e.obekt === koren.id)) {
+            // ГРАНИЦАТА Е АКТЪТ ЗА УЧРЕДЯВАНЕ. Преди него се копае до 1/1 с
+            // актовете на собствениците; след него той доказва земята —
+            // учредителите с квотите си. (Операторът, 05.11.2026)
             const pos = _sbPosocheni(s, koren);
-            out.push(pos.imena.length
-                ? { vid: 'posocheni', obekt: koren.id,
-                    tekst: `${ime} — собствениците са само посочени в ${_sbImeAkt(pos.akt)}: `
-                         + `${pos.imena.join(', ')}. Качи акта, с който са я придобили.` }
-                : { vid: 'prazno', obekt: koren.id,
+            if (!pos.imena.length)
+                out.push({ vid: 'prazno', obekt: koren.id,
                     tekst: `${ime} — няма нито едно събитие. Качи акта, с който е придобит.` });
+            else if (!pos.kvoti.length)
+                out.push({ vid: 'posocheni', obekt: koren.id,
+                    tekst: `${ime} — учредителите в ${_sbImeAkt(pos.akt)} са ${pos.imena.join(', ')}, `
+                         + `но квотите им в земята не са прочетени. Прочети акта наново.` });
+            else if (!_drBlizoEdno(pos.sbor))
+                out.push({ vid: 'posocheni', obekt: koren.id,
+                    tekst: `${ime} — квотите на учредителите в ${_sbImeAkt(pos.akt)} дават `
+                         + `${_drTekst(pos.sbor)}, не 1/1.` });
         } else if (sabrano.n > sabrano.d && !_drBlizoEdno(sabrano)) {
             // ПОВЕЧЕ ОТ ЦЯЛОТО. Дотук пишеше „липсва -1“ — вярно като сметка,
             // безполезно като изречение. Казва се кой какво държи: обикновено
@@ -517,7 +532,10 @@ function _sbOsnovaniaBlok(p, data) {
         const aktove = [], vidyani = new Set();
         for (const e of [...s.sabitia].sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)))) {
             if (_sbRed(e.data) > pred) continue;
-            if (!(e.pridobivashti || []).some(x => x.lice === v.lice)) continue;
+            // Учредителят държи земята по силата на акта за учредяване — той е
+            // основанието му в Акт 15, както и за суперфициара. (05.11.2026)
+            if (!(v.lice && (e.pridobivashti || []).some(x => x.lice === v.lice))
+                && e.id !== v.uchreditelAkt) continue;
             const t = _sbAktTekst(e);
             if (!t || vidyani.has(t)) continue;
             vidyani.add(t);
@@ -595,6 +613,11 @@ function _sbSastoyanie(p) {
     if (!koren) return { gotovo: false, tekst: 'още не е започната — веригата тръгва от обекта, в който се строи' };
     const sab = _sbSabrano(p, koren.id);
     const nah = _sbNahodki(p).filter(n => !n.obekt || n.obekt === koren.id);
+    const pos = koren.vid === 'земя' && !s.sabitia.some(e => e.obekt === koren.id)
+        ? _sbPosocheni(s, koren) : null;
+    if (pos && pos.imena.length && !nah.length)
+        return { gotovo: true, tekst: `${_sbImeObekt(s, koren.id)} — доказана с ${_sbImeAkt(pos.akt)}: `
+            + `учредителите държат 1/1` };
     if (_drBlizoEdno(sab) && !nah.length)
         return { gotovo: true, tekst: `${_sbImeObekt(s, koren.id)} — събрана 1/1, веригата връзва` };
     return { gotovo: false, tekst: nah.length ? nah[0].tekst
@@ -1046,8 +1069,13 @@ function sbPriemi() {
     };
     const obekt = (opis) => {
         if (!klyuch(opis)) return (s.obekti[0] || {}).id || null;
-        let o = s.obekti.find(x => klyuch(x.identifikator) === klyuch(opis)
-                                || klyuch(x.opisanie) === klyuch(opis));
+        // По номер се познава САМО земята. Четецът даваше номера на земята и на
+        // правата за апартаменти и всичко се закачаше на първия намерен обект
+        // с този номер. Самостоятелните обекти се познават по описание.
+        // (05.11.2026)
+        let o = s.obekti.find(x => x.vid === 'земя' && klyuch(x.identifikator) === klyuch(opis))
+             || s.obekti.find(x => klyuch(x.opisanie) === klyuch(opis))
+             || s.obekti.find(x => !x.opisanie && klyuch(x.identifikator) === klyuch(opis));
         if (!o) {
             o = { id: _sbNovId(), vid: 'самостоятелен обект', identifikator: '', opisanie: String(opis).trim() };
             const ot = (ch.obekti || []).find(x => klyuch(x.identifikator) === klyuch(opis)
@@ -1088,6 +1116,16 @@ function sbPriemi() {
                       ch.registar && 'рег. № ' + ch.registar, ch.delo && 'дело ' + ch.delo,
                       notarius && 'нотариус ' + notarius].filter(Boolean).join(', ');
     let n = 0, veche = 0;
+    // ПРОЧЕТЕН НАНОВО АКТ ЗАМЕНЯ СТАРИЯ. Операторът, 05.11.2026, избра това за
+    // актовете, прочетени по старите правила: качваш пак, старото се маха.
+    // Познава се по самия документ — номер, том, рег. №, дело, нотариус.
+    const zameneni = ch.nomer ? s.sabitia.filter(e => e.dokument === dokument).length : 0;
+    if (zameneni) s.sabitia = s.sabitia.filter(e => e.dokument !== dokument);
+    // Квотите на учредителите в земята — пише ги актът за учредяване, а
+    // нотариусът ги е проверил. От тях земята се събира до 1/1 от датата на
+    // учредяването нататък. (Операторът, 05.11.2026)
+    const kvoti = (ch.lica || []).filter(l => l && l.ime && _dr(l.kvota_zemya))
+        .map(l => ({ ime: _sbStrana(l.ime), dyal: String(l.kvota_zemya).trim() }));
     // ЕДИН АКТ — ЕДНО СЪБИТИЕ. Дяловете са вътре в него, не са отделни
     // събития. (Операторът, 15.10.2026: „ако събитие е НА, то това събитие е
     // 1, а не 2“.)
@@ -1106,7 +1144,14 @@ function sbPriemi() {
     // (Операторът, 15.10.2026: „четиримата продавачи са в разказа.“)
     const redove = ch.prehvarliania || [];
     const prehvarliat = new Set(redove.flatMap(x => imena(x.ot).map(klyuch)));
-    const sdelki = redove.filter(x => !imena(x.na).every(na => prehvarliat.has(klyuch(na))));
+    const poluchavat = new Set(redove.flatMap(x => imena(x.na).map(klyuch)));
+    // ВЗАИМНИТЕ РЕДОВЕ НЕ СА РАЗКАЗ. При учредяване срещу обезщетение
+    // учредителите дават правото на строеж, а суперфициарът им дава
+    // апартаменти — и двата реда са сделката. Разказ е редът, чийто
+    // прехвърлител нищо не получава в същия акт (наследодателят, предишният
+    // продавач). Дотук обезщетението се изхвърляше. (АРКОН, 05.11.2026)
+    const sdelki = redove.filter(x => !(imena(x.na).every(na => prehvarliat.has(klyuch(na)))
+        && !imena(x.ot).some(ot => poluchavat.has(klyuch(ot)))));
     // Замяна: двамата си прехвърлят взаимно и правилото би изхвърлило всичко.
     for (const x of (sdelki.length ? sdelki : redove)) {
         const poluchateli = imena(x.na);
@@ -1144,6 +1189,7 @@ function sbPriemi() {
             // регистърът ги нямаше изобщо. (Операторът, 22.10.2026.)
             sv: _sbVpisvane(ch),
             notarius_nomer: String(ch.notarius_nomer || '').trim() || undefined,
+            kvoti: /учредяв/i.test(x.vid || '') && kvoti.length ? kvoti : undefined,
         };
         if (s.sabitia.some(e => _sbEdnakvi(s, e, sabitie))) { veche++; continue; }
         s.sabitia.push(sabitie);
@@ -1151,6 +1197,11 @@ function sbPriemi() {
     }
 
     delete p._sb_procheteno;
+    if (zameneni) {
+        _sbZapishi(p, `„${ch.fajl || ''}“ замени ${zameneni} стари записа от същия акт с ${n} нови`);
+        showAlert('success', `Актът е прочетен наново: ${zameneni} стари записа заменени с ${n}.`);
+        return;
+    }
     _sbZapishi(p, veche
         ? `${n} нови прехвърляния от „${ch.fajl || ''}“ · ${veche} вече ги имаше`
         : `прочетени ${n} прехвърляния от „${ch.fajl || ''}“`);

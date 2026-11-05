@@ -22,7 +22,9 @@ const F = new Function(
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
-       grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
+       grab(s, '_sbVpisvaneTekst'), grab(s, '_sbNotariusTekst'), grab(s, '_sbPalnomoshtnoTekst'),
+       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -30,7 +32,7 @@ const F = new Function(
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + 'sbOtdeliPravo,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + 'sbOtdeliPravo,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -363,6 +365,51 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     t('находката ги назовава', n.some(x => x.vid === 'posocheni' && /Мария Арсова Пенева/.test(x.tekst)), n);
     const kl = F._sbKlienti(p, '05.11.2026');
     t('в документите влизат с имената си', kl.some(k => k.dveImena === 'Мария Пенева'), kl.map(k => k.dveImena));
+}
+{
+    // АРКОН, прочетен по новите правила: учредяване с квоти + обезщетение.
+    // (05.11.2026: границата е актът за учредяване; обезщетението не е разказ.)
+    const p = nov(), s = p.sobstvenost;
+    s.obekti.push({ id: 'z', vid: 'земя', identifikator: '68134.4337.718' });
+    s.koren = 'z';
+    const AKT_AR = { fajl: 'arkon.pdf', vid: 'нотариален акт', nomer: '178', tom: 'I', registar: '2135',
+        delo: '163/2024', data: '28.05.2024', notarius: 'Слава Пилякова',
+        lica: [{ ime: 'Мария Арсова Пенева', kvota_zemya: '1/2' },
+               { ime: 'Славчо Арсов Славков', kvota_zemya: '1/2' },
+               { ime: '„АРКОН ИНВЕСТ“ ООД', vid: 'юридическо' }],
+        obekti: [{ identifikator: '68134.4337.718', vid: 'земя' },
+                 { opisanie: 'апартамент № 9', vid: 'самостоятелен обект' },
+                 { opisanie: 'гараж № 1', vid: 'самостоятелен обект' }],
+        prehvarliania: [
+            { vid: 'учредяване право на строеж', ot: 'Мария Арсова Пенева, Славчо Арсов Славков',
+              na: '„АРКОН ИНВЕСТ“ ООД', dyal: '1/1', obekt: '68134.4337.718' },
+            { vid: 'обезщетение', ot: '„АРКОН ИНВЕСТ“ ООД', na: 'Мария Арсова Пенева',
+              dyal: '1/1', obekt: 'апартамент № 9' },
+            { vid: 'обезщетение', ot: '„АРКОН ИНВЕСТ“ ООД', na: 'Славчо Арсов Славков',
+              dyal: '1/1', obekt: 'гараж № 1' }] };
+    p._sb_procheteno = JSON.parse(JSON.stringify(AKT_AR));
+    F.set(p); F.sbPriemi();
+    t('обезщетението НЕ се изхвърля като разказ', s.sabitia.length === 3, s.sabitia.map(e => e.vid));
+    const ap9 = s.obekti.find(o => o.opisanie === 'апартамент № 9');
+    t('АП 9 е 1/1 у Мария', ap9 && F._drTekst(F._sbSabrano(p, ap9.id)) === '1');
+    t('квотите са при учредяването', (s.sabitia.find(e => /учредяв/.test(e.vid)) || {}).kvoti?.length === 2);
+    const vaz = F._sbVazlozhiteli(p, '05.11.2026');
+    const maria = vaz.find(v => /Мария/.test(v.ime));
+    t('тримата са възложители', vaz.length === 3, vaz.map(v => v.ime));
+    t('Мария — 1/2 от земята и АП 9, в един ред',
+      maria && maria.prava.length === 2 && maria.prava.some(x => x.posochen && F._drTekst(x.dyal) === '1/2'),
+      maria && maria.prava);
+    t('земята е доказана с акта — няма находка', F._sbNahodki(p).length === 0, F._sbNahodki(p));
+    t('и веригата връзва', F._sbSastoyanie(p).gotovo, F._sbSastoyanie(p));
+    t('преди учредяването земята пак иска своя акт',
+      !F._sbVazlozhiteli(p, '01.01.2024').some(v => /Мария/.test(v.ime)));
+    const blok = F._sbOsnovaniaBlok(p, '05.11.2026');
+    t('в Акт 15 основанието на Мария е актът за учредяване',
+      /МАРИЯ АРСОВА ПЕНЕВА\n• нотариален акт, № 178/.test(blok), blok);
+    // Прочетен наново — заменя, не удвоява.
+    p._sb_procheteno = JSON.parse(JSON.stringify(AKT_AR));
+    F.sbPriemi();
+    t('прочетеният наново акт заменя стария', s.sabitia.length === 3, s.sabitia.length);
 }
 {
     // При четене правото отива направо в отделния обект.
