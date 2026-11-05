@@ -24,7 +24,7 @@ const F = new Function(
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
        grab(s, '_sbVpisvaneTekst'), grab(s, '_sbNotariusTekst'), grab(s, '_sbPalnomoshtnoTekst'),
-       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -410,6 +410,13 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     p._sb_procheteno = JSON.parse(JSON.stringify(AKT_AR));
     F.sbPriemi();
     t('прочетеният наново акт заменя стария', s.sabitia.length === 3, s.sabitia.length);
+    // Второ четене с « » и иначе изписан нотариус — пак заменя, пак една фирма.
+    const AKT2 = JSON.parse(JSON.stringify(AKT_AR).replace(/„АРКОН ИНВЕСТ“/g, '«АРКОН ИНВЕСТ»'));
+    AKT2.notarius = 'Слава Пилякова – Нотариус';
+    p._sb_procheteno = AKT2;
+    F.sbPriemi();
+    t('иначе изписаният акт пак заменя', s.sabitia.length === 3, s.sabitia.map(e => e.dokument));
+    t('„ “ и « » са една фирма', s.lica.filter(l => /АРКОН/.test(l.ime)).length === 1, s.lica.map(l => l.ime));
 }
 {
     // При четене правото отива направо в отделния обект.

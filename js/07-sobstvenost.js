@@ -153,7 +153,9 @@ function _sbKojPodpisva(tekst) {
 }
 
 // Имената се сравняват без оглед на интервали и главни букви.
-const _sbZnIme = x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
+// Кавичките не са част от името: „АРКОН ИНВЕСТ“ ООД и «АРКОН ИНВЕСТ» ООД са
+// една фирма — актовете ги пишат различно. (05.11.2026)
+const _sbZnIme = x => String(x || '').replace(/[\u201E\u201C\u201D\u0022\u00AB\u00BB\u0027\u2018\u2019\u0060]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
 
 const _sbNovId = () => 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
@@ -1040,11 +1042,19 @@ function _sbPravoNaStroezh(s, obektId, cyaloto) {
     return o.id;
 }
 
+// „…, № 178, том I, рег. № 2135, дело 163/2024, …“ → „178|163/2024“.
+function _sbNomerDelo(dokument) {
+    const d = String(dokument || '');
+    const n = (d.match(/(?:^|,\s*)№\s*([^,]+)/) || [])[1] || '';
+    const delo = (d.match(/дело\s*([^,]+)/) || [])[1] || '';
+    return n ? (n.trim() + '|' + delo.trim()).toLowerCase() : '';
+}
+
 function sbPriemi() {
     const p = _zhivObekt(); if (!p) return;
     const ch = p._sb_procheteno; if (!ch) return;
     const s = _sbDanni(p);
-    const klyuch = x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const klyuch = _sbZnIme;
     // Четецът понякога слага няколко лица в едно поле („Иван…, Мария…“), макар
     // указанието да иска по един ред на човек. Едно лице от две имена чупи
     // цялата верига, затова се разделят тук. (ЖИТЕН, 14.10.2026)
@@ -1119,8 +1129,11 @@ function sbPriemi() {
     // ПРОЧЕТЕН НАНОВО АКТ ЗАМЕНЯ СТАРИЯ. Операторът, 05.11.2026, избра това за
     // актовете, прочетени по старите правила: качваш пак, старото се маха.
     // Познава се по самия документ — номер, том, рег. №, дело, нотариус.
-    const zameneni = ch.nomer ? s.sabitia.filter(e => e.dokument === dokument).length : 0;
-    if (zameneni) s.sabitia = s.sabitia.filter(e => e.dokument !== dokument);
+    // По номер и дело, не по целия низ: при второ четене нотариусът или видът
+    // излизат изписани малко иначе и старото оставаше до новото. (АРКОН, 05.11)
+    const otAkta = e => ch.nomer && _sbNomerDelo(e.dokument) === _sbNomerDelo(dokument);
+    const zameneni = ch.nomer ? s.sabitia.filter(otAkta).length : 0;
+    if (zameneni) s.sabitia = s.sabitia.filter(e => !otAkta(e));
     // Квотите на учредителите в земята — пише ги актът за учредяване, а
     // нотариусът ги е проверил. От тях земята се събира до 1/1 от датата на
     // учредяването нататък. (Операторът, 05.11.2026)
