@@ -119,8 +119,7 @@ t('без съставки профилът е празен, но валиден
 t('празно име не се запомня', (await w.nauchZapomni(A, A, '  ')) === null);
 
 // ── сървърът приема ключа ───────────────────────────────────────────────────
-const api = fs.readFileSync(path.join(KOREN, '..', '..', '..', '..',
-    'cbt-api', 'api.py'), 'utf8');
+const api = fs.readFileSync(require('./kod').sarvar('api.py'), 'utf8');
 t('складът „otkazi“ е разрешен на сървъра',
   /DANNI_KLYUCHOVE = \([^)]*"otkazi"/.test(api),
   (api.match(/DANNI_KLYUCHOVE = \([^)]*\)/) || [])[0]);
@@ -136,8 +135,7 @@ t('„ако_е_приложимо“ остава — научено не зн�
   /'ако_е_приложимо',/.test(kand));
 
 // ── и сървърът разбира „или“ ────────────────────────────────────────────────
-const ch = fs.readFileSync(path.join(KOREN, '..', '..', '..', '..',
-    'cbt-api', 'rules', 'cheklist_dokumenti.py'), 'utf8');
+const ch = fs.readFileSync(require('./kod').sarvar('rules', 'cheklist_dokumenti.py'), 'utf8');
 t('условието поддържа „или“', /split\(" или "\)/.test(ch));
 
 // ── признаците носят съставките, иначе условието е мъртво ───────────────────

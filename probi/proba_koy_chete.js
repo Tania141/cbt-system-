@@ -162,7 +162,7 @@ t('разпознава се и по текста на грешката',
   c.w.aktGreshkaHtml('изтече ти достъпът'));
 
 // ── 4. Сървърът записва избора ──────────────────────────────────────────────
-const api = fs.readFileSync(path.join(KOREN, '..', '..', '..', '..', 'cbt-api', 'api.py'), 'utf8');
+const api = fs.readFileSync(require('./kod').sarvar('api.py'), 'utf8');
 t('сървърът записва „chetec_izbran“ на всеки документ',
   /d\["chetec_izbran"\] = izbran/.test(api));
 t('и го оставя празно при автоматично',

@@ -11,6 +11,10 @@ const fs = require('fs');
 const path = require('path');
 
 const KOREN = path.join(__dirname, '..');
+const neKachva = f => {
+    try { require('child_process').execFileSync('git', ['check-ignore', '-q', f], { cwd: KOREN }); return true; }
+    catch (e) { return false; }
+};
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
 
@@ -30,7 +34,10 @@ const PRILOZHENIE = new Set(['.html', '.js', '.css', '.json', '.png', '.jpg', '.
 const vatreshni = fs.readdirSync(KOREN)
     .filter(f => fs.statSync(path.join(KOREN, f)).isFile())
     .filter(f => !PRILOZHENIE.has(path.extname(f).toLowerCase()))
-    .filter(f => f !== 'Caddyfile' && !f.startsWith('.'));
+    .filter(f => f !== 'Caddyfile' && !f.startsWith('.'))
+    // Каквото git не качва, не стига до сървъра. (05.11.2026: двата .docx в
+    // главната папка са в .gitignore и пробата падаше само оттам.)
+    .filter(f => !neKachva(f));
 
 const nepokriti = vatreshni.filter(f => {
     const r = path.extname(f).toLowerCase();

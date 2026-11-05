@@ -50,4 +50,18 @@ function grab(izvor, ime) {
 
 const parche = (izvor, ot, do_) => izvor.slice(izvor.indexOf(ot), izvor.indexOf(do_));
 
-module.exports = { JS, HTML, redNaModulite, kod, stranicaSVgradenKod, grab, parche };
+// Сървърът (cbt-api) лежи до папката на ПВА — но колко нива нагоре, зависи
+// откъде се пуска: от главната папка или от работно копие в .claude/worktrees.
+// Търси се нагоре, вместо да се брои. (05.11.2026)
+function sarvar(...chasti) {
+    const path = require('path'), fs = require('fs');
+    let d = path.join(__dirname, '..');
+    for (let i = 0; i < 6; i++) {
+        const p = path.join(d, 'cbt-api', ...chasti);
+        if (fs.existsSync(p)) return p;
+        d = path.dirname(d);
+    }
+    throw new Error('cbt-api не се намира нагоре от ' + __dirname);
+}
+
+module.exports = { sarvar, JS, HTML, redNaModulite, kod, stranicaSVgradenKod, grab, parche };

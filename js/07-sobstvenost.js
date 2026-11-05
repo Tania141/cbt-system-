@@ -301,6 +301,12 @@ function _sbNahodki(p) {
     // Събитията се проверяват винаги: сбъркан дял или липсващ получател е
     // дефект в самия запис, независимо кой е коренът.
     const vazhni = koren ? s.sabitia.filter(e => e.obekt === koren.id) : [];
+    // Вписано преди 05.11.2026: правото на строеж седи върху земята и я прави 2.
+    for (const e of vazhni)
+        if (/право на строеж/i.test(e.vid || '') && (_sbObekt(s, e.obekt) || {}).vid === 'земя')
+            out.push({ vid: 'pravo_varhu_zemya', sabitie: e.id, obekt: koren.id,
+                tekst: `${_sbImeAkt(e)} учредява право на строеж, а е вписан върху земята — затова тя `
+                     + `събира повече от цялото. Натисни „Отдели правото на строеж“.` });
     for (const e of vazhni) {
         if (!(e.pridobivashti || []).length)
             out.push({ vid: 'prazen_akt', sabitie: e.id,
@@ -335,9 +341,12 @@ function _sbNahodki(p) {
                 tekst: `${_sbImeAkt(e)} сочи изтрит обект.` });
     }
 
-    // Еднакви изречения не се повтарят.
+    // Еднакви изречения не се повтарят. Щом причината за „повече от цялото“ е
+    // назована — правото на строеж върху земята, — общата находка е шум.
     const vidyani = new Set();
-    return out.filter(n => !vidyani.has(n.tekst) && vidyani.add(n.tekst));
+    const pricina = out.some(n => n.vid === 'pravo_varhu_zemya');
+    return out.filter(n => !(pricina && n.vid === 'nadvishava')
+        && !vidyani.has(n.tekst) && vidyani.add(n.tekst));
 }
 
 const _sbImeImeBezopasno = (s, id) => _s2esc(_sbImeLice(s, id));
@@ -945,6 +954,21 @@ function _sbEdnakvi(s, a, b) {
         && spisak(a) === spisak(b);
 }
 
+// Обектът „право на строеж“ върху дадена земя — намира го или го създава.
+// Обект, който не е земя, се връща непипнат: правото може да е учредено и
+// върху сграда (надстрояване), тогава четецът го е назовал правилно.
+function _sbPravoNaStroezh(s, obektId) {
+    const zemya = _sbObekt(s, obektId);
+    if (!zemya || zemya.vid !== 'земя') return obektId;
+    let o = s.obekti.find(x => x.vid === 'право на строеж' && x.varhu === zemya.id);
+    if (!o) {
+        o = { id: _sbNovId(), vid: 'право на строеж', identifikator: '', varhu: zemya.id,
+              opisanie: 'право на строеж върху ' + (zemya.identifikator || zemya.opisanie || 'земята') };
+        s.obekti.push(o);
+    }
+    return o.id;
+}
+
 function sbPriemi() {
     const p = _zhivObekt(); if (!p) return;
     const ch = p._sb_procheteno; if (!ch) return;
@@ -1040,7 +1064,12 @@ function sbPriemi() {
         const poluchateli = imena(x.na);
         if (!poluchateli.length) continue;
         const dava = imena(x.ot);
-        const obektId = obekt(x.obekt);
+        let obektId = obekt(x.obekt);
+        // ПРАВОТО НА СТРОЕЖ НЕ Е ЗЕМЯТА. Четецът вписва учреденото право
+        // върху обекта, който актът назовава — земята. Тогава земята събира 2:
+        // собствениците си и суперфициара. Собствениците остават собственици;
+        // суперфициарът държи ОТДЕЛЕН обект. (БИЛДИНГ ЕКСПРЕС, 05.11.2026)
+        if (/право на строеж/i.test(x.vid || '')) obektId = _sbPravoNaStroezh(s, obektId);
         const dyal = _drDeli(x.dyal, poluchateli.length);
         // Прехвърлителите стават лица САМО ако вече са в регистъра — тогава
         // салдата им трябва да паднат. Иначе остават имена върху акта.
@@ -1089,6 +1118,16 @@ function sbKoren(id) {
     const p = _zhivObekt(); if (!p) return;
     _sbDanni(p).koren = id;
     _sbZapishi(p, 'строи се в ' + _sbImeObekt(_sbDanni(p), id));
+}
+
+// Поправката на вписаното преди: актът се премества от земята върху отделния
+// обект „право на строеж“. Нищо друго не се пипа — нито лица, нито дялове.
+function sbOtdeliPravo(sabitieId) {
+    const p = _zhivObekt(); if (!p) return;
+    const s = _sbDanni(p);
+    const e = s.sabitia.find(x => x.id === sabitieId); if (!e) return;
+    e.obekt = _sbPravoNaStroezh(s, e.obekt);
+    _sbZapishi(p, `${_sbImeAkt(e)} — правото на строеж е отделен обект`);
 }
 
 function sbPredstavitel(lice) {

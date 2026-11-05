@@ -22,14 +22,15 @@ const F = new Function(
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
-       grab(s, '_sbVpisvane'), grab(s, 'sbPriemi')].join('\n')
+       grab(s, '_sbVpisvane'), grab(s, '_sbPravoNaStroezh'), grab(s, 'sbOtdeliPravo'),
+       grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=(p,k)=>_zapisi.push(k);'
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + '_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + 'sbOtdeliPravo,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -290,6 +291,41 @@ s9.sabitia.push(akt('upi', { vid: 'първоначално', data: '01.01.2009'
 s9.sabitia.push(akt('upi', { vid: 'покупко-продажба', data: '01.01.2020', ot_opisanie: 'Продавач',
     pridobivashti: [{ lice: 'b', dyal: '1' }] }));
 const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
+
+// ── право на строеж върху земята (БИЛДИНГ ЕКСПРЕС, 05.11.2026) ──────────────
+{
+    const p = nov(), s = p.sobstvenost;
+    s.lica.push({ id: 'pl', ime: 'Пламен Георгиев Василев' }, { id: 'sn', ime: 'Снежана Теодорова Ангелова' },
+                { id: 'bx', ime: '«БИЛДИНГ ЕКСПРЕС-90 Р» ООД', vid: 'юридическо' });
+    s.obekti.push({ id: 'z', vid: 'земя', identifikator: '68134.702.9889' });
+    s.koren = 'z';
+    s.sabitia.push(akt('z', { vid: 'покупко-продажба', data: '01.01.2010',
+        pridobivashti: [{ lice: 'pl', dyal: '1/2' }, { lice: 'sn', dyal: '1/2' }] }));
+    s.sabitia.push(akt('z', { vid: 'учредяване право на строеж', data: '27.07.2023',
+        pridobivashti: [{ lice: 'bx', dyal: '24,618%, 24,618%, 24,618%, 9,805%, 9,805%, 6,536%' }] }));
+    const n = F._sbNahodki(p);
+    const pn = n.find(x => x.vid === 'pravo_varhu_zemya');
+    t('правото върху земята се назовава', !!pn && /учредява право на строеж/.test(pn.tekst), n);
+    t('и общото „повече от цялото“ не се повтаря', !n.some(x => x.vid === 'nadvishava'), n);
+    F.set(p); F.sbOtdeliPravo(pn.sabitie);
+    t('след „Отдели“ земята е 1/1', F._drTekst(F._sbSabrano(p, 'z')) === '1', F._drTekst(F._sbSabrano(p, 'z')));
+    t('и няма находки', F._sbNahodki(p).length === 0, F._sbNahodki(p));
+    const vaz = F._sbVazlozhiteli(p).map(v => v.lice).sort().join(',');
+    t('възложители са тримата — двамата собственици и суперфициарът', vaz === 'bx,pl,sn', vaz);
+    t('правото е отделен обект с име', s.obekti.some(o => o.vid === 'право на строеж'
+        && /68134\.702\.9889/.test(o.opisanie)), s.obekti);
+}
+{
+    // При четене правото отива направо в отделния обект.
+    const p = nov(), s = p.sobstvenost;
+    s.obekti.push({ id: 'z', vid: 'земя', identifikator: '68134.702.9889' });
+    p._sb_procheteno = { fajl: 'na.pdf', data: '27.07.2023', obekti: [{ identifikator: '68134.702.9889' }],
+        prehvarliania: [{ vid: 'учредяване право на строеж', ot: 'Пламен Георгиев Василев',
+                          na: '«БИЛДИНГ ЕКСПРЕС-90 Р» ООД', dyal: '1/1', obekt: '68134.702.9889' }] };
+    F.sbPriemi();
+    const o = s.obekti.find(x => x.id === s.sabitia[0].obekt);
+    t('прочетеното право на строеж не сяда върху земята', o && o.vid === 'право на строеж', o);
+}
 t('над цялото казва кой какво държи, не „липсва -1“',
   !!n9 && /събрани 2, с 1 повече/.test(n9.tekst) && /Продавач 1/.test(n9.tekst) && /Купувач 1/.test(n9.tekst), n9);
 

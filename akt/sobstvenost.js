@@ -146,7 +146,7 @@ function sobstvenostVazlozhiteliHtml(p) {
 // Кодът съди, но само за това, което има значение. От сто акта обикновено три.
 
 const SOBSTVENOST_VID = {
-    prazno: 'няма събитие', nepalno: 'непълна верига', nadvishava: 'повече от цялото', minus: 'прехвърлено повече',
+    prazno: 'няма събитие', nepalno: 'непълна верига', nadvishava: 'повече от цялото', pravo_varhu_zemya: 'право на строеж върху земята', dyal: 'дял', minus: 'прехвърлено повече',
     pochinal: 'починал собственик', prazen_akt: 'акт без номер',
 };
 
@@ -160,6 +160,8 @@ function sobstvenostNahodkiHtml(p) {
             <div class="nahodka">
                 <span class="nahodka-vid">${_e(SOBSTVENOST_VID[n.vid] || n.vid)}</span>
                 <span>${_e(n.tekst)}</span>
+                ${n.vid === 'pravo_varhu_zemya' ? `<button class="bt" onclick="sbOtdeliPravo('${_e(n.sabitie)}')">
+                    Отдели правото на строеж</button>` : ''}
             </div>`).join('')}
     </div>`;
 }

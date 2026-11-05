@@ -129,8 +129,7 @@ t('а с потвърдено — на пълното',
   w._dokIme(DOKUMENTI[0], POTV) === DPERM, w._dokIme(DOKUMENTI[0], POTV));
 
 // ── сървърът иска наименование от четеца ────────────────────────────────────
-const sloy2 = fs.readFileSync(path.join(KOREN, '..', '..', '..', '..',
-    'cbt-api', 'rules', 'sloy2.py'), 'utf8');
+const sloy2 = fs.readFileSync(require('./kod').sarvar('rules', 'sloy2.py'), 'utf8');
 t('схемата на четеца има „naimenovanie“', /"naimenovanie": _fakt/.test(sloy2));
 t('и то е задължително',
   /"required": \[[^\]]*"naimenovanie"/.test(sloy2),
