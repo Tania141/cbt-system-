@@ -126,6 +126,21 @@ const zt2 = tekst(z2.d.getElementById('sobstvenost-telo'));
 t('прехвърлилият после вече не е възложител',
   !/Мария Йорданова/.test(zt2.split('Регистърът')[0]) && /Петър Колев/.test(zt2), zt2.slice(0, 500));
 
+// ── таблицата с обектите: земя по учредяване, без „тук се строи“ на частите ──
+const UCH = JSON.parse(JSON.stringify(OBEKT));
+UCH.sobstvenost = { koren: 'z', lica: [{ id: 'ar', ime: 'Аркон ООД', vid: 'юридическо' }, { id: 'm', ime: 'Мария Пенева' }],
+    obekti: [{ id: 'z', vid: 'земя', identifikator: '68134.4337.718' },
+             { id: 'ps', vid: 'право на строеж', cyalo: true, identifikator: '68134.4337.718', opisanie: 'право на строеж върху целия имот' },
+             { id: 'a9', vid: 'самостоятелен обект', opisanie: 'АП 9' }],
+    sabitia: [{ id: 'u', obekt: 'ps', vid: 'учредяване право на строеж', data: '28.05.2024', ot_opisanie: 'Мария Пенева',
+                pridobivashti: [{ lice: 'ar', dyal: '1/1' }] },
+              { id: 'o9', obekt: 'a9', vid: 'обезщетение', data: '28.05.2024', ot: 'ar', pridobivashti: [{ lice: 'm', dyal: '1/1' }] }] };
+const ob = await otvori('#/sobstvenost/hus/0', UCH);
+const obt = tekst(ob.d.getElementById('sobstvenost-telo'));
+t('земята пише 1/1 по акта за учредяване', /събрани 1 по акта за учредяване/.test(obt), obt.slice(obt.indexOf('Обекти'), obt.indexOf('Обекти') + 300));
+t('„тук се строи“ само на земята', ob.d.querySelectorAll('input[name="sb-koren"]').length === 1,
+  ob.d.querySelectorAll('input[name="sb-koren"]').length);
+
 // ── паспортът: само бутон ───────────────────────────────────────────────────
 const ps = await otvori('#/pasport/hus/0');
 t('паспортът се рисува без грешка', ps.greshki.length === 0, ps.greshki);

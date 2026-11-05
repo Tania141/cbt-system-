@@ -849,14 +849,26 @@ function _sbTablici(p) {
 
     const koren = _sbKoren(p);
     const obekti = s.obekti.map(o => {
-        const sab = _sbSabrano(p, o.id);
+        let sab = _sbSabrano(p, o.id), poAkta = '';
+        // Земя без свой акт, доказана с акта за учредяване — „събрани 0“
+        // лъжеше. (05.11.2026)
+        if (o.vid === 'земя' && !s.sabitia.some(e => e.obekt === o.id)) {
+            const pos = _sbPosocheni(s, o);
+            if (pos.imena.length) { sab = pos.sbor; poAkta = ' по акта за учредяване'; }
+        }
+        // „Тук се строи“ няма смисъл за правото на строеж и за обектите от
+        // обезщетението — те са части от строежа, не мястото му. Остава за
+        // всичко друго: при преустройство строежът е в апартамента. (05.11)
+        const chast = o.vid === 'право на строеж' || (s.sabitia.some(e => e.obekt === o.id)
+            && s.sabitia.filter(e => e.obekt === o.id).every(e => /обезщет/i.test(e.vid || '')));
+        const tuk = koren && koren.id === o.id;
         return `<div>${esc(o.identifikator || o.opisanie)}
             <span style="color:var(--muted)">· ${esc(o.vid || '')}${o.opisanie && o.identifikator ? ' · ' + esc(o.opisanie) : ''}</span>
-            <span style="color:${_drBlizoEdno(sab) ? '#2e6b32' : '#b45309'}">· събрани ${_drTekst(sab)}</span>
-            <label style="margin-left:8px;font-size:11.5px;color:var(--muted);cursor:pointer"
+            <span style="color:${_drBlizoEdno(sab) ? '#2e6b32' : '#b45309'}">· събрани ${_drTekst(sab)}${poAkta}</span>
+            ${chast && !tuk ? '' : `<label style="margin-left:8px;font-size:11.5px;color:var(--muted);cursor:pointer"
                    title="Копае се назад само докато ТОЗИ обект се събере до 1/1">
-                <input type="radio" name="sb-koren" ${koren && koren.id === o.id ? 'checked' : ''}
-                       onchange="sbKoren('${o.id}')"> тук се строи</label>
+                <input type="radio" name="sb-koren" ${tuk ? 'checked' : ''}
+                       onchange="sbKoren('${o.id}')"> тук се строи</label>`}
             <button class="btn btn-ghost btn-sm" onclick="sbMahni('obekti','${o.id}')">×</button></div>`;
     }).join('');
 
