@@ -576,7 +576,8 @@ function _sbOsnovaniaBlok(p, data) {
 function _sbAkt11Tekst(e) {
     const d = String(e.dokument || '');
     const pole = re => ((d.match(re) || [])[1] || '').trim();
-    const nomer = pole(/(?:^|,|акт)\s*№\s*([^,]+)/i);
+    // „№ № 28“ — четецът понякога пише знака два пъти.
+    const nomer = pole(/(?:^|,|акт)\s*№\s*([^,]+)/i).replace(/^№\s*/, '').trim();
     if (!nomer) return [e.dokument || e.vid || '', e.data ? 'от ' + e.data : ''].filter(Boolean).join(' ');
     const tom = pole(/том\s*([^,]+)/), reg = pole(/рег\.\s*№\s*([^,]+)/), delo = pole(/дело\s*№?\s*([^,]+)/);
     const [deloN, deloG] = delo.split('/');
@@ -1118,7 +1119,7 @@ function _sbPravoNaStroezh(s, obektId, cyaloto) {
 // „…, № 178, том I, рег. № 2135, дело 163/2024, …“ → „178|163/2024“.
 function _sbNomerDelo(dokument) {
     const d = String(dokument || '');
-    const n = (d.match(/(?:^|,|акт)\s*№\s*([^,]+)/i) || [])[1] || '';
+    const n = ((d.match(/(?:^|,|акт)\s*№\s*([^,]+)/i) || [])[1] || '').replace(/^№\s*/, '');
     const delo = (d.match(/дело\s*№?\s*([^,]+)/) || [])[1] || '';
     return n ? (n.trim() + '|' + delo.trim()).toLowerCase() : '';
 }

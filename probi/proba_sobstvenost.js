@@ -434,7 +434,11 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     t('1.1: учредяването първо, после продажбата', r11b.length === 2 && /учредено/.test(r11b[0])
       && /^Нотариален акт №12, том III, рег.№900, дело №50 от 2025 г\./.test(r11b[1]), r11b);
     t('1.1: преди продажбата е само учредяването', F._sbAktove11(p, '01.01.2025').length === 1);
-    s.sabitia = s.sabitia.filter(e => !/№ 12,/.test(e.dokument || ''));
+    // „№ № 28“ — знакът два пъти от четеца не става „№№ 28“. (05.11.2026)
+    s.sabitia.find(e => /№ 12,/.test(e.dokument || '')).dokument = 'нотариален акт, № № 28 , том IV, рег. № 5500, дело 582/2025';
+    t('1.1: „№ № 28“ излиза „№28“', F._sbAktove11(p, '05.11.2026').some(r => /^Нотариален акт №28, том IV/.test(r)),
+      F._sbAktove11(p, '05.11.2026'));
+    s.sabitia = s.sabitia.filter(e => !/рег. № (900|5500)/.test(e.dokument || ''));
     // Обезщетение с процент: процентът са идеалните части, не дял.
     const AKT3 = JSON.parse(JSON.stringify(AKT_AR));
     AKT3.prehvarliania[1].dyal = '6,302 %';
