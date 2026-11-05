@@ -257,7 +257,7 @@ function _sbVazlozhiteli(p, data) {
         const pos = _sbPosocheni(s, o, pred);
         for (const ime of pos.imena) {
             const f = _dr((pos.kvoti.find(k => _sbZnIme(k.ime) === _sbZnIme(ime)) || {}).dyal);
-            const pravo = { obekt: o.id, dyal: f, bezDyal: !f, posochen: true, akt: pos.akt.id };
+            const pravo = { obekt: o.id, dyal: f, bezDyal: !f, posochen: true, ravni: pos.ravni, akt: pos.akt.id };
             // Учредител, който е получил обезщетение, вече е лице — правото
             // върху земята се добавя при него, не става втори ред.
             const veche = gotovi.find(g => _sbZnIme(g.ime) === _sbZnIme(ime));
@@ -280,10 +280,17 @@ function _sbPosocheni(s, zemya, pred) {
     const imena = akt.ot ? [_sbImeLice(s, akt.ot)]
         : (akt.ot_lica || []).length ? akt.ot_lica.map(l => _sbImeLice(s, l))
         : _sbStrani(akt.ot_opisanie);
-    const kvoti = akt.kvoti || [];
+    let kvoti = akt.kvoti || [], ravni = false;
+    // АКТЪТ НЕ СОЧИ КВОТИ — законът предполага равни дялове (чл. 30, ал. 2
+    // ЗС). Приема се, но се казва с „!“, за да не изглежда като прочетено.
+    // (Операторът, 05.11.2026: „така операторът няма да протестира“.)
+    if (!kvoti.length && imena.length) {
+        ravni = true;
+        kvoti = imena.map(ime => ({ ime, dyal: '1/' + imena.length }));
+    }
     let sbor = _NULA;
     for (const k of kvoti) { const f = _dr(k.dyal); if (f) sbor = _drSabi(sbor, f); }
-    return { akt, imena, kvoti, sbor };
+    return { akt, imena, kvoti, sbor, ravni };
 }
 
 // ── находките ──────────────────────────────────────────────────────────────
@@ -309,10 +316,6 @@ function _sbNahodki(p) {
             if (!pos.imena.length)
                 out.push({ vid: 'prazno', obekt: koren.id,
                     tekst: `${ime} — няма нито едно събитие. Качи акта, с който е придобит.` });
-            else if (!pos.kvoti.length)
-                out.push({ vid: 'posocheni', obekt: koren.id,
-                    tekst: `${ime} — учредителите в ${_sbImeAkt(pos.akt)} са ${pos.imena.join(', ')}, `
-                         + `но квотите им в земята не са прочетени. Прочети акта наново.` });
             else if (!_drBlizoEdno(pos.sbor))
                 out.push({ vid: 'posocheni', obekt: koren.id,
                     tekst: `${ime} — квотите на учредителите в ${_sbImeAkt(pos.akt)} дават `
@@ -934,7 +937,7 @@ function _sbChetenoHtml(p) {
                     </div>
                 </div>
                 ${(ch.lica || []).length ? `<div style="margin-top:6px"><strong>Лица</strong>
-                    ${ch.lica.map(l => `<div>· ${esc(l.ime)}${l.egn_eik ? ' · ' + esc(_skritoEgn(l.egn_eik)) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</div>`).join('')}</div>` : ''}
+                    ${ch.lica.map(l => `<div>· ${esc(l.ime)}${l.egn_eik ? ' · ' + esc(_skritoEgn(l.egn_eik)) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}${l.kvota_zemya ? ' · квота в земята <strong>' + esc(l.kvota_zemya) + '</strong>' : ''}</div>`).join('')}</div>` : ''}
                 ${(ch.obekti || []).length ? `<div style="margin-top:6px"><strong>Обекти</strong>
                     ${ch.obekti.map(o => `<div>· ${esc(o.identifikator || o.opisanie)}${o.identifikator && o.opisanie ? ' · ' + esc(o.opisanie) : ''}</div>`).join('')}</div>` : ''}
                 ${(ch.prehvarliania || []).length ? `<div style="margin-top:6px"><strong>Прехвърляния</strong>
@@ -1181,7 +1184,12 @@ function sbPriemi() {
         // върху първото право за апартамент с този номер. (05.11.2026)
         if (/право на строеж/i.test(x.vid || '')) obektId = _sbPravoNaStroezh(s, obektId,
             /учредяв/i.test(x.vid || '') && _SB_SAMO_PI.test(String(x.obekt || '').trim()));
-        const dyal = _drDeli(x.dyal, poluchateli.length);
+        // ПРИ ОБЕЗЩЕТЕНИЕ ПРОЦЕНТЪТ НЕ Е ДЯЛ. Четецът слага до апартамента
+        // идеалните му части от сградата („6,302 %“) и Мария излизаше
+        // собственик на 6 % от АП 9. Обектът се получава цял; съсобственост
+        // при обезщетение се пише с дроб. (АРКОН, 05.11.2026)
+        const dyalTekst = /обезщет/i.test(x.vid || '') && /%/.test(String(x.dyal || '')) ? '1/1' : x.dyal;
+        const dyal = _drDeli(dyalTekst, poluchateli.length);
         // Прехвърлителите стават лица САМО ако вече са в регистъра — тогава
         // салдата им трябва да паднат. Иначе остават имена върху акта.
         const otLica = dava.map(nameriLice).filter(Boolean);

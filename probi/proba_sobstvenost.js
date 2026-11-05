@@ -362,7 +362,12 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     t('и фирмата си остава', vaz.some(v => v.lice === 'ar'));
     t('посочените НЕ стават лица', s.lica.length === 1, s.lica.map(l => l.ime));
     const n = F._sbNahodki(p);
-    t('находката ги назовава', n.some(x => x.vid === 'posocheni' && /Мария Арсова Пенева/.test(x.tekst)), n);
+    // Актът не сочи квоти → равни по чл. 30, ал. 2 ЗС, с „!“, без находка.
+    // (Обърнато на 05.11.2026: дотук се искаше акт за земята.)
+    t('без квоти в акта — няма находка', n.length === 0, n);
+    const mp = F._sbVazlozhiteli(p, '05.11.2026').find(v => /Мария/.test(v.ime));
+    t('Мария държи 1/2 — равни по предположение',
+      mp && F._drTekst(mp.prava[0].dyal) === '1/2' && mp.prava[0].ravni === true, mp && mp.prava);
     const kl = F._sbKlienti(p, '05.11.2026');
     t('в документите влизат с имената си', kl.some(k => k.dveImena === 'Мария Пенева'), kl.map(k => k.dveImena));
 }
@@ -410,6 +415,13 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     p._sb_procheteno = JSON.parse(JSON.stringify(AKT_AR));
     F.sbPriemi();
     t('прочетеният наново акт заменя стария', s.sabitia.length === 3, s.sabitia.length);
+    // Обезщетение с процент: процентът са идеалните части, не дял.
+    const AKT3 = JSON.parse(JSON.stringify(AKT_AR));
+    AKT3.prehvarliania[1].dyal = '6,302 %';
+    p._sb_procheteno = AKT3; F.sbPriemi();
+    const ap9b = s.obekti.find(o => o.opisanie === 'апартамент № 9');
+    t('обезщетение „6,302 %“ дава целия АП 9', F._drTekst(F._sbSabrano(p, ap9b.id)) === '1',
+      F._drTekst(F._sbSabrano(p, ap9b.id)));
     // Второ четене с « » и иначе изписан нотариус — пак заменя, пак една фирма.
     const AKT2 = JSON.parse(JSON.stringify(AKT_AR).replace(/„АРКОН ИНВЕСТ“/g, '«АРКОН ИНВЕСТ»'));
     AKT2.notarius = 'Слава Пилякова – Нотариус';
