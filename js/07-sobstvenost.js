@@ -83,6 +83,7 @@ function _sbDanni(p) {
     s.sabitia = s.sabitia || [];
     if (typeof eEGN === 'function') _sbIzchistiEgn(s);
     _sbStaraForma(s);
+    _sbSleiLica(s);
     return s;
 }
 
@@ -864,7 +865,10 @@ function _sbTablici(p) {
             return `<div style="padding:5px 0;border-bottom:1px solid var(--border-light)">
                 <div><strong>${esc(e.vid || 'придобиване')}</strong>${e.data ? ' · ' + esc(e.data) : ''}
                     <span style="color:var(--muted)">· ${esc(_sbImeObekt(s, e.obekt))}</span>
-                    <button class="btn btn-ghost btn-sm" onclick="sbMahni('sabitia','${e.id}')">×</button></div>
+                    <button class="btn btn-ghost btn-sm" onclick="sbMahni('sabitia','${e.id}')">×</button>${
+                    (() => { const k = _sbNomerDelo(e.dokument);
+                             const n = k ? s.sabitia.filter(x => _sbNomerDelo(x.dokument) === k).length : 0;
+                             return n > 1 ? `<button class="btn btn-ghost btn-sm" onclick="sbMahniAkt('${e.id}')">махни целия акт (${n})</button>` : ''; })()}</div>
                 <div style="margin-left:14px">придобиват: ${kak || '<span style="color:var(--red)">никой</span>'}</div>
                 ${ot ? `<div style="margin-left:14px;color:var(--muted)">от: ${esc(ot)}${
                     e.ot ? '' : ' <span style="font-size:11px">(по акта; не е вписан като лице)</span>'}</div>` : ''}
@@ -1412,6 +1416,48 @@ function sbDobaviSabitie() {
 // Лице или обект, който участва в събития, не се маха мълчаливо: събитията му
 // остават да сочат в празното и излизат като „от (неизвестен)“. Операторът го
 // видя на ЖИТЕН. (15.10.2026)
+// ЕДИН АКТ — ВСИЧКИТЕ МУ ЗАПИСИ НАВЕДНЪЖ. Актът за учредяване с обезщетение
+// прави десетина записа; прочетен два пъти с различно разчетен номер, той
+// стоеше двойно и всичко събираше 2. (Операторът, 05.11.2026: „давай бутон“.)
+function sbMahniAkt(sabitieId) {
+    const p = _zhivObekt(); if (!p) return;
+    const s = _sbDanni(p);
+    const e = s.sabitia.find(x => x.id === sabitieId); if (!e) return;
+    const k = _sbNomerDelo(e.dokument); if (!k) return;
+    const zapisi = s.sabitia.filter(x => _sbNomerDelo(x.dokument) === k);
+    if (!confirm(`Да махна ли всичките ${zapisi.length} записа от ${_sbImeAkt(e)}?
+
+${e.dokument}`)) return;
+    s.sabitia = s.sabitia.filter(x => !zapisi.includes(x));
+    _sbZapishi(p, `махнат ${_sbImeAkt(e)} — ${zapisi.length} записа`);
+}
+
+// Едно лице, записано два пъти — „АРКОН ИНВЕСТ“ и «АРКОН ИНВЕСТ» — се слива:
+// остава първото, актовете на второто минават към него. Кавичките не са част
+// от името. (05.11.2026)
+function _sbSleiLica(s) {
+    const parvo = new Map(), smeni = new Map();
+    for (const l of s.lica) {
+        const k = _sbZnIme(l.ime);
+        if (!k) continue;
+        const p = parvo.get(k);
+        if (!p) { parvo.set(k, l); continue; }
+        smeni.set(l.id, p.id);
+        if (!p.predstavitel && l.predstavitel) p.predstavitel = l.predstavitel;
+        if (!p.egn && l.egn) p.egn = l.egn;
+    }
+    if (!smeni.size) return 0;
+    const n = id => smeni.get(id) || id;
+    for (const e of s.sabitia) {
+        if (e.ot) e.ot = n(e.ot);
+        if (e.ot_lica) e.ot_lica = e.ot_lica.map(n);
+        for (const pr of e.pridobivashti || []) pr.lice = n(pr.lice);
+    }
+    if (s.predstavitel) s.predstavitel = n(s.predstavitel);
+    s.lica = s.lica.filter(l => !smeni.has(l.id));
+    return smeni.size;
+}
+
 function sbMahni(tablica, id) {
     const p = _zhivObekt(); if (!p) return;
     const s = _sbDanni(p);

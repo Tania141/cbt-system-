@@ -24,7 +24,7 @@ const F = new Function(
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
        grab(s, '_sbVpisvaneTekst'), grab(s, '_sbNotariusTekst'), grab(s, '_sbPalnomoshtnoTekst'),
-       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -32,7 +32,7 @@ const F = new Function(
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + 'sbOtdeliPravo,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + 'sbOtdeliPravo,sbMahniAkt,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -429,6 +429,27 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     F.sbPriemi();
     t('иначе изписаният акт пак заменя', s.sabitia.length === 3, s.sabitia.map(e => e.dokument));
     t('„ “ и « » са една фирма', s.lica.filter(l => /АРКОН/.test(l.ime)).length === 1, s.lica.map(l => l.ime));
+}
+{
+    // Двойно прочетен акт (№ 148 и № 178) и два Аркона. (05.11.2026)
+    const p = nov(), s = p.sobstvenost;
+    s.lica.push({ id: 'a1', ime: '„АРКОН ИНВЕСТ“ ООД' }, { id: 'a2', ime: '«АРКОН ИНВЕСТ» ООД' },
+                { id: 'm', ime: 'Мария' });
+    s.obekti.push({ id: 'ap', vid: 'самостоятелен обект', opisanie: 'АП 9' });
+    s.koren = 'ap';
+    const d148 = 'нотариален акт, № 148, том I, рег. № 2135, дело 163/2024';
+    const d178 = 'нотариален акт, № 178, том I, рег. № 2135, дело 163/2024';
+    s.sabitia.push(akt('ap', { vid: 'обезщетение', dokument: d148, ot: 'a1', pridobivashti: [{ lice: 'm', dyal: '1/1' }] }),
+                   akt('ap', { vid: 'обезщетение', dokument: d178, ot: 'a2', pridobivashti: [{ lice: 'm', dyal: '1/1' }] }),
+                   akt('ap', { vid: 'друго', dokument: d178, pridobivashti: [{ lice: 'a2', dyal: '1/1' }] }));
+    F._sbDanni(p);
+    t('двата Аркона се сливат в един', s.lica.filter(l => /АРКОН/.test(l.ime)).length === 1, s.lica.map(l => l.ime));
+    t('и актовете на втория минават към първия', s.sabitia.every(e => !e.ot || e.ot === 'a1')
+      && s.sabitia[2].pridobivashti[0].lice === 'a1', s.sabitia);
+    F.set(p); F.sbMahniAkt(s.sabitia[1].id);
+    t('„махни целия акт“ маха всички записи с № 178', s.sabitia.length === 1 && s.sabitia[0].dokument === d148,
+      s.sabitia.map(e => e.dokument));
+    t('и АП 9 става 1/1', F._drTekst(F._sbSabrano(p, 'ap')) === '1');
 }
 {
     // При четене правото отива направо в отделния обект.
