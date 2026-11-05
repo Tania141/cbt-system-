@@ -141,8 +141,14 @@ function _sbStrana(tekst) {
 // Страните в едно поле. Четецът понякога слага няколко в едно („Иван…,
 // Мария…“); представителството се реже ПРЕДИ разделянето, за да не станат
 // управителят и пълномощникът отделни страни. (ЖИТЕН, 14.10.2026; ЕРМ, 19.10)
+// „Х, като пълномощник на У“ — пълномощникът стои ПРЕДИ страната и се маха.
+// Дотук Х ставаше собственик, а от У оставаше „като СТОИМЕНОВА“. (Люлин,
+// 05.11.2026)
+const _SB_PALNOMOSHTNIK_PREDI =
+    /[^,;]*?,?\s*(?:като|в\s+качеството\s+си\s+на)\s+пълномощни(?:к|чка)\s+на\s+/gi;
+
 function _sbStrani(v) {
-    const tekst = String(v || '').replace(_SB_PREDSTAVITELSTVO, '');
+    const tekst = String(v || '').replace(_SB_PALNOMOSHTNIK_PREDI, '').replace(_SB_PREDSTAVITELSTVO, '');
     return tekst.split(/\s*(?:,|;| и )\s*/)
         .map(_sbStrana).filter(x => x.length > 2);
 }
