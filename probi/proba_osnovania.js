@@ -27,10 +27,12 @@ const f = new Function(
         'function _sbImeObekt(s,id){const o=(s.obekti||[]).find(x=>x.id===id);'
         + 'return o?(o.ime||o.opisanie||o.id):"";}',
         'function _sbVazlozhiteli(p,data){return p.__vaz;}',
+        'function _sbObekt(s,id){return (s.obekti||[]).find(x=>x.id===id);}',
+        'function _sbObekt(s,id){return (s.obekti||[]).find(x=>x.id===id);}',
       ].join('\n') + '\n'
-    + ['_sbVpisvane', '_sbVpisvaneTekst', '_sbNotariusTekst', '_sbPalnomoshtnoTekst',
-       '_sbAktTekst', '_sbOsnovaniaBlok'].map(n => grab(s, n)).join('\n')
-    + '\nreturn {_sbOsnovaniaBlok,_sbVpisvane,_sbVpisvaneTekst,_sbPalnomoshtnoTekst,_sbAktTekst};')();
+    + ['_sbVpisvane', '_sbVpisvaneTekst', '_sbPalnomoshtnoTekst',
+       '_sbNomerDelo', '_sbAkt11Tekst', '_sbOsnovaniaBlok'].map(n => grab(s, n)).join('\n')
+    + '\nreturn {_sbOsnovaniaBlok,_sbVpisvane,_sbVpisvaneTekst,_sbPalnomoshtnoTekst,_sbAkt11Tekst};')();
 
 function grab(izvor, ime) {
     const i = izvor.indexOf('function ' + ime + '(');

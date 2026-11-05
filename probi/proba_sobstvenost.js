@@ -23,8 +23,8 @@ const F = new Function(
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
-       grab(s, '_sbVpisvaneTekst'), grab(s, '_sbNotariusTekst'), grab(s, '_sbPalnomoshtnoTekst'),
-       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbAkt11Tekst'), grab(s, '_sbAktove11'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbVpisvaneTekst'), grab(s, '_sbPalnomoshtnoTekst'),
+       grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbAkt11Tekst'), grab(s, '_sbAktove11'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -410,7 +410,9 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
       !F._sbVazlozhiteli(p, '01.01.2024').some(v => /Мария/.test(v.ime)));
     const blok = F._sbOsnovaniaBlok(p, '05.11.2026');
     t('в Акт 15 основанието на Мария е актът за учредяване',
-      /МАРИЯ АРСОВА ПЕНЕВА\n• нотариален акт, № 178/.test(blok), blok);
+      /МАРИЯ АРСОВА ПЕНЕВА\n• Нотариален акт за учредено право на строеж №178, том I/.test(blok), blok);
+    t('в Акт 15 един акт е един ред при Мария', (blok.split('\n\n')[0].match(/№178/g) || []).length === 1, blok);
+    t('земята е „поземлен имот …“, не голият номер', /поземлен имот 68134[.]4337[.]718/.test(blok), blok);
     // Прочетен наново — заменя, не удвоява.
     p._sb_procheteno = JSON.parse(JSON.stringify(AKT_AR));
     F.sbPriemi();

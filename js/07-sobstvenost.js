@@ -497,17 +497,16 @@ function _sbVpisvane(ch) {
 function _sbVpisvaneTekst(sv) {
     if (!sv) return '';
     // Прочетеното идва като един низ; ръчното — на четири полета.
-    if (sv.tekst) return 'вписан в СВ с ' + sv.tekst;
+    // Прочетеното често започва със „Служба по вписванията — София, Вх. рег.…“
+    // и излизаше „вписан в СВ с Служба по вписванията…“. (05.11.2026)
+    if (sv.tekst) return 'вписан в СВ с ' + sv.tekst
+        .replace(/^\s*служба\s+по\s+вписванията[^,]*,\s*/i, '')
+        .replace(/^Вх\./, 'вх.').replace(/Акт\s*№\s*/g, 'акт № ');
     const ch = [sv.vhoden && 'вх. рег. №' + sv.vhoden, sv.akt && 'акт ' + sv.akt,
                 sv.tom && 'том ' + sv.tom, sv.delo && 'дело №' + sv.delo + ' г.'].filter(Boolean);
     return ch.length ? 'вписан в СВ с ' + ch.join(', ') : '';
 }
 
-// „Нотариус №263 в НК“, ако номерът е вписан; иначе името, както е днес.
-function _sbNotariusTekst(e) {
-    const n = String(e.notarius_nomer || '').trim();
-    return n ? 'Нотариус №' + n + ' в НК' : '';
-}
 
 function _sbPalnomoshtnoTekst(pr) {
     if (!pr || !pr.ime) return '';
@@ -515,20 +514,6 @@ function _sbPalnomoshtnoTekst(pr) {
                 pr.notarius && 'на нотариус №' + pr.notarius + ' в НК'].filter(Boolean);
     return 'представляван от пълномощника си ' + pr.ime
         + (ch.length ? ', надлежно упълномощен с пълномощно ' + ch.join(' ') : '');
-}
-
-// Актът, с който ЕДИН възложител държи ЕДИН имот — вече сглобен като текст
-// при приемането, плюс годината, нотариуса и вписването.
-function _sbAktTekst(e) {
-    const godina = String(e.data || '').match(/\d{4}/);
-    const not = _sbNotariusTekst(e);
-    // „…дело №653 от 2021 г. на Нотариус №263 в НК, вписан в СВ с…“ —
-    // годината и нотариусът вървят със самия акт, без запетая; вписването е
-    // отделно изречение и затова е с.
-    const akt = [e.dokument || e.vid || '',
-                 godina ? 'от ' + godina[0] + ' г.' : '',
-                 not ? 'на ' + not : ''].filter(Boolean).join(' ');
-    return [akt, _sbVpisvaneTekst(e.sv)].filter(Boolean).join(', ');
 }
 
 // Един блок на възложител; имотите му се изброяват заедно, вместо актът да се
@@ -540,7 +525,15 @@ function _sbOsnovaniaBlok(p, data) {
     const pred = data ? _sbRed(data) : '99999999';
     const blokove = [];
     for (const v of vaz) {
-        const imoti = v.prava.map(x => _sbImeObekt(s, x.obekt)).filter(Boolean);
+        // „За 68134.4337.718“ беше само номер. Земята и правото на строеж се
+        // назовават с думи. (05.11.2026)
+        const imoti = v.prava.map(x => {
+            const o = _sbObekt(s, x.obekt) || {};
+            if (o.vid === 'земя') return 'поземлен имот ' + (o.identifikator || '');
+            if (o.vid === 'право на строеж' && o.cyalo) return 'правото на строеж върху целия имот '
+                + (o.identifikator || '');
+            return _sbImeObekt(s, x.obekt);
+        }).filter(Boolean);
         const aktove = [], vidyani = new Set();
         for (const e of [...s.sabitia].sort((a, b) => _sbRed(a.data).localeCompare(_sbRed(b.data)))) {
             if (_sbRed(e.data) > pred) continue;
@@ -548,9 +541,15 @@ function _sbOsnovaniaBlok(p, data) {
             // основанието му в Акт 15, както и за суперфициара. (05.11.2026)
             if (!(v.lice && (e.pridobivashti || []).some(x => x.lice === v.lice))
                 && e.id !== v.uchreditelAkt) continue;
-            const t = _sbAktTekst(e);
-            if (!t || vidyani.has(t)) continue;
-            vidyani.add(t);
+            // Същият запис като в 1.1 — един акт се пише по един начин.
+            // Учредяването и обезщетението от него са един акт — един ред, и то
+            // с думите на учредяването.
+            const uchr = s.sabitia.find(x => /учредяв/i.test(x.vid || '')
+                && _sbNomerDelo(x.dokument) && _sbNomerDelo(x.dokument) === _sbNomerDelo(e.dokument));
+            const t = _sbAkt11Tekst(uchr || e);
+            const k = _sbNomerDelo(e.dokument) || t;
+            if (!t || vidyani.has(k)) continue;
+            vidyani.add(k);
             aktove.push(t);
         }
         const l = _sbLice(s, v.lice) || {};
@@ -577,9 +576,9 @@ function _sbOsnovaniaBlok(p, data) {
 function _sbAkt11Tekst(e) {
     const d = String(e.dokument || '');
     const pole = re => ((d.match(re) || [])[1] || '').trim();
-    const nomer = pole(/(?:^|,\s*)№\s*([^,]+)/);
+    const nomer = pole(/(?:^|,|акт)\s*№\s*([^,]+)/i);
     if (!nomer) return [e.dokument || e.vid || '', e.data ? 'от ' + e.data : ''].filter(Boolean).join(' ');
-    const tom = pole(/том\s*([^,]+)/), reg = pole(/рег\.\s*№\s*([^,]+)/), delo = pole(/дело\s*([^,]+)/);
+    const tom = pole(/том\s*([^,]+)/), reg = pole(/рег\.\s*№\s*([^,]+)/), delo = pole(/дело\s*№?\s*([^,]+)/);
     const [deloN, deloG] = delo.split('/');
     const godina = deloG || (String(e.data || '').match(/\d{4}/) || [])[0] || '';
     const uchr = /учредяв/i.test(e.vid || '');
@@ -1119,8 +1118,8 @@ function _sbPravoNaStroezh(s, obektId, cyaloto) {
 // „…, № 178, том I, рег. № 2135, дело 163/2024, …“ → „178|163/2024“.
 function _sbNomerDelo(dokument) {
     const d = String(dokument || '');
-    const n = (d.match(/(?:^|,\s*)№\s*([^,]+)/) || [])[1] || '';
-    const delo = (d.match(/дело\s*([^,]+)/) || [])[1] || '';
+    const n = (d.match(/(?:^|,|акт)\s*№\s*([^,]+)/i) || [])[1] || '';
+    const delo = (d.match(/дело\s*№?\s*([^,]+)/) || [])[1] || '';
     return n ? (n.trim() + '|' + delo.trim()).toLowerCase() : '';
 }
 
