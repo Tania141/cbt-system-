@@ -22,7 +22,7 @@ const F = new Function(
        grab(s, '_sbSabrano'), grab(s, '_sbVazlozhiteli'), grab(s, '_sbKoren'),
        grab(s, '_sbNahodki'), grab(s, '_sbSastoyanie'), grab(s, '_sbPodmeniCheklist'),
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
-       grab(s, '_sbVpisvane'), grab(s, '_sbPravoNaStroezh'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -314,6 +314,34 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     t('възложители са тримата — двамата собственици и суперфициарът', vaz === 'bx,pl,sn', vaz);
     t('правото е отделен обект с име', s.obekti.some(o => o.vid === 'право на строеж'
         && /68134\.702\.9889/.test(o.opisanie)), s.obekti);
+}
+{
+    // Истинските данни: учредяването за целия имот е закачено върху правото
+    // за АП603, защото и двете носят номера на земята.
+    const p = nov(), s = p.sobstvenost;
+    s.lica.push({ id: 'pl', ime: 'Пламен Георгиев Василев' }, { id: 'sn', ime: 'Снежана Теодорова Ангелова' },
+                { id: 'bx', ime: '«БИЛДИНГ ЕКСПРЕС-90 Р» ООД', vid: 'юридическо' });
+    s.obekti.push({ id: 'a603', vid: 'право на строеж', identifikator: '68134.702.9889',
+                    opisanie: 'право на строеж върху поземлен имот, апартамент №603 и склад №17' });
+    s.koren = 'a603';
+    s.sabitia.push(akt('a603', { vid: 'учредяване право на строеж', data: '27.07.2023',
+        pridobivashti: [{ lice: 'bx', dyal: '24,618%, 24,618%, 24,618%, 9,805%, 9,805%, 6,536%' }] }));
+    s.sabitia.push(akt('a603', { vid: 'покупко-продажба', data: '01.03.2024',
+        pridobivashti: [{ lice: 'pl', dyal: '1/2' }, { lice: 'sn', dyal: '1/2' }] }));
+    const pn = F._sbNahodki(p).find(x => x.vid === 'pravo_varhu_zemya');
+    t('учредяване върху правото за АП603 се назовава', !!pn, F._sbNahodki(p));
+    F.set(p); F.sbOtdeliPravo(pn.sabitie);
+    t('след „Отдели“ АП603 е 1/1', F._drTekst(F._sbSabrano(p, 'a603')) === '1', F._drTekst(F._sbSabrano(p, 'a603')));
+    t('фирмата държи правото върху целия имот', s.obekti.some(o => o.cyalo && o.id === s.sabitia[0].obekt));
+    t('АП603 не вдига находка', F._sbNahodki(p).length === 0, F._sbNahodki(p));
+    // Ново четене на същия акт отива направо в целия имот.
+    const q = nov(), sq = q.sobstvenost;
+    sq.obekti.push({ id: 'a603', vid: 'право на строеж', identifikator: '68134.702.9889', opisanie: 'АП603' });
+    q._sb_procheteno = { fajl: 'na.pdf', data: '27.07.2023', obekti: [],
+        prehvarliania: [{ vid: 'учредяване право на строеж', ot: 'Валентина Иванова Алипиева',
+                          na: '«БИЛДИНГ ЕКСПРЕС-90 Р» ООД', dyal: '1/1', obekt: '68134.702.9889' }] };
+    F.sbPriemi();
+    t('прочетеното учредяване за целия имот не сяда на АП603', sq.sabitia[0].obekt !== 'a603', sq.sabitia[0]);
 }
 {
     // При четене правото отива направо в отделния обект.
