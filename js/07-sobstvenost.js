@@ -554,15 +554,23 @@ function _sbOsnovaniaBlok(p, data) {
         }
         const l = _sbLice(s, v.lice) || {};
         const palnomoshtno = _sbPalnomoshtnoTekst(l.predstavitel);
-        const redove = [
-            imoti.length ? 'За ' + imoti.join(', ') : '',
-            String(v.ime || '').toUpperCase(),
-            ...aktove.map(a => '• ' + a),
-            palnomoshtno ? '• ' + palnomoshtno : '',
-        ].filter(Boolean);
-        blokove.push(redove.join('\n'));
+        // СЪСОБСТВЕНИЦИТЕ — В ЕДИН БЛОК. Едни и същи обекти по едни и същи
+        // актове: имената се пишат заедно с „И“, както в таблицата на ОД.
+        // (Операторът, 05.11.2026: „Да, сливай“.)
+        const za = imoti.length ? 'За ' + imoti.join(', ') : '';
+        const klyuch = za + '|' + aktove.join('|');
+        const veche = blokove.find(b => b.klyuch === klyuch);
+        if (veche) {
+            veche.imena.push(String(v.ime || '').toUpperCase());
+            if (palnomoshtno) veche.palnomoshtni.push('• ' + palnomoshtno);
+            continue;
+        }
+        blokove.push({ klyuch, za, imena: [String(v.ime || '').toUpperCase()],
+                       aktove: aktove.map(a => '• ' + a),
+                       palnomoshtni: palnomoshtno ? ['• ' + palnomoshtno] : [] });
     }
-    return blokove.join('\n\n');
+    return blokove.map(b => [b.za, b.imena.join(' И '), ...b.aktove, ...b.palnomoshtni]
+        .filter(Boolean).join('\n')).join('\n\n');
 }
 
 // ── раздел 1.1 на Акт 15: по собствеността ───────────────────────────────

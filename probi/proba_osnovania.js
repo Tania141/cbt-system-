@@ -138,6 +138,15 @@ dvama.sobstvenost.sabitia.push({
     pridobivashti: [{ lice: 'l2', dyal: { n: 1, d: 1 } }],
 });
 dvama.__vaz.push({ lice: 'l2', ime: 'Мария Иванова Петрова', prava: [{ obekt: 'o2' }] });
+// Съсобственици: един обект, един акт → един блок с „И“. (05.11.2026)
+const sas = JSON.parse(JSON.stringify(OBEKT));
+sas.sobstvenost.lica.push({ id: 'l3', ime: 'Мария Станчева', vid: 'физическо' });
+sas.sobstvenost.sabitia[0].pridobivashti.push({ lice: 'l3', dyal: { n: 1, d: 2 } });
+sas.__vaz.push({ lice: 'l3', ime: 'Мария Станчева', prava: [{ obekt: 'o1' }] });
+const bs = f._sbOsnovaniaBlok(sas, '');
+t('съсобствениците са един блок', bs.split('\n\n').length === 1, bs);
+t('имената са с „И“', /ИВАН СТАНЧЕВ СТАНЧЕВ И МАРИЯ СТАНЧЕВА/.test(bs), bs);
+t('пълномощното на единия остава', /Петракиев/.test(bs), bs);
 const b5 = f._sbOsnovaniaBlok(dvama, '');
 t('двама възложители — два блока, делени с празен ред',
   b5.split('\n\n').length === 2, b5.split('\n\n').length);
