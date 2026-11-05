@@ -2225,7 +2225,14 @@ function _a15AktoveProtokoli(p, st) {
 }
 
 // 1.1 — собствеността. 1.4 — скиците. 1.5 — договорите с дружествата.
-function _a15Sobstvenost(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.sobstvenost); }
+// 1.1 се пълни от РЕГИСТЪРА на собствеността, към датата на акта; празен ли е
+// — от прочетените документи, както досега. Дотук 1.1 гледаше само
+// прочетените и при пълен регистър излизаше празен. (05.11.2026)
+function _a15Sobstvenost(p, st) {
+    const ot = typeof _sbAktove11 === 'function' && p && p.sobstvenost
+        ? _sbAktove11(p, _a15Ostatak(st).data_akt || '') : [];
+    return ot.length ? ot : _a15PoIzraz(p, st, _A15_RAZDELI.sobstvenost);
+}
 function _a15Skici(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.skici); }
 function _a15DogovoriMrezhi(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.mrezhi); }
 

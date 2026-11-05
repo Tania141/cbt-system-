@@ -566,6 +566,55 @@ function _sbOsnovaniaBlok(p, data) {
     return blokove.join('\n\n');
 }
 
+// ── раздел 1.1 на Акт 15: по собствеността ───────────────────────────────
+// Операторът, 05.11.2026, по истинския Акт 15 (Денка): по един ред на
+// нотариален акт; първо учредяването, после по обект; при учредяването само
+// „за учредено право на строеж“. Записът е като в образеца:
+//   Нотариален акт №72, том I, рег.№3417, дело № 68 от 2023 г. на Нотариус
+//   №358 в НК, вписан в СВ с вх. рег. №42084, акт 118, том CIV, дело №32006/23 г.
+// Влизат актовете, с които възложителите към датата държат правата си.
+
+function _sbAkt11Tekst(e) {
+    const d = String(e.dokument || '');
+    const pole = re => ((d.match(re) || [])[1] || '').trim();
+    const nomer = pole(/(?:^|,\s*)№\s*([^,]+)/);
+    if (!nomer) return [e.dokument || e.vid || '', e.data ? 'от ' + e.data : ''].filter(Boolean).join(' ');
+    const tom = pole(/том\s*([^,]+)/), reg = pole(/рег\.\s*№\s*([^,]+)/), delo = pole(/дело\s*([^,]+)/);
+    const [deloN, deloG] = delo.split('/');
+    const godina = deloG || (String(e.data || '').match(/\d{4}/) || [])[0] || '';
+    const uchr = /учредяв/i.test(e.vid || '');
+    const ch = ['Нотариален акт' + (uchr ? ' за учредено право на строеж' : '') + ' №' + nomer,
+                tom && 'том ' + tom, reg && 'рег.№' + reg,
+                deloN && 'дело №' + deloN.trim() + (godina ? ' от ' + godina + ' г.' : '')].filter(Boolean).join(', ');
+    const not = String(e.notarius_nomer || '').trim();
+    return [ch + (not ? ' на Нотариус №' + not + ' в НК' : ''), _sbVpisvaneTekst(e.sv)].filter(Boolean).join(', ');
+}
+
+function _sbAktove11(p, data) {
+    const s = _sbDanni(p);
+    const pred = data ? _sbRed(data) : '99999999';
+    const vaz = _sbVazlozhiteli(p, data);
+    if (!vaz.length) return [];
+    const sabitia = s.sabitia.filter(e => _sbRed(e.data) <= pred);
+    const izbrani = [];
+    // Първо учредяването.
+    for (const e of sabitia) if (/учредяв/i.test(e.vid || '')) izbrani.push(e);
+    // После по обект — в реда на обектите в регистъра.
+    for (const o of s.obekti)
+        for (const e of sabitia)
+            if (e.obekt === o.id && (e.pridobivashti || []).some(x =>
+                    vaz.some(v => v.lice && v.lice === x.lice && v.prava.some(pr => pr.obekt === o.id))))
+                izbrani.push(e);
+    const vidyani = new Set(), redove = [];
+    for (const e of izbrani) {
+        const k = _sbNomerDelo(e.dokument) || e.dokument || e.id;
+        if (vidyani.has(k)) continue;
+        vidyani.add(k);
+        redove.push(_sbAkt11Tekst(e));
+    }
+    return redove.filter(Boolean);
+}
+
 function _sbKlienti(p, data) {
     const s = _sbDanni(p);
     return _sbVazlozhiteli(p, data).map(v => {

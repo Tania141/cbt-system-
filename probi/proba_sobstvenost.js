@@ -24,7 +24,7 @@ const F = new Function(
        grab(s, '_sbDveImena'), parche(s, 'const _MALKI_DUMI', 'async function registar'), grab(s, '_sbPravnoOsnovanie'), grab(s, '_sbKlienti'), grab(s, '_sbPodpisi'), grab(s, '_sbPredstavitel'),
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
        grab(s, '_sbVpisvaneTekst'), grab(s, '_sbNotariusTekst'), grab(s, '_sbPalnomoshtnoTekst'),
-       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
+       grab(s, '_sbAktTekst'), grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbAkt11Tekst'), grab(s, '_sbAktove11'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
        grab(s, 'sbPriemi')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
@@ -32,7 +32,7 @@ const F = new Function(
     + 'const _prerisuvai=()=>{};const showAlert=()=>{};const confirm=()=>true;\n'
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
-    + 'sbOtdeliPravo,sbMahniAkt,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
+    + 'sbOtdeliPravo,sbMahniAkt,_sbAktove11,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
     + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
@@ -415,6 +415,24 @@ const n9 = F._sbNahodki(p9).find(x => x.vid === 'nadvishava');
     p._sb_procheteno = JSON.parse(JSON.stringify(AKT_AR));
     F.sbPriemi();
     t('прочетеният наново акт заменя стария', s.sabitia.length === 3, s.sabitia.length);
+    // 1.1 на Акт 15: един ред на акт, като в образеца. (05.11.2026)
+    s.sabitia.forEach(e => { e.notarius_nomer = '344'; e.sv = { vhoden: '39956', akt: '150', tom: 'XCI', delo: '30442' }; });
+    const r11 = F._sbAktove11(p, '05.11.2026');
+    t('1.1: учредяването с обезщетението е ЕДИН ред', r11.length === 1, r11);
+    t('1.1: записът е като в образеца', r11[0] === 'Нотариален акт за учредено право на строеж №178, том I, '
+      + 'рег.№2135, дело №163 от 2024 г. на Нотариус №344 в НК, вписан в СВ с вх. рег. №39956, акт 150, '
+      + 'том XCI, дело №30442 г.', r11[0]);
+    // Мария продава АП 9 на Иван — вторият ред е неговият акт, след учредяването.
+    const ap9c = s.obekti.find(o => o.opisanie === 'апартамент № 9');
+    s.lica.push({ id: 'iv', ime: 'Иван Иванов' });
+    s.sabitia.push(akt(ap9c.id, { vid: 'покупко-продажба', data: '01.03.2025',
+        dokument: 'нотариален акт, № 12, том III, рег. № 900, дело 50/2025', ot: s.lica.find(l => /Мария/.test(l.ime)).id,
+        pridobivashti: [{ lice: 'iv', dyal: '1/1' }] }));
+    const r11b = F._sbAktove11(p, '05.11.2026');
+    t('1.1: учредяването първо, после продажбата', r11b.length === 2 && /учредено/.test(r11b[0])
+      && /^Нотариален акт №12, том III, рег.№900, дело №50 от 2025 г\./.test(r11b[1]), r11b);
+    t('1.1: преди продажбата е само учредяването', F._sbAktove11(p, '01.01.2025').length === 1);
+    s.sabitia = s.sabitia.filter(e => !/№ 12,/.test(e.dokument || ''));
     // Обезщетение с процент: процентът са идеалните части, не дял.
     const AKT3 = JSON.parse(JSON.stringify(AKT_AR));
     AKT3.prehvarliania[1].dyal = '6,302 %';
