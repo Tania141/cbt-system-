@@ -1073,6 +1073,142 @@ async function sbCheti() {
     }
 }
 
+// ── ПЪЛНОМОЩНОТО ───────────────────────────────────────────────────────────
+// Операторът, 06.11.2026: „четецът чете пълномощно — извлича за всяко лице
+// пълномощника, номера на пълномощното, датата, нотариуса; операторът го
+// сравнява и се записва под НА във възложители и в Приложение. Не в 1.1.“
+//
+// Пълномощното е СВОЙСТВО НА ЛИЦЕТО (21.10.2026) — затова приемането пише в
+// `lica[].predstavitel`, същото място, което попълва и „+ представител“.
+
+function _sbPalCheteneHtml() {
+    return `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:6px">Прочети пълномощно</div>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:10px">
+                Нотариално заверено пълномощно. Четецът търси кой кого упълномощава
+                и заверката — ти сверяваш и приемаш.
+            </p>
+            <input type="file" id="sb-pal-fajl" class="form-input"
+                   accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,.tif,.tiff" onchange="sbChetiPal()">
+            <div id="sb-pal-hod" style="font-size:12.5px;color:var(--muted);margin-top:8px"></div>
+        </div>`;
+}
+
+async function sbChetiPal() {
+    const p = _zhivObekt();
+    const vhod = document.getElementById('sb-pal-fajl');
+    const hod = document.getElementById('sb-pal-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!p || !f) return;
+    if (/\.doc$/i.test(f.name)) { hod.textContent = 'Стар .doc — запиши го като .docx или PDF.'; return; }
+    hod.textContent = `Чета „${f.name}“…`;
+    try {
+        const r = await apiCall('/api/sobstvenost/chete', 'POST', {
+            pi: p.pi, vid: 'palnomoshtno',
+            // Пълномощното носи лични данни — същият избор като за НА.
+            chetec: localStorage.getItem('sb_chetec') || 'mistral',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+        });
+        if (r.greshka) { hod.textContent = `⚠️ ${r.greshka}`; return; }
+        p._sb_pal_procheteno = r.dokument;
+        hod.textContent = '';
+        _prerisuvai();
+    } catch (e) {
+        hod.textContent = `❌ ${e.message}`;
+    }
+}
+
+function sbPopraviPal(klyuch, stoynost) {
+    const p = _zhivObekt();
+    if (p && p._sb_pal_procheteno) p._sb_pal_procheteno[klyuch] = stoynost;
+}
+
+function _sbPalChetenoHtml(p) {
+    const esc = _s2esc, ch = p._sb_pal_procheteno;
+    if (!ch) return '';
+    const s = _sbDanni(p);
+    const pole = (k, et) => `<label style="font-size:11.5px;color:var(--muted)">${esc(et)}
+        <input type="text" class="form-input" style="font-size:13px;margin-top:2px"
+               value="${esc(ch[k] || '')}" oninput="sbPopraviPal('${k}', this.value)"></label>`;
+    const upal = (ch.upalnomoshtiteli || []).map(u => {
+        const l = s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(u.ime));
+        return `<div>· ${esc(u.ime)} <span style="color:${l ? '#2e6b32' : '#b45309'};font-size:12px">${
+            l ? '✓ в регистъра' : 'няма го сред лицата — няма да се запише'}</span></div>`;
+    }).join('');
+    return `
+        <div class="card" style="margin-bottom:16px;border-color:var(--gold)">
+            <div class="card-title" style="margin-bottom:6px">Пълномощно — прочетено от „${esc(ch.fajl || '')}“</div>
+            <div style="font-size:13px;line-height:1.8">
+                <strong>Упълномощители</strong>${upal || '<div style="color:var(--red)">няма прочетени</div>'}
+                <div style="color:#8a6400;background:#fffbef;border-left:3px solid #d99a00;
+                            padding:8px 10px;border-radius:0 6px 6px 0;margin:8px 0">
+                    <strong>[___] Номерът на заверката се сверява с документа.</strong>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:6px">
+                        ${pole('palnomoshtnik', 'пълномощник')}
+                        ${pole('reg_nomer', 'рег. № на заверката')}
+                        ${pole('data', 'дата')}
+                        ${pole('notarius', 'нотариус')}
+                        ${pole('notarius_nomer', '№ на нотариуса в НК')}
+                        ${pole('obhvat', 'за какво (по желание)')}
+                        ${pole('do', 'до кога (по желание)')}
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <button class="btn btn-primary" onclick="sbPriemiPal()">Приеми</button>
+                <button class="btn btn-ghost" onclick="sbOtkazhiPal()">Откажи</button>
+            </div>
+        </div>`;
+}
+
+function sbOtkazhiPal() {
+    const p = _zhivObekt(); if (!p) return;
+    delete p._sb_pal_procheteno;
+    _prerisuvai();
+}
+
+function sbPriemiPal() {
+    const p = _zhivObekt(); if (!p) return;
+    const ch = p._sb_pal_procheteno; if (!ch) return;
+    const s = _sbDanni(p);
+    const ime = String(ch.palnomoshtnik || '').trim();
+    if (!ime) return alert('Няма пълномощник — впиши го.');
+    const zapisani = [], lipsvat = [];
+    for (const u of ch.upalnomoshtiteli || []) {
+        const l = s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(u.ime));
+        if (!l) { lipsvat.push(u.ime); continue; }
+        l.predstavitel = {
+            ime, nomer: String(ch.reg_nomer || '').trim(), data: String(ch.data || '').trim(),
+            notarius: String(ch.notarius_nomer || '').trim(),
+            notarius_ime: String(ch.notarius || '').trim(),
+            obhvat: String(ch.obhvat || '').trim(), do: String(ch.do || '').trim(),
+            ot_chetene: ch.fajl || '',
+        };
+        zapisani.push(l.ime);
+    }
+    delete p._sb_pal_procheteno;
+    _sbZapishi(p, `пълномощно на ${ime} — за ${zapisani.length} ${zapisani.length === 1 ? 'лице' : 'лица'}`);
+    if (lipsvat.length) showAlert('warning', `Не са в регистъра и не са записани: ${lipsvat.join(', ')}.`);
+}
+
+// В ПРИЛОЖЕНИЕ 1: по един ред на пълномощно на възложителите към датата.
+function _sbPalnomoshtniOpis(p, data) {
+    const s = _sbDanni(p);
+    const vidyani = new Set(), redove = [];
+    for (const v of _sbVazlozhiteli(p, data)) {
+        const pr = (_sbLice(s, v.lice) || {}).predstavitel;
+        if (!pr || !pr.ime) continue;
+        const k = [pr.nomer, pr.data, pr.ime].join('|');
+        if (vidyani.has(k)) continue;
+        vidyani.add(k);
+        redove.push(['Нотариално заверено пълномощно', pr.nomer && 'рег. № ' + pr.nomer,
+                     pr.data && 'от ' + pr.data + ' г.', pr.notarius && 'на нотариус № ' + pr.notarius + ' в НК']
+            .filter(Boolean).join(' ') + ' — ' + pr.ime);
+    }
+    return redove;
+}
+
 function sbOtkazhi() {
     const p = _zhivObekt(); if (!p) return;
     delete p._sb_procheteno;

@@ -2041,6 +2041,7 @@ function _a15VidoveNaRed(r) {
     const v = [];
     if (/нотариален/.test(t)) return v;
     if (/разрешение за строеж/.test(t)) v.push('rs');
+    if (/пълномощно/.test(t)) v.push('pal');
     if (/образец\s*\)?\s*2\b|обр\.?\s*2\b|откриване на строителна|строителна линия и ниво/.test(t)) v.push('p2');
     if (/образец\s*\)?\s*14\b|обр\.?\s*14\b|акт\s*14\b|приемане на конструкцията/.test(t)) v.push('a14');
     if (/образец\s*\)?\s*7\b|обр\.?\s*7\b|акт\s*7\b/.test(t)) v.push('a7');
@@ -2071,7 +2072,10 @@ function _a15Prilozhenia(p, st) {
         if (kn.length > 1) nomera.add(kn);
         redove.push(r);
     };
-    [].concat(_a15Sobstvenost(p, st), _a15AktoveProtokoli(p, st),
+    // Пълномощните на възложителите — в описа, не в 1.1. (06.11.2026)
+    const palnomoshtni = typeof _sbPalnomoshtniOpis === 'function' && p && p.sobstvenost
+        ? _sbPalnomoshtniOpis(p, _a15Ostatak(st).data_akt || '') : [];
+    [].concat(_a15Sobstvenost(p, st), palnomoshtni, _a15AktoveProtokoli(p, st),
               _a15Skici(p, st), _a15DogovoriMrezhi(p, st)).forEach(dobavi);
     _a15Svereni(p, st).map(dokIzrechenie).forEach(dobavi);
     return redove;

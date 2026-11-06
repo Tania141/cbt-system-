@@ -101,6 +101,7 @@ t('регистърът е тук: лица, обекти, актове',
 t('със самия акт', /Нотариален акт № 143, том IV/.test(telo));
 t('и с прехвърлителя', /Продавачите/.test(telo));
 t('четенето на документ е на екрана', !!a.d.getElementById('sb-fajl'));
+t('и четенето на пълномощно', !!a.d.getElementById('sb-pal-fajl'));
 t('бутоните за добавяне са тук',
   !!a.d.querySelector('[onclick="sbDobaviLice()"]') && !!a.d.querySelector('[onclick="sbDobaviSabitie()"]'));
 t('няма вече връзка към старото ПВА', !/в старото ПВА/.test(telo), telo);

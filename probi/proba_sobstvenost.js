@@ -25,7 +25,7 @@ const F = new Function(
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
        grab(s, '_sbVpisvaneTekst'), grab(s, '_sbPalnomoshtnoTekst'),
        grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbAkt11Tekst'), grab(s, '_sbAktove11'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
-       grab(s, 'sbPriemi')].join('\n')
+       grab(s, 'sbPriemi'), grab(s, 'sbPriemiPal'), grab(s, '_sbPalnomoshtniOpis')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=(p,k)=>_zapisi.push(k);'
@@ -33,7 +33,7 @@ const F = new Function(
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
     + 'sbOtdeliPravo,sbMahniAkt,_sbAktove11,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
-    + 'set:p=>{_t=p},zapisi:()=>_zapisi};')();
+    + 'sbPriemiPal,_sbPalnomoshtniOpis,set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -662,6 +662,30 @@ t('и основанието влиза в документа',
   /№ 9/.test(klP.find(c => c.name === 'Мария Петрова').podpisva_osnovanie || ''), klP);
 t('лице без представител подписва само',
   !klP.find(c => c.name === 'Иван Петров').podpisva);
+
+// ── прочетено пълномощно (06.11.2026) ───────────────────────────────────────
+{
+    const p = nov(), s = p.sobstvenost;
+    s.lica.push({ id: 'i', ime: 'ИВАН СТАНЧЕВ СТАНЧЕВ' }, { id: 'm', ime: 'Мария Станчева' });
+    s.obekti.push({ id: 'a', vid: 'самостоятелен обект', opisanie: 'апартамент № 10' });
+    s.koren = 'a';
+    s.sabitia.push(akt('a', { vid: 'покупко-продажба', data: '12.11.2021',
+        pridobivashti: [{ lice: 'i', dyal: '1/2' }, { lice: 'm', dyal: '1/2' }] }));
+    p._sb_pal_procheteno = { fajl: 'pal.pdf', palnomoshtnik: 'Димитри Петракиев',
+        upalnomoshtiteli: [{ ime: 'Иван Станчев Станчев' }, { ime: 'Петър Чужд' }],
+        reg_nomer: '4676', data: '19.11.2021', notarius: 'Иван Иванов', notarius_nomer: '263' };
+    F.set(p); F.sbPriemiPal();
+    const iv = s.lica.find(l => l.id === 'i');
+    t('пълномощното се записва на упълномощителя (по име, без значение от главните)',
+      iv.predstavitel && iv.predstavitel.ime === 'Димитри Петракиев' && iv.predstavitel.nomer === '4676'
+      && iv.predstavitel.notarius === '263', iv.predstavitel);
+    t('лице извън регистъра не се създава', s.lica.length === 2, s.lica.map(l => l.ime));
+    t('прочетеното се изчиства', !p._sb_pal_procheteno);
+    const op = F._sbPalnomoshtniOpis(p, '');
+    t('в описа — един ред на пълномощно',
+      op.length === 1 && op[0] === 'Нотариално заверено пълномощно рег. № 4676 от 19.11.2021 г. на нотариус № 263 в НК — Димитри Петракиев', op);
+    t('в 1.1 не влиза', !F._sbAktove11(p, '').some(r => /пълномощно/i.test(r)));
+}
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

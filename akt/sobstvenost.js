@@ -183,7 +183,9 @@ function sobstvenostRegistarHtml(p) {
     <div class="kutiya-razdel sb-registar">
         <div class="nadpis">Регистърът</div>
         ${_sbChetenoHtml(p)}
+        ${_sbPalChetenoHtml(p)}
         ${_sbCheteneHtml()}
+        ${_sbPalCheteneHtml()}
         ${_sbTablici(p)}
     </div>`;
 }
