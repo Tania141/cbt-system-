@@ -147,6 +147,9 @@ const bs = f._sbOsnovaniaBlok(sas, '');
 t('съсобствениците са един блок', bs.split('\n\n').length === 1, bs);
 t('имената са с „И“', /ИВАН СТАНЧЕВ СТАНЧЕВ И МАРИЯ СТАНЧЕВА/.test(bs), bs);
 t('пълномощното на единия остава', /Петракиев/.test(bs), bs);
+sas.sobstvenost.lica[1].predstavitel = JSON.parse(JSON.stringify(sas.sobstvenost.lica[0].predstavitel));
+const bs2 = f._sbOsnovaniaBlok(sas, '');
+t('едно пълномощно за двамата — един ред', (bs2.match(/Петракиев/g) || []).length === 1, bs2);
 const b5 = f._sbOsnovaniaBlok(dvama, '');
 t('двама възложители — два блока, делени с празен ред',
   b5.split('\n\n').length === 2, b5.split('\n\n').length);

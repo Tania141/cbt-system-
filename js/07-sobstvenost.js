@@ -110,8 +110,17 @@ const _sbObekt = (s, id) => s.obekti.find(x => x.id === id);
 const _sbImeObekt = (s, id) => {
     const o = _sbObekt(s, id);
     if (!o) return '(обект)';
-    return (o.vid === 'земя' ? (o.identifikator || o.opisanie) : (o.opisanie || o.identifikator)) || '(обект)';
+    if (o.vid === 'земя') return o.identifikator || o.opisanie || '(обект)';
+    return _sbBezZemya(o.opisanie) || o.identifikator || '(обект)';
 };
+
+// Описанието на апартамента — без земята и без номерата по КК: „…в сграда,
+// намираща се на поземлен имот с идентификатор 68134.702.9889“ е от записи
+// отпреди 05.11. Същото чистене, което четецът вече прави. (06.11.2026)
+const _sbBezZemya = t => String(t || '')
+    .replace(/[,\s]*(?:намиращ\S*\s+се\s+(?:на|в)\s+|построен\S*\s+(?:на|в)\s+|в\s+|на\s+|върху\s+)?(?:поземлен(?:ия)?\s+имот|ПИ|УПИ)\s*(?:с\s+)?(?:идентификатор\s*)?(?:№\s*)?\d{4,5}\.\d+\.\d+(?:\.\d+)*/gi, '')
+    .replace(/(?:с\s+)?идентификатор\s*\d{4,5}\.\d+\.\d+(?:\.\d+)*/gi, '')
+    .replace(/\s+,/g, ',').replace(/\s{2,}/g, ' ').replace(/^[\s,;]+|[\s,;]+$/g, '');
 // Как се нарича един акт в изречение: „НА № 186 от 09.07.2019“.
 const _sbImeAkt = e => [
     (e.dokument || e.vid || 'Актът').split(',')[0].trim(),
@@ -568,7 +577,9 @@ function _sbOsnovaniaBlok(p, data) {
         const veche = blokove.find(b => b.klyuch === klyuch);
         if (veche) {
             veche.imena.push(String(v.ime || '').toUpperCase());
-            if (palnomoshtno) veche.palnomoshtni.push('• ' + palnomoshtno);
+            // Едно пълномощно за двамата — един ред, не два. (06.11.2026)
+            if (palnomoshtno && !veche.palnomoshtni.includes('• ' + palnomoshtno))
+                veche.palnomoshtni.push('• ' + palnomoshtno);
             continue;
         }
         blokove.push({ klyuch, za, imena: [String(v.ime || '').toUpperCase()],
