@@ -47,9 +47,51 @@ function proektRisuvai() {
     if (!z) return;
     document.getElementById('proekt-telo').innerHTML =
         proektKrugoveHtml(z.st)
+        + proektPloshtHtml(z.st)
         + proektKachvaneHtml()
         + proektChastiHtml(z.k)
         + proektBlokoveHtml(z.k);
+}
+
+// ── Площообразуването ────────────────────────────────────────────────────────
+// Операторът, 06.11.2026: качва се тук — част е от проекта; Собствеността
+// само го ползва. Чете се само списъкът на обектите и видът им, без площи и
+// без идеални части; таблица IV (двор) не дава обекти. Без АИ.
+
+function proektPloshtHtml(st) {
+    const t = st.ploshtoobrazuvane;
+    const broi = t ? Object.entries(t.broi_po_vid || {}).map(([v, n]) => `${n} ${v}`).join(' · ') : '';
+    return `
+    <div class="kutiya-razdel">
+        <div class="nadpis">Площообразуване</div>
+        ${t ? `<p><strong>${(t.obekti || []).length} обекта</strong> — ${_e(broi)}
+              <span class="otkade">· от „${_e(t.fajl || '')}“</span></p>` :
+             '<p class="tiho">Още не е качено. Дава списъка на обектите за сверката в Собствеността.</p>'}
+        <div class="redica">
+            <input type="file" id="proekt-plosht-fajl" accept=".xlsx,.xls" onchange="proektPloshtCheti()">
+            <span class="tiho">таблицата .xlsx — само обектите и видът им се четат</span>
+        </div>
+        <div id="proekt-plosht-hod"></div>
+    </div>`;
+}
+
+async function proektPloshtCheti() {
+    const z = proektZhiv(); if (!z) return;
+    const vhod = document.getElementById('proekt-plosht-fajl');
+    const hod = document.getElementById('proekt-plosht-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!f) return;
+    hod.innerHTML = `<p class="tiho">Чета „${_e(f.name)}“…</p>`;
+    try {
+        const r = await aktApi('/api/ploshtoobrazuvane', 'POST', {
+            fajl: { ime: f.name, data: await proektBase64(f) } });
+        if (r.greshka) { hod.innerHTML = `<p class="greshka">⚠ ${_e(r.greshka)}</p>`; return; }
+        z.st.ploshtoobrazuvane = r.tablica;
+        aktZapishi();
+        proektRisuvai();
+    } catch (e) {
+        hod.innerHTML = `<p class="greshka">✗ ${_e(e.message)}</p>`;
+    }
 }
 
 // ── Кръговете ────────────────────────────────────────────────────────────────

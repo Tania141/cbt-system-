@@ -35,6 +35,7 @@ function sobstvenostRisuvai() {
         sobstvenostIzrechenieHtml(p)
         + sobstvenostVazlozhiteliHtml(p)
         + sobstvenostNahodkiHtml(p)
+        + sobstvenostSverkaHtml(p)
         + sobstvenostRegistarHtml(p);
     // Изборът на четец се помни — както в старото `renderSobstvenostPage`.
     try {
@@ -167,6 +168,34 @@ function sobstvenostNahodkiHtml(p) {
                     Отдели правото на строеж</button>` : ''}
             </div>`).join('')}
     </div>`;
+}
+
+// ── Сверката с площообразуването ─────────────────────────────────────────────
+// Площообразуването се качва в Проекта (Екран 4); тук само се ползва.
+const _SOB_KATEGORIA = { obezshtenie: 'обезщетение', prodaden: 'продаден', superficiar: 'у суперфициаря' };
+
+function sobstvenostSverkaHtml(p) {
+    const st = typeof aktStroezh === 'function' ? aktStroezh(p, aktIndeksStroezh(p)) : null;
+    const tablica = st && st.ploshtoobrazuvane;
+    if (!tablica) return `<div class="kutiya-razdel"><div class="nadpis">Сверка с проекта</div>
+        <p class="tiho">Няма площообразуване. Качва се в Проекта — тогава тук излиза кой обект у кого е.</p></div>`;
+    const sv = _sbSverka(p, tablica, p._sb_data || _sbDnes());
+    if (!sv) return '';
+    const b = sv.broi;
+    return `
+    <details class="kutiya-razdel minali">
+        <summary>Сверка с проекта · <strong>${sv.vsichko} по проект = ${b.obezshtenie} обезщетени + ${
+            b.prodaden} продадени + ${b.superficiar} у суперфициаря</strong>${
+            b.nadvishava ? ` · <span class="greshka">⚠ ${b.nadvishava} с повече от цялото</span>` : ''}${
+            sv.izvan.length ? ` · <span class="greshka">⚠ ${sv.izvan.length} в регистъра, но не в проекта</span>` : ''}</summary>
+        ${sv.izvan.length ? `<p class="greshka">Не са в площообразуването: ${sv.izvan.map(_e).join(', ')}</p>` : ''}
+        <table class="sverka">
+            <tr><th>обект</th><th>как</th><th>у кого е</th></tr>
+            ${sv.redove.map(r => `<tr${r.nad ? ' class="greshka"' : ''}><td>${_e(r.ime)}</td>
+                <td>${_SOB_KATEGORIA[r.kategoria]}${r.nad ? ' · повече от цялото' : ''}</td>
+                <td>${_e(r.koi || '—')}</td></tr>`).join('')}
+        </table>
+    </details>`;
 }
 
 // ── Регистърът: лица, обекти, актове и четенето ─────────────────────────────

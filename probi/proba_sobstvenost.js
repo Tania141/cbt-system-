@@ -25,7 +25,7 @@ const F = new Function(
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
        grab(s, '_sbVpisvaneTekst'), grab(s, '_sbPalnomoshtnoTekst'),
        grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbAkt11Tekst'), grab(s, '_sbAktove11'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
-       grab(s, 'sbPriemi'), grab(s, 'sbPriemiPal'), grab(s, '_sbPalnomoshtnici'), grab(s, '_sbPalnomoshtniciNorm'), grab(s, 'sbIzberiPalnomoshtnik'), grab(s, '_sbPalnomoshtniOpis')].join('\n')
+       grab(s, 'sbPriemi'), grab(s, 'sbPriemiPal'), grab(s, '_sbKlyuchObekt'), grab(s, '_sbSverka'), grab(s, '_sbPalnomoshtnici'), grab(s, '_sbPalnomoshtniciNorm'), grab(s, 'sbIzberiPalnomoshtnik'), grab(s, '_sbPalnomoshtniOpis')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=(p,k)=>_zapisi.push(k);'
@@ -33,7 +33,7 @@ const F = new Function(
     + 'return {eEGN,_skritoEgn,_dr,_drTekst,_drSabi,_sbDanni,_sbSmetka,_sbSabrano,'
     + '_sbVazlozhiteli,_sbKoren,_sbNahodki,_sbSastoyanie,_sbPodmeniCheklist,_SB_REDOVE,'
     + 'sbOtdeliPravo,sbMahniAkt,_sbAktove11,_sbOsnovaniaBlok,_sbDveImena,_sbKlienti,_sbPodpisi,_sbLice,_sbStrani,_sbStrana,_sbKojPodpisva,_sbPravnoOsnovanie,_sbPredstavitel,sbPriemi,sbPopravi,sbMahni,'
-    + 'sbPriemiPal,sbIzberiPalnomoshtnik,_sbPalnomoshtnici,_sbPalnomoshtniOpis,set:p=>{_t=p},zapisi:()=>_zapisi};')();
+    + 'sbPriemiPal,_sbSverka,sbIzberiPalnomoshtnik,_sbPalnomoshtnici,_sbPalnomoshtniOpis,set:p=>{_t=p},zapisi:()=>_zapisi};')();
 
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
@@ -720,6 +720,30 @@ t('лице без представител подписва само',
     s.obekti[0].opisanie = 'апартамент № 4';
     t('старото „всички в едно“ се разделя', s.lica[0].predstavitel.ime === 'ДЕЛЧО ПАНКОВ РАДУЛОВ'
       && s.lica[0].predstavitel.vsichki.length === 2, s.lica[0].predstavitel);
+}
+
+// ── сверката с площообразуването (06.11.2026) ───────────────────────────────
+{
+    const p = nov(), s = p.sobstvenost;
+    s.lica.push({ id: 'b', ime: 'Билдинг ООД' }, { id: 'm', ime: 'Мария' }, { id: 'i', ime: 'Иван' });
+    s.obekti.push({ id: 'z', vid: 'земя', identifikator: '68134.702.9889' },
+                  { id: 'ps', vid: 'право на строеж', cyalo: true, identifikator: '68134.702.9889', opisanie: 'право на строеж върху целия имот' },
+                  { id: 'a1', vid: 'самостоятелен обект', opisanie: 'апартамент № 101' },
+                  { id: 'a2', vid: 'самостоятелен обект', opisanie: 'апартамент № 201 с мазе № 4' },
+                  { id: 'x', vid: 'самостоятелен обект', opisanie: 'апартамент № 999' });
+    s.koren = 'z';
+    s.sabitia.push(akt('ps', { vid: 'учредяване право на строеж', data: '01.01.2023', pridobivashti: [{ lice: 'b', dyal: '1/1' }] }),
+                   akt('a1', { vid: 'обезщетение', data: '01.01.2023', ot: 'b', pridobivashti: [{ lice: 'm', dyal: '1/1' }] }),
+                   akt('a2', { vid: 'покупко-продажба', data: '01.06.2024', ot: 'b', pridobivashti: [{ lice: 'i', dyal: '1/1' }] }),
+                   akt('x', { vid: 'покупко-продажба', data: '01.06.2024', pridobivashti: [{ lice: 'i', dyal: '1/1' }] }));
+    const T = { obekti: [{ ime: 'Апартамент 101', vid: 'апартамент' }, { ime: 'Апартамент 201', vid: 'апартамент' },
+                         { ime: 'Подземен гараж ПГ1', vid: 'подземен гараж' }] };
+    const sv = F._sbSverka(p, T, '');
+    t('сверка: 3 по проект = 1 обезщетен + 1 продаден + 1 у суперфициаря',
+      sv.vsichko === 3 && sv.broi.obezshtenie === 1 && sv.broi.prodaden === 1 && sv.broi.superficiar === 1, sv.broi);
+    t('непродаденото е у суперфициаря', sv.redove[2].koi === 'Билдинг ООД', sv.redove[2]);
+    t('апартамент с мазе се познава по апартамента', sv.redove[1].koi === 'Иван', sv.redove[1]);
+    t('обект в регистъра, но не в проекта, се казва', sv.izvan.length === 1 && /999/.test(sv.izvan[0]), sv.izvan);
 }
 
 dobri.forEach(x => console.log('  ok  ' + x));

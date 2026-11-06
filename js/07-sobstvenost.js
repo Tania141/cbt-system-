@@ -645,6 +645,63 @@ function _sbAktove11(p, data) {
     return redove.filter(Boolean);
 }
 
+// ── сверката с площообразуването ─────────────────────────────────────────
+// Операторът, 05.11.2026: „100 апартамента по проект — 40 за обезщетените,
+// 48 продадени, останалите на този, на който е учредено правото“. Обект без
+// запис в регистъра е на суперфициаря. Площите не се сверяват.
+
+// „Апартамент 101“, „апартамент № 101 с мазе № 4“, „Подземен гараж ПГ1“ →
+// видът и номерът. Мазето в същия ред е прилежащо — гледа се първият обект.
+function _sbKlyuchObekt(tekst) {
+    const t = String(tekst || '').toLowerCase();
+    const vid = /подземен\s+гараж/.test(t) ? 'пг' : /апартамент|мезонет/.test(t) ? 'ап'
+        : /ателие/.test(t) ? 'ат' : /офис/.test(t) ? 'оф' : /магазин/.test(t) ? 'маг'
+        : /гараж/.test(t) ? 'г' : /паркомясто/.test(t) ? 'пм' : /склад/.test(t) ? 'ск'
+        : /мазе/.test(t) ? 'мз' : '';
+    const m = t.match(/(?:№\s*)?([а-я]{0,2}\d+[а-я]?)/i);
+    if (!vid || !m) return '';
+    const nomer = m[1].replace(/^(пг|г)(?=\d)/, '');
+    return vid + ':' + nomer;
+}
+
+function _sbSverka(p, tablica, data) {
+    const s = _sbDanni(p);
+    if (!tablica || !(tablica.obekti || []).length) return null;
+    const pred = data ? _sbRed(data) : '99999999';
+    const poKlyuch = new Map();
+    for (const o of s.obekti) {
+        if (o.vid === 'земя' || o.vid === 'право на строеж') continue;
+        const k = _sbKlyuchObekt(o.opisanie || o.identifikator);
+        if (k && !poKlyuch.has(k)) poKlyuch.set(k, o);
+    }
+    const uchr = s.sabitia.find(e => /учредяв/i.test(e.vid || '') && _sbRed(e.data) <= pred);
+    const superficiar = uchr ? (uchr.pridobivashti || []).map(x => _sbImeLice(s, x.lice)).join(', ') : '';
+    const redove = [], vidyani = new Set();
+    const broi = { obezshtenie: 0, prodaden: 0, superficiar: 0, nadvishava: 0 };
+    for (const po of tablica.obekti) {
+        const k = _sbKlyuchObekt(po.ime);
+        const o = k ? poKlyuch.get(k) : null;
+        if (o) vidyani.add(o.id);
+        const ev = o ? s.sabitia.filter(e => e.obekt === o.id && _sbRed(e.data) <= pred) : [];
+        const salda = o ? [..._sbSmetka(p, o.id, data)].filter(([, f]) => f.n > 0) : [];
+        const sbor = salda.reduce((a, [, f]) => _drSabi(a, f), _NULA);
+        let kategoria;
+        if (!ev.length) kategoria = 'superficiar';
+        else if (ev.some(e => !/обезщет/i.test(e.vid || ''))) kategoria = 'prodaden';
+        else kategoria = 'obezshtenie';
+        broi[kategoria]++;
+        const nad = sbor.n > sbor.d && !_drBlizoEdno(sbor);
+        if (nad) broi.nadvishava++;
+        redove.push({ ime: po.ime, vid: po.vid, kategoria, nad,
+                      koi: ev.length ? salda.map(([l]) => _sbImeLice(s, l)).join(', ') : superficiar });
+    }
+    // Обекти в регистъра, които ги няма в проекта.
+    const izvan = s.obekti.filter(o => o.vid !== 'земя' && o.vid !== 'право на строеж' && !vidyani.has(o.id)
+        && s.sabitia.some(e => e.obekt === o.id))
+        .map(o => _sbImeObekt(s, o.id));
+    return { redove, broi, izvan, vsichko: tablica.obekti.length, superficiar };
+}
+
 function _sbKlienti(p, data) {
     const s = _sbDanni(p);
     return _sbVazlozhiteli(p, data).map(v => {

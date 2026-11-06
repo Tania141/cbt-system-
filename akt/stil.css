@@ -543,3 +543,7 @@ body {
            border: 1px solid var(--ramka, #ccc); border-radius: 4px; }
 .vaz-pred { margin-left: auto; font-weight: 400; cursor: pointer; }
 .lipsva-dyal { color: var(--zhalto); font-size: 12px; }
+
+.sverka { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+.sverka th, .sverka td { text-align:left; padding:3px 6px; border-bottom:1px solid var(--border-light); }
+.sverka th { color: var(--muted); font-weight:600; }
