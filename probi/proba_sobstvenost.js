@@ -722,6 +722,21 @@ t('лице без представител подписва само',
       && s.lica[0].predstavitel.vsichki.length === 2, s.lica[0].predstavitel);
 }
 
+// ── един акт не дава два пъти едно и също (АП 205, 06.11.2026) ─────────────
+{
+    const p = nov(), s = p.sobstvenost;
+    p._sb_procheteno = { fajl: 'na185.pdf', nomer: '185', tom: 'II', registar: '8917', delo: '351/2025', data: '20.08.2025',
+        obekti: [{ opisanie: 'апартамент 205' }],
+        prehvarliania: [
+            { vid: 'покупко-продажба', ot: '«БИЛДИНГ ЕКСПРЕС-90 Р» ООД', na: 'Ангел Николов, Йоанна Пашова-Николова', dyal: '1/1', obekt: 'апартамент 205' },
+            { vid: 'първоначално', ot: 'Дружество с ограничена отговорност “БИЛДИНГ ЕКСПРЕС-90 Р” ООД',
+              na: 'Ангел Николов, Йоанна Пашова-Николова', dyal: '1/1', obekt: 'апартамент 205' }] };
+    F.set(p); F.sbPriemi();
+    t('двата реда за една и съща продажба стават един запис', s.sabitia.length === 1, s.sabitia.map(e => e.vid));
+    const ap = s.obekti.find(o => o.opisanie === 'апартамент 205');
+    t('и АП 205 е 1/1', F._drTekst(F._sbSabrano(p, ap.id)) === '1', F._drTekst(F._sbSabrano(p, ap.id)));
+}
+
 // ── сверката с площообразуването (06.11.2026) ───────────────────────────────
 {
     const p = nov(), s = p.sobstvenost;

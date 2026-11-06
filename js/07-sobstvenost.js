@@ -1602,6 +1602,14 @@ function sbPriemi() {
             kvoti: /учредяв/i.test(x.vid || '') && kvoti.length ? kvoti : undefined,
         };
         if (s.sabitia.some(e => _sbEdnakvi(s, e, sabitie))) { veche++; continue; }
+        // ЕДИН АКТ НЕ ДАВА ДВА ПЪТИ ЕДНО И СЪЩО. Четецът описа продажбата на АП
+        // 205 два пъти — „покупко-продажба“ и „първоначално“, с различно изписан
+        // продавач — и апартаментът събра 2. Същият обект, същите получатели и
+        // дялове от същия акт са един запис. (Радулов, 06.11.2026)
+        const otsamia = s.sabitia.find(e => e.dokument === dokument && e.obekt === sabitie.obekt
+            && (e.pridobivashti || []).map(x => x.lice + ' ' + x.dyal).sort().join('|')
+               === sabitie.pridobivashti.map(x => x.lice + ' ' + x.dyal).sort().join('|'));
+        if (otsamia) { veche++; continue; }
         s.sabitia.push(sabitie);
         n++;
     }
