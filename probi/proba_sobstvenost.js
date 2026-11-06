@@ -25,7 +25,7 @@ const F = new Function(
        grab(s, '_sbVpisvane'), 'const _SB_SAMO_PI = /^\\d+\\.\\d+\\.\\d+$/;', grab(s, '_sbPravoNaStroezh'), grab(s, '_sbPosocheni'),
        grab(s, '_sbVpisvaneTekst'), grab(s, '_sbPalnomoshtnoTekst'),
        grab(s, '_sbOsnovaniaBlok'), grab(s, '_sbNomerDelo'), grab(s, '_sbAkt11Tekst'), grab(s, '_sbAktove11'), grab(s, '_sbSleiLica'), grab(s, 'sbMahniAkt'), grab(s, 'sbOtdeliPravo'),
-       grab(s, 'sbPriemi'), grab(s, 'sbPriemiPal'), grab(s, '_sbKlyuchObekt'), grab(s, '_sbSverka'), grab(s, '_sbPalnomoshtnici'), grab(s, '_sbPalnomoshtniciNorm'), grab(s, 'sbIzberiPalnomoshtnik'), grab(s, '_sbPalnomoshtniOpis')].join('\n')
+       grab(s, 'sbPriemi'), grab(s, 'sbPriemiPal'), grab(s, '_sbKlyuchObekt'), grab(s, '_sbKlyuchove'), grab(s, '_sbSverka'), grab(s, '_sbPalnomoshtnici'), grab(s, '_sbPalnomoshtniciNorm'), grab(s, 'sbIzberiPalnomoshtnik'), grab(s, '_sbPalnomoshtniOpis')].join('\n')
     + '\nconst _sbImeImeBezopasno=(s,id)=>_sbImeLice(s,id);'
     + 'const _skritoEgn=v=>skriiEGN(v);\n'
     + 'let _t=null;const _zhivObekt=()=>_t;const _sbZapishi=(p,k)=>_zapisi.push(k);'
@@ -751,6 +751,11 @@ t('лице без представител подписва само',
     t('празният дубликат не скрива акта', sv2.redove[0].kategoria === 'obezshtenie' && sv2.izvan.length === 1, sv2);
     t('право на строеж за апартамент е апартаментът', sv2.redove[1].koi === 'Иван', sv2.redove[1]);
     t('до обекта извън проекта стои актът', /\(/.test(sv2.izvan[0]), sv2.izvan);
+    // Три обекта в един ред на регистъра (старо четене).
+    s.obekti.find(o => o.id === 'x').opisanie = 'Апартамент №999, Подземен гараж №1';
+    const sv3 = F._sbSverka(p, T, '');
+    t('„Апартамент №…, Подземен гараж №1“ дава и ПГ1', sv3.redove[2].kategoria === 'prodaden' && sv3.redove[2].koi === 'Иван', sv3.redove[2]);
+    t('и вече не е „извън проекта“', sv3.izvan.length === 0, sv3.izvan);
 }
 
 dobri.forEach(x => console.log('  ok  ' + x));

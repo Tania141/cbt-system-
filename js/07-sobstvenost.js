@@ -664,6 +664,24 @@ function _sbKlyuchObekt(tekst) {
     return vid + ':' + nomer;
 }
 
+// Един ред в регистъра може да носи няколко обекта: „Апартамент №305,
+// Подземен гараж №11, Подземен гараж №19“ (старо четене) или „право на строеж
+// за апартамент №604 и склад №16“. Всеки откъс е свой ключ; откъс без вид
+// („и №19“) наследява вида на предишния. (Радулов, 06.11.2026)
+function _sbKlyuchove(tekst) {
+    const out = [];
+    let vid = '';
+    for (const ch of String(tekst || '').split(/,|;|\s+и\s+|\s+с\s+|\s+ведно\s+с\s+|\s+заедно\s+с\s+/i)) {
+        let k = _sbKlyuchObekt(ch);
+        if (!k && vid) {
+            const m = ch.toLowerCase().match(/(?:№\s*)?([а-я]{0,2}\d+[а-я]?)/);
+            if (m) k = vid + ':' + m[1].replace(/^(пг|г)(?=\d)/, '');
+        }
+        if (k) { vid = k.split(':')[0]; out.push(k); }
+    }
+    return out;
+}
+
 function _sbSverka(p, tablica, data) {
     const s = _sbDanni(p);
     if (!tablica || !(tablica.obekti || []).length) return null;
@@ -676,10 +694,10 @@ function _sbSverka(p, tablica, data) {
     const poKlyuch = new Map();
     for (const o of s.obekti) {
         if (izvanSverka(o)) continue;
-        const k = _sbKlyuchObekt(o.opisanie || o.identifikator);
-        if (!k) continue;
-        if (!poKlyuch.has(k)) poKlyuch.set(k, []);
-        poKlyuch.get(k).push(o);
+        for (const k of _sbKlyuchove(o.opisanie || o.identifikator)) {
+            if (!poKlyuch.has(k)) poKlyuch.set(k, []);
+            poKlyuch.get(k).push(o);
+        }
     }
     const uchr = s.sabitia.find(e => /учредяв/i.test(e.vid || '') && _sbRed(e.data) <= pred);
     const superficiar = uchr ? (uchr.pridobivashti || []).map(x => _sbImeLice(s, x.lice)).join(', ') : '';
