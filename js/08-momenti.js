@@ -2269,10 +2269,11 @@ function _a15OtTetradka(p, st, kak) {
     const redove = typeof dokTetradka === 'function' ? dokTetradka(p, st) : [];
     const r = redove.find(x => x.sveren && kak.test(_a15TekstNa(x)))
            || redove.find(x => kak.test(_a15TekstNa(x)));
-    if (!r) return { data: '', izdatel: '' };
+    if (!r) return { nomer: '', data: '', izdatel: '' };
     const potv = ((st && st.sloy2 && st.sloy2.od) || {}).potvardeni || {};
     const izdatel = r.izvor && typeof _dokStoynost === 'function' ? _dokStoynost(r.izvor, potv, 'izdatel') : '';
-    return { data: String(r.data || '').trim(), izdatel: String(izdatel || '').trim() };
+    return { nomer: String(r.nomer || '').trim(), data: String(r.data || '').trim(),
+             izdatel: String(izdatel || '').trim() };
 }
 
 // Заверките на нивата — от остатъка на Протокол 2.
@@ -2316,6 +2317,14 @@ function _a15Redove(project, st) {
         ['Проект_Издател', _a15OtTetradka(project, st, /одобрен.*проект|проект.*одобрен/i).izdatel],
         ['Проект_Части', _a15ChastiProekt(project)],
         ['Нива_Заверки', _a15Niva(st).join('\n')],
+        // Заповедната книга: от системата, ако е генерирана тук; иначе
+        // сверената от досието — с това кой я е заверил. Така е при започнат
+        // обект. (Операторът, 06.11.2026)
+        ...(() => {
+            if ((project.zk || {}).number) return [];
+            const zk = _a15OtTetradka(project, st, /заповедна\s+книга/i);
+            return [['ЗК_Номер', zk.nomer], ['ЗК_Дата', zk.data], ['ЗК_Заверител', zk.izdatel]];
+        })(),
         ['Договори_Списък', _a15Vpisan(project, DOGOVOR)],
         ['Договор_СМР_Номер', dogovor.nomer],
         ['Договор_СМР_Дата', dogovor.data],
