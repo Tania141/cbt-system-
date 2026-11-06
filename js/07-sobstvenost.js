@@ -588,8 +588,13 @@ function _sbAkt11Tekst(e) {
     const nomer = pole(/(?:^|,|акт)\s*№\s*([^,]+)/i).replace(/^№\s*/, '').trim();
     if (!nomer) return [e.dokument || e.vid || '', e.data ? 'от ' + e.data : ''].filter(Boolean).join(' ');
     const tom = pole(/том\s*([^,]+)/), reg = pole(/рег\.\s*№\s*([^,]+)/), delo = pole(/дело\s*№?\s*([^,]+)/);
-    const [deloN, deloG] = delo.split('/');
-    const godina = deloG || (String(e.data || '').match(/\d{4}/) || [])[0] || '';
+    // „дело 76 от 2026г.“ — номерът е само числото; годината — каквото пише
+    // след наклонената черта или след „от“. Иначе излизаше „дело №76 от
+    // 2026г. от 2026 г.“. (06.11.2026)
+    const deloN = (delo.match(/^\s*(\d+)/) || [])[1] || delo.split('/')[0];
+    const deloG = (delo.match(/\/\s*(\d{2,4})/) || delo.match(/(\d{4})/) || [])[1];
+    const godina = (deloG && deloG.length === 2 ? '20' + deloG : deloG)
+        || (String(e.data || '').match(/\d{4}/) || [])[0] || '';
     const uchr = /учредяв/i.test(e.vid || '');
     const ch = ['Нотариален акт' + (uchr ? ' за учредено право на строеж' : '') + ' №' + nomer,
                 tom && 'том ' + tom, reg && 'рег.№' + reg,

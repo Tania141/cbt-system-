@@ -29,7 +29,7 @@ const f = new Function(
      'const _a15DataNa = r => String(r.data || "").trim();',
      grab(s, '_a15Vpisan'), grab(s, '_a15NomerData'), grab(s, '_a15DataNaDokument'),
      grab(s, '_a15PoIzpalnenie'),
-     grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')
+     grab(s, '_a15VidoveNaRed'), grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')
     + '\nreturn {_a15Redove,_a15NomerData,_a15PoIzpalnenie,_a15Prilozhenia,_a15Vpisan};')();
 
 const dobri = [], loshi = [];

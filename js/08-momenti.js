@@ -2034,15 +2034,39 @@ function _a15PoIzpalnenie(st) {
 // Сега и двете четат ТЕТРАДКАТА. Описът тръгва от разделите (със същото
 // групиране: 24 акта обр. 7 са един ред) и дописва останалите редове, които
 // влизат в акта, но нямат свой раздел.
+// Видът на документа, по който два различно изписани реда се познават като
+// един. Само за документите, които в описа излизаха двойно и тройно.
+function _a15VidoveNaRed(r) {
+    const t = String(r || '').toLowerCase();
+    const v = [];
+    if (/нотариален/.test(t)) return v;
+    if (/разрешение за строеж/.test(t)) v.push('rs');
+    if (/образец\s*\)?\s*2\b|обр\.?\s*2\b|откриване на строителна|строителна линия и ниво/.test(t)) v.push('p2');
+    if (/образец\s*\)?\s*14\b|обр\.?\s*14\b|акт\s*14\b|приемане на конструкцията/.test(t)) v.push('a14');
+    if (/образец\s*\)?\s*7\b|обр\.?\s*7\b|акт\s*7\b/.test(t)) v.push('a7');
+    return v;
+}
+
 function _a15Prilozhenia(p, st) {
     // Познава се по ИМЕТО, без номера и датата след него: „Протокол обр. 2“ и
     // „Протокол обр. 2 — № 1 от 29.03.2026 г.“ са един документ.
-    const redove = [], vidyani = new Set(), nomera = new Set();
+    const redove = [], vidyani = new Set(), nomera = new Set(), vidove = new Map();
     const dobavi = red => {
         const r = String(red || '').trim();
         if (!r) return;
         const ki = _dokKlyuchIme(r), kn = _dokKlyuchNomer(_dokNomerOtTekst(r));
         if (vidyani.has(ki) || (kn.length > 1 && nomera.has(kn))) return;
+        // ЕДИН ДОКУМЕНТ — ЕДИН РЕД. „Акт Образец 14 от 13.05.2025“,
+        // „Приложение № 14 … (Образец 14)“ и „Акт обр. 14“ са едно; редът от
+        // чеклиста без номер и дата не се повтаря, щом видът му вече е вписан
+        // от прочетен документ. (Операторът, 06.11.2026)
+        // Два различни документа от един вид (РС и заповед за допълването му)
+        // се различават по датата — затова ред се маха само ако няма своя
+        // дата, или датата му вече е вписана за същия вид.
+        const vid = _a15VidoveNaRed(r);
+        const d = (r.match(/\d{2}\.\d{2}\.\d{4}/) || [])[0] || '';
+        if (vid.length && vid.every(v => vidove.has(v) && (!d || vidove.get(v).has(d)))) return;
+        vid.forEach(v => { if (!vidove.has(v)) vidove.set(v, new Set()); if (d) vidove.get(v).add(d); });
         vidyani.add(ki);
         if (kn.length > 1) nomera.add(kn);
         redove.push(r);

@@ -145,6 +145,13 @@ function dokVliza(p, st) {
 // Изречението за един ред: наименование, номер, дата — както са прочетени.
 // Номерът често носи своето „№“; второ не се слага.
 function dokIzrechenie(r) {
-    return [r.ime, r.nomer && '№ ' + r.nomer, r.data && 'от ' + r.data + ' г.']
+    // Името често вече носи номера и датата: „Разрешение за строеж № 277/
+    // 02.11.2023г.“ излизаше „…, № 277/02.11.2023г., от 02.11.2023 г.“ в
+    // Акт 15. Каквото вече е казано, не се казва втори път. (06.11.2026)
+    const ime = String(r.ime || '');
+    const zn = x => String(x || '').toLowerCase().replace(/[\s№.г]/g, '');
+    const imaNomer = r.nomer && zn(ime).includes(zn(r.nomer));
+    const imaData = r.data && (zn(ime).includes(zn(r.data)) || (imaNomer && zn(r.nomer).includes(zn(r.data))));
+    return [ime, !imaNomer && r.nomer && '№ ' + r.nomer, !imaData && r.data && 'от ' + r.data + ' г.']
         .filter(Boolean).join(', ');
 }
