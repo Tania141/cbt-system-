@@ -84,6 +84,7 @@ function _sbDanni(p) {
     if (typeof eEGN === 'function') _sbIzchistiEgn(s);
     _sbStaraForma(s);
     _sbSleiLica(s);
+    _sbPalnomoshtniciNorm(s);
     return s;
 }
 
@@ -898,7 +899,11 @@ function _sbTablici(p) {
     const lica = s.lica.map(l => `<div style="padding:3px 0">${esc(l.ime)}
         <span style="color:var(--muted)">· ${esc(l.vid || 'физическо')}${l.egn ? ' · ' + esc(_skritoEgn(l.egn)) : ''}${l.pochinal ? ' · † ' + esc(l.pochinal) : ''}</span>
         <button class="btn btn-ghost btn-sm" onclick="sbPredstavitelNa('${l.id}')">${
-            l.predstavitel ? 'представител' : '+ представител'}</button>
+            l.predstavitel ? 'представител' : '+ представител'}</button>${
+            l.predstavitel && (l.predstavitel.vsichki || []).length > 1
+                ? ` <select class="form-input" style="width:auto;font-size:12px;display:inline-block"
+                        onchange="sbIzberiPalnomoshtnik('${l.id}', this.value)">${l.predstavitel.vsichki.map(x =>
+                        `<option ${x === l.predstavitel.ime ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="sbMahni('lica','${l.id}')">×</button>
         ${l.predstavitel ? `<div style="margin-left:14px;font-size:11.5px;color:var(--muted)">
             представлява се от <strong>${esc(l.predstavitel.ime)}</strong>${
@@ -1153,6 +1158,17 @@ function _sbPalChetenoHtml(p) {
                         ${pole('obhvat', 'за какво (по желание)')}
                         ${pole('do', 'до кога (по желание)')}
                     </div>
+                    ${(() => {
+                        // Няколко пълномощници („Делчо и/или Росица“) — в акта
+                        // подписва един. (Операторът, 06.11.2026)
+                        const vsichki = _sbPalnomoshtnici(ch.palnomoshtnik);
+                        if (vsichki.length < 2) return '';
+                        const izbran = ch.izbran || vsichki[0];
+                        return `<div style="margin-top:8px"><strong>Кой подписва в акта</strong>${vsichki.map(x =>
+                            `<label style="display:block;cursor:pointer"><input type="radio" name="sb-pal-izbor"
+                                ${x === izbran ? 'checked' : ''} onchange="sbPopraviPal('izbran', ${esc(JSON.stringify(x))})"> ${esc(x)}</label>`
+                        ).join('')}</div>`;
+                    })()}
                 </div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
@@ -1160,6 +1176,32 @@ function _sbPalChetenoHtml(p) {
                 <button class="btn btn-ghost" onclick="sbOtkazhiPal()">Откажи</button>
             </div>
         </div>`;
+}
+
+// „Делчо Радулов, „БИЛДИНГ…“ ООД и/или Росица Атанасова“ → трима.
+function _sbPalnomoshtnici(tekst) {
+    return String(tekst || '').split(/\s*(?:,|;|\s+и\/или\s+|\s+или\s+|\s+и\s+)\s*/i)
+        .map(x => x.trim()).filter(x => x.length > 2);
+}
+
+// Смяна на подписващия пълномощник без ново четене.
+function sbIzberiPalnomoshtnik(lice, ime) {
+    const p = _zhivObekt(); if (!p) return;
+    const l = _sbLice(_sbDanni(p), lice);
+    if (!l || !l.predstavitel) return;
+    l.predstavitel.ime = ime;
+    _sbZapishi(p, `${l.ime} — подписва ${ime}`);
+}
+
+// Записаното преди 06.11.2026: всички пълномощници в едно име. Разделя се;
+// подписва първият, докато операторът не избере друг.
+function _sbPalnomoshtniciNorm(s) {
+    for (const l of s.lica || []) {
+        const pr = l.predstavitel;
+        if (!pr || pr.vsichki || !pr.ime) continue;
+        const v = _sbPalnomoshtnici(pr.ime);
+        if (v.length > 1) { pr.vsichki = v; pr.ime = v[0]; }
+    }
 }
 
 function sbOtkazhiPal() {
@@ -1172,14 +1214,16 @@ function sbPriemiPal() {
     const p = _zhivObekt(); if (!p) return;
     const ch = p._sb_pal_procheteno; if (!ch) return;
     const s = _sbDanni(p);
-    const ime = String(ch.palnomoshtnik || '').trim();
+    const vsichki = _sbPalnomoshtnici(ch.palnomoshtnik);
+    const ime = ch.izbran && vsichki.includes(ch.izbran) ? ch.izbran : (vsichki[0] || '');
     if (!ime) return alert('Няма пълномощник — впиши го.');
     const zapisani = [], lipsvat = [];
     for (const u of ch.upalnomoshtiteli || []) {
         const l = s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(u.ime));
         if (!l) { lipsvat.push(u.ime); continue; }
         l.predstavitel = {
-            ime, nomer: String(ch.reg_nomer || '').trim(), data: String(ch.data || '').trim(),
+            ime, vsichki: vsichki.length > 1 ? vsichki : undefined,
+            nomer: String(ch.reg_nomer || '').trim(), data: String(ch.data || '').trim(),
             notarius: String(ch.notarius_nomer || '').trim(),
             notarius_ime: String(ch.notarius || '').trim(),
             obhvat: String(ch.obhvat || '').trim(), do: String(ch.do || '').trim(),
@@ -1199,12 +1243,16 @@ function _sbPalnomoshtniOpis(p, data) {
     for (const v of _sbVazlozhiteli(p, data)) {
         const pr = (_sbLice(s, v.lice) || {}).predstavitel;
         if (!pr || !pr.ime) continue;
-        const k = [pr.nomer, pr.data, pr.ime].join('|');
+        // Едно пълномощно на няколко упълномощители — един ред; в него всички
+        // пълномощници, както са в документа.
+        const k = pr.nomer || pr.data ? [pr.nomer, pr.data].join('|') : pr.ime;
         if (vidyani.has(k)) continue;
         vidyani.add(k);
         redove.push(['Нотариално заверено пълномощно', pr.nomer && 'рег. № ' + pr.nomer,
                      pr.data && 'от ' + pr.data + ' г.', pr.notarius && 'на нотариус № ' + pr.notarius + ' в НК']
-            .filter(Boolean).join(' ') + ' — ' + pr.ime);
+            .filter(Boolean).join(' '));
+        // Без имената — „ПРИЛОЖЕНИЕ 1 е достатъчно … без име“ (операторът,
+        // 06.11.2026). Кой подписва, казва раздел А.
     }
     return redove;
 }
