@@ -771,6 +771,9 @@ t('лице без представител подписва само',
     const sv3 = F._sbSverka(p, T, '');
     t('„Апартамент №…, Подземен гараж №1“ дава и ПГ1', sv3.redove[2].kategoria === 'prodaden' && sv3.redove[2].koi === 'Иван', sv3.redove[2]);
     t('и вече не е „извън проекта“', sv3.izvan.length === 0, sv3.izvan);
+    s.obekti.find(o => o.id === 'x').opisanie = 'апартамент №999 и склад №17, заедно с 3,158% идеални части';
+    const sv4 = F._sbSverka(p, { obekti: [{ ime: 'Склад 3', vid: 'склад' }] }, '');
+    t('„3,158% идеални части“ не е склад 3', sv4.redove[0].kategoria === 'superficiar', sv4.redove[0]);
 }
 
 dobri.forEach(x => console.log('  ok  ' + x));

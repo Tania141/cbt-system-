@@ -674,7 +674,8 @@ function _sbKlyuchove(tekst) {
     for (const ch of String(tekst || '').split(/,|;|\s+и\s+|\s+с\s+|\s+ведно\s+с\s+|\s+заедно\s+с\s+/i)) {
         let k = _sbKlyuchObekt(ch);
         if (!k && vid) {
-            const m = ch.toLowerCase().match(/(?:№\s*)?([а-я]{0,2}\d+[а-я]?)/);
+            // Само „№ 19“: иначе „3,158% идеални части“ ставаше склад 3.
+            const m = ch.toLowerCase().match(/№\s*([а-я]{0,2}\d+[а-я]?)(?![\d,.%])/);
             if (m) k = vid + ':' + m[1].replace(/^(пг|г)(?=\d)/, '');
         }
         if (k) { vid = k.split(':')[0]; out.push(k); }
