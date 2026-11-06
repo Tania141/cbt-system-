@@ -103,9 +103,14 @@ function _sbStaraForma(s) {
 const _sbLice = (s, id) => s.lica.find(x => x.id === id);
 const _sbImeLice = (s, id) => (_sbLice(s, id) || {}).ime || '(неизвестен)';
 const _sbObekt = (s, id) => s.obekti.find(x => x.id === id);
+// Земята се назовава с номера си; всичко друго — с описанието („апартамент
+// № 17“). Номер по кадастъра на апартамент излизаше в Акт 15 от записи отпреди
+// 05.11, когато четецът още го вземаше. Остава само ако описание няма.
+// (Операторът, 06.11.2026)
 const _sbImeObekt = (s, id) => {
     const o = _sbObekt(s, id);
-    return o ? (o.identifikator || o.opisanie || '(обект)') : '(обект)';
+    if (!o) return '(обект)';
+    return (o.vid === 'земя' ? (o.identifikator || o.opisanie) : (o.opisanie || o.identifikator)) || '(обект)';
 };
 // Как се нарича един акт в изречение: „НА № 186 от 09.07.2019“.
 const _sbImeAkt = e => [
