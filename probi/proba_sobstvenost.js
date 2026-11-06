@@ -744,6 +744,13 @@ t('лице без представител подписва само',
     t('непродаденото е у суперфициаря', sv.redove[2].koi === 'Билдинг ООД', sv.redove[2]);
     t('апартамент с мазе се познава по апартамента', sv.redove[1].koi === 'Иван', sv.redove[1]);
     t('обект в регистъра, но не в проекта, се казва', sv.izvan.length === 1 && /999/.test(sv.izvan[0]), sv.izvan);
+    // Радулов: празен дубликат на АП 101 и право на строеж за АП 201.
+    s.obekti.unshift({ id: 'dup', vid: 'самостоятелен обект', opisanie: 'Апартамент №101' });
+    s.obekti.find(o => o.id === 'a2').vid = 'право на строеж';
+    const sv2 = F._sbSverka(p, T, '');
+    t('празният дубликат не скрива акта', sv2.redove[0].kategoria === 'obezshtenie' && sv2.izvan.length === 1, sv2);
+    t('право на строеж за апартамент е апартаментът', sv2.redove[1].koi === 'Иван', sv2.redove[1]);
+    t('до обекта извън проекта стои актът', /\(/.test(sv2.izvan[0]), sv2.izvan);
 }
 
 dobri.forEach(x => console.log('  ok  ' + x));

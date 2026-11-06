@@ -668,11 +668,18 @@ function _sbSverka(p, tablica, data) {
     const s = _sbDanni(p);
     if (!tablica || !(tablica.obekti || []).length) return null;
     const pred = data ? _sbRed(data) : '99999999';
+    // Всички обекти с един ключ заедно: „апартамент № 305“ може да е два пъти
+    // в регистъра — празен и с акт. Изключва се само правото върху ЦЕЛИЯ имот;
+    // „право на строеж за изграждане на апартамент №604“ е апартаментът.
+    // (Радулов, 06.11.2026)
+    const izvanSverka = o => o.vid === 'земя' || o.cyalo;
     const poKlyuch = new Map();
     for (const o of s.obekti) {
-        if (o.vid === 'земя' || o.vid === 'право на строеж') continue;
+        if (izvanSverka(o)) continue;
         const k = _sbKlyuchObekt(o.opisanie || o.identifikator);
-        if (k && !poKlyuch.has(k)) poKlyuch.set(k, o);
+        if (!k) continue;
+        if (!poKlyuch.has(k)) poKlyuch.set(k, []);
+        poKlyuch.get(k).push(o);
     }
     const uchr = s.sabitia.find(e => /учредяв/i.test(e.vid || '') && _sbRed(e.data) <= pred);
     const superficiar = uchr ? (uchr.pridobivashti || []).map(x => _sbImeLice(s, x.lice)).join(', ') : '';
@@ -680,10 +687,11 @@ function _sbSverka(p, tablica, data) {
     const broi = { obezshtenie: 0, prodaden: 0, superficiar: 0, nadvishava: 0 };
     for (const po of tablica.obekti) {
         const k = _sbKlyuchObekt(po.ime);
-        const o = k ? poKlyuch.get(k) : null;
-        if (o) vidyani.add(o.id);
-        const ev = o ? s.sabitia.filter(e => e.obekt === o.id && _sbRed(e.data) <= pred) : [];
-        const salda = o ? [..._sbSmetka(p, o.id, data)].filter(([, f]) => f.n > 0) : [];
+        const os_ = (k && poKlyuch.get(k)) || [];
+        os_.forEach(o => vidyani.add(o.id));
+        const ev = s.sabitia.filter(e => os_.some(o => o.id === e.obekt) && _sbRed(e.data) <= pred);
+        const salda = [];
+        for (const o of os_) for (const x of _sbSmetka(p, o.id, data)) if (x[1].n > 0) salda.push(x);
         const sbor = salda.reduce((a, [, f]) => _drSabi(a, f), _NULA);
         let kategoria;
         if (!ev.length) kategoria = 'superficiar';
@@ -696,9 +704,13 @@ function _sbSverka(p, tablica, data) {
                       koi: ev.length ? salda.map(([l]) => _sbImeLice(s, l)).join(', ') : superficiar });
     }
     // Обекти в регистъра, които ги няма в проекта.
-    const izvan = s.obekti.filter(o => o.vid !== 'земя' && o.vid !== 'право на строеж' && !vidyani.has(o.id)
+    // До всеки — от кой акт е, за да се знае какво да се прочете наново.
+    const izvan = s.obekti.filter(o => !izvanSverka(o) && !vidyani.has(o.id)
         && s.sabitia.some(e => e.obekt === o.id))
-        .map(o => _sbImeObekt(s, o.id));
+        .map(o => {
+            const e = s.sabitia.find(x => x.obekt === o.id);
+            return _sbImeObekt(s, o.id) + (e ? ' (' + _sbImeAkt(e) + ')' : '');
+        });
     return { redove, broi, izvan, vsichko: tablica.obekti.length, superficiar };
 }
 
