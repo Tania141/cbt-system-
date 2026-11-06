@@ -257,7 +257,10 @@ t('и пише ЗАЩО, не мълчи',
 
 // остатъкът
 const ostatak = [...a.d.querySelectorAll('.ostatak-red')];
-t('остатъкът е списък с по едно поле на ред', ostatak.length === 7, ostatak.length);
+// Осем от 06.11.2026: добавена е т. 5 („Упълномощаваме…“), която живее в
+// момента Акт 15, не в паспорта.
+t('остатъкът е списък с по едно поле на ред', ostatak.length === 8, ostatak.length);
+t('т. 5 е в остатъка на Акт 15', ostatak.some(r => /Т\. 5/.test(r.textContent)));
 t('за Акт 15 иска рег. № на ПБЗН',
   ostatak.some(x => /ПБЗН/.test(tekst(x))), ostatak.map(x => tekst(x)));
 t('празното поле показва [___]',

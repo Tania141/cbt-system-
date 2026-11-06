@@ -2301,6 +2301,9 @@ function _a15Redove(project, st) {
         ['Недостатъци_Срок', o.nedostatuci_srok],
         ['Временно_Премахва', o.vremenno_premahva],
         ['Временно_Срок', o.vremenno_srok],
+        // Т. 5 — отделно от подписите. Скритото поле в паспорта прави друго:
+        // заменя подписите на всички възложители. (06.11.2026)
+        ['Т5_Упълномощен', o.t5_upalnomoshten],
     ].filter(([, v]) => String(v || '').trim());
     const pril = _a15Prilozhenia(project, st);
     if (pril.length) {
