@@ -2264,6 +2264,34 @@ function _a15Sobstvenost(p, st) {
 function _a15Skici(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.skici); }
 function _a15DogovoriMrezhi(p, st) { return _a15PoIzraz(p, st, _A15_RAZDELI.mrezhi); }
 
+// Документ от тетрадката (сверен или вписан) — датата и издателят му.
+function _a15OtTetradka(p, st, kak) {
+    const redove = typeof dokTetradka === 'function' ? dokTetradka(p, st) : [];
+    const r = redove.find(x => x.sveren && kak.test(_a15TekstNa(x)))
+           || redove.find(x => kak.test(_a15TekstNa(x)));
+    if (!r) return { data: '', izdatel: '' };
+    const potv = ((st && st.sloy2 && st.sloy2.od) || {}).potvardeni || {};
+    const izdatel = r.izvor && typeof _dokStoynost === 'function' ? _dokStoynost(r.izvor, potv, 'izdatel') : '';
+    return { data: String(r.data || '').trim(), izdatel: String(izdatel || '').trim() };
+}
+
+// Заверките на нивата — от остатъка на Протокол 2.
+function _a15Niva(st) {
+    const o = (st && st.ostatak) || {};
+    return [['niva_izkop', 'изкоп'], ['niva_cokul', 'цокъл'], ['niva_korniz', 'корниз'], ['niva_bilo', 'било']]
+        .filter(([k]) => String(o[k] || '').trim())
+        .map(([k, ime]) => `Ниво ${ime} ${String(o[k]).trim()} г.`);
+}
+
+// Частите на проекта — онези, за които има проектант. „Архитектура“,
+// „Конструкции“… в реда на специалностите.
+function _a15ChastiProekt(project) {
+    const pj = (project && project.projectants) || [];
+    const have = new Set(pj.map(x => x.specialization).filter(Boolean));
+    const red = typeof specializations !== 'undefined' ? specializations.filter(s => have.has(s)) : [...have];
+    return red.map(s => '„' + s + '“').join(', ');
+}
+
 function _a15Redove(project, st) {
     const o = _a15Ostatak(st);
     const dati = st.docDates || {};
@@ -2279,7 +2307,15 @@ function _a15Redove(project, st) {
     const lineen = String(st.vid || '') === 'lineen';
     const redove = [
         ['Дата_Акт', o.data_akt],
-        ['Проекти_Одобрени', _a15NomerData(_a15Vpisan(project, /одобрен.*проект|проект.*одобрен/i)).data],
+        ['Проекти_Одобрени', _a15NomerData(_a15Vpisan(project, /одобрен.*проект|проект.*одобрен/i)).data
+            || _a15OtTetradka(project, st, /одобрен.*проект|проект.*одобрен/i).data],
+        // 1.2 по истинския Акт 15 (операторът, 06.11.2026): виза, издател на
+        // проекта, частите, заверките на нивата.
+        ['Виза_Дата', _a15OtTetradka(project, st, /виза/i).data],
+        ['Виза_Издател', _a15OtTetradka(project, st, /виза/i).izdatel],
+        ['Проект_Издател', _a15OtTetradka(project, st, /одобрен.*проект|проект.*одобрен/i).izdatel],
+        ['Проект_Части', _a15ChastiProekt(project)],
+        ['Нива_Заверки', _a15Niva(st).join('\n')],
         ['Договори_Списък', _a15Vpisan(project, DOGOVOR)],
         ['Договор_СМР_Номер', dogovor.nomer],
         ['Договор_СМР_Дата', dogovor.data],

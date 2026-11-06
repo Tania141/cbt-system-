@@ -29,7 +29,7 @@ const f = new Function(
      'const _a15DataNa = r => String(r.data || "").trim();',
      grab(s, '_a15Vpisan'), grab(s, '_a15NomerData'), grab(s, '_a15DataNaDokument'),
      grab(s, '_a15PoIzpalnenie'),
-     grab(s, '_a15VidoveNaRed'), grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')
+     grab(s, '_a15VidoveNaRed'), grab(s, '_a15OtTetradka'), grab(s, '_a15Niva'), grab(s, '_a15ChastiProekt'), grab(s, '_a15TekstNa'), grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')
     + '\nreturn {_a15Redove,_a15NomerData,_a15PoIzpalnenie,_a15Prilozhenia,_a15Vpisan};')();
 
 const dobri = [], loshi = [];
@@ -150,6 +150,18 @@ t('срокът за недостатъците', r['Недостатъци_Ср
 t('кой премахва временното', r['Временно_Премахва'] === 'строителя');
 t('срокът за временното', r['Временно_Срок'] === '20.12.2026');
 t('т. 5 не се праща, когато е празна', !('Т5_Упълномощен' in r));
+
+// ── 1.2 по истинския Акт 15 (06.11.2026) ────────────────────────────────────
+{
+    const st = { ...STROEZH, ostatak: { ...(STROEZH.ostatak || {}), niva_izkop: '25.05.2022', niva_bilo: '28.12.2022' } };
+    const ob = { ...OBEKT, projectants: [{ name: 'А', specialization: 'Архитектура' }, { name: 'Б', specialization: 'ВиК' }] };
+    const r12 = karta(f._a15Redove(ob, st));
+    t('заверките на нивата идват от остатъка на Протокол 2',
+      r12['Нива_Заверки'] === 'Ниво изкоп 25.05.2022 г.\nНиво било 28.12.2022 г.', r12['Нива_Заверки']);
+    t('частите на проекта — от проектантите', /„Архитектура“/.test(r12['Проект_Части'] || '') && /„ВиК“/.test(r12['Проект_Части'] || ''),
+      r12['Проект_Части']);
+    t('без заверки — полето не се праща', !('Нива_Заверки' in r));
+}
 
 // ── празното НЕ се праща ─────────────────────────────────────────────────────
 // Това е цялото правило: непратено поле значи [___] или точки в документа, а
