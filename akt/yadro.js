@@ -451,10 +451,10 @@ const AKT_OSTATAK = {
         // Заверките на контролните нива — пишат се тук, когато се случат, и
         // отиват в 1.2 на Акт 15. Дотук не се пазеха никъде. (Операторът,
         // 06.11.2026: „В момента Протокол 2“.)
-        { klyuch: 'niva_izkop', ime: 'Ниво изкоп — заверено на' },
-        { klyuch: 'niva_cokul', ime: 'Ниво цокъл — заверено на' },
-        { klyuch: 'niva_korniz', ime: 'Ниво корниз — заверено на' },
-        { klyuch: 'niva_bilo', ime: 'Ниво било — заверено на' },
+        { klyuch: 'niva_izkop', ime: 'Ниво изкоп — заверено на', data: true },
+        { klyuch: 'niva_cokul', ime: 'Ниво цокъл — заверено на', data: true },
+        { klyuch: 'niva_korniz', ime: 'Ниво корниз — заверено на', data: true },
+        { klyuch: 'niva_bilo', ime: 'Ниво било — заверено на', data: true },
     ],
     // Акт 15 иска най-много: освен изходящия номер, в тялото му стоят датата
     // на съставяне и двата срока — за недостатъците и за временното
@@ -462,7 +462,7 @@ const AKT_OSTATAK = {
     // затова системата няма откъде да ги знае. (22.10.2026)
     'Акт 15': [
         { klyuch: 'izh_nomer', ime: 'Изх. номер' },
-        { klyuch: 'data_akt', ime: 'Дата на акта' },
+        { klyuch: 'data_akt', ime: 'Дата на акта', data: true },
         { klyuch: 'nedostatuci_otstranyava', ime: 'Недостатъците отстранява' },
         { klyuch: 'nedostatuci_srok', ime: 'Срок за отстраняване' },
         { klyuch: 'vremenno_premahva', ime: 'Временното строителство премахва' },
@@ -596,7 +596,28 @@ if (typeof module !== 'undefined' && module.exports) {
         aktStroezhi, aktImeStroezh, aktArhiviran, aktVremeZaArhiv, aktData, AKT_SLED,
         aktSastavki, aktNalichni, aktPriznaci,
         aktKakvoMozhe, aktPraviloNaMomenta, aktCenaNaFajl, aktPodskazkaOtIme,
-        aktOstatak, AKT_OSTATAK,
+        aktOstatak, AKT_OSTATAK, aktDataTochki,
         aktKrugove, aktIndeksKrug, aktKrug, aktImeKrug,
     };
 }
+
+// ТОЧКИТЕ В ДАТАТА СЕ СЛАГАТ САМИ.
+//
+// Операторът, 09.11.2026: „всички дати … преди не изискваха точки, сега
+// изискват“. Старите полета имаха `formatDateInput` (26042024 → 26.04.2024);
+// новите екрани го нямаха. Едно правило за всяко поле „дд.мм.гггг“. Пипа се
+// САМО когато са написани голи цифри — написаното с точки не се пренарежда.
+function aktDataTochki(v) {
+    const s = String(v || '');
+    // Само цифри и точки, а точките — там, където ги слага самото правило
+    // (след деня и след месеца). „1.3.2025“ не се пипа.
+    if (!/^[\d.]+$/.test(s) || [...s].some((c, i) => c === '.' && i !== 2 && i !== 5)) return s;
+    const c = s.replace(/\./g, '').slice(0, 8);
+    return [c.slice(0, 2), c.slice(2, 4), c.slice(4, 8)].filter(Boolean).join('.');
+}
+if (typeof document !== 'undefined') document.addEventListener('input', e => {
+    const el = e.target;
+    if (!el || el.tagName !== 'INPUT' || el.placeholder !== 'дд.мм.гггг') return;
+    const nov = aktDataTochki(el.value);
+    if (nov !== el.value) el.value = nov;
+});

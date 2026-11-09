@@ -2383,17 +2383,51 @@ function _a15Redove(project, st) {
     return redove;
 }
 
+// РАЗРЕШЕНИЕТО И СТРОИТЕЛЯТ ОТ ДОСИЕТО.
+//
+// Операторът, 09.11.2026: „попълвам досието … разрешението за строеж, четецът
+// го чете коректно, записвам го, но то не се отразява в Протокол 2; същото е и
+// при договора за строител“. Протокол 2 (и всичко през паспорта) гледаше само
+// полетата на паспорта. Досието никога не стигаше дотам.
+//
+// Написаното в паспорта бие досието; досието само ДОПЪЛВА празното. От
+// досието — потвърденото, ако го има, иначе прочетеното.
+function _ppOtDosie(project) {
+    const s2 = (project && project.sloy2 && project.sloy2.od) || {};
+    const potv = s2.potvardeni || {};
+    const dok = typeof _s2Prilozhi === 'function' ? _s2Prilozhi(s2.dokumenti || [], potv) : (s2.dokumenti || []);
+    const t = v => String((v && typeof v === 'object' ? v.stoynost : v) || '').trim();
+    const potvarden = d => typeof _s2Id === 'function'
+        && Object.keys(potv).some(k => k.startsWith(_s2Id(d) + '::'));
+    const izberi = kak => {
+        const vsichki = dok.filter(d => kak(d) && !(d.za_drug_stroezh === true || t(d.za_drug_stroezh) === 'true'));
+        return vsichki.find(potvarden) || vsichki[0] || null;
+    };
+    const rs = izberi(d => d.vid_kod === 'RS' || /^разрешение\s+за\s+строеж/i.test(t(d.vid)));
+    const dg = izberi(d => /^DOGOVOR_STROITEL/.test(String(d.vid_kod || '')));
+    const uch = rolya => ((dg && dg.uchastnici) || []).find(u => t(u.rolya) === rolya) || {};
+    const str = uch('строител'), teh = uch('технически ръководител');
+    return {
+        rs: rs ? { number: t(rs.nomer).replace(/^№\s*/, ''), date: t(rs.data), issuer: t(rs.izdatel) } : {},
+        builder: dg ? { company: t(str.ime), eik: t(str.eik), address: t(str.adres),
+                        manager: t(str.predstavlyavan_ot), tech: t(teh.ime) } : {},
+    };
+}
+
 function buildPassportRows(project, consultant, extra) {
     // Конвертира project обекта в масив от редове за API-я
     const rows = [];
     const add = (k, v) => rows.push([k, v || '']);
+    const dosie = _ppOtDosie(project);
+    const permit = { ...dosie.rs, ...Object.fromEntries(Object.entries(project.permit || {}).filter(([, v]) => String(v || '').trim())) };
+    const builder = { ...dosie.builder, ...Object.fromEntries(Object.entries(project.builder || {}).filter(([, v]) => String(v || '').trim())) };
 
     add('Строеж', project.stroej);
     add('Адрес', project.address);
-    add('РС_Номер', project.permit?.number);
-    add('РС_Дата', project.permit?.date);
-    add('РС_Издател', project.permit?.issuer);
-    add('РС_ВСила', project.permit?.effective);
+    add('РС_Номер', permit.number);
+    add('РС_Дата', permit.date);
+    add('РС_Издател', permit.issuer);
+    add('РС_ВСила', permit.effective);
     add('ЗК_Номер', project.zk?.number);
     add('ЗК_Дата', project.zk?.date);
     add('Категория', project.osip?.kategoria);
@@ -2431,13 +2465,13 @@ function buildPassportRows(project, consultant, extra) {
     }
 
     // Строител
-    add('Строител_Фирма', project.builder?.company);
-    add('Строител_ЕИК', project.builder?.eik);
-    add('Строител_Адрес', project.builder?.address);
-    add('Строител_Управител', project.builder?.manager);
-    add('Строител_Управител_Титла', project.builder?.managerTitle);
-    add('Строител_ТехРък', project.builder?.tech || extra.teh_rukovoditel);
-    add('Строител_ТехРък_Титла', project.builder?.techTitle);
+    add('Строител_Фирма', builder.company);
+    add('Строител_ЕИК', builder.eik);
+    add('Строител_Адрес', builder.address);
+    add('Строител_Управител', builder.manager);
+    add('Строител_Управител_Титла', builder.managerTitle);
+    add('Строител_ТехРък', builder.tech || extra.teh_rukovoditel);
+    add('Строител_ТехРък_Титла', builder.techTitle);
 
     // Възложител — списъчен контракт (backend Стъпка 1).
     // Регистърът на собствеността бие писаното на ръка: той знае КОЙ към КОЯ

@@ -465,7 +465,7 @@ function momentOstatakHtml(st) {
             <label class="ostatak-red">
                 <span>${_e(f.ime)}</span>
                 <input type="text" class="tarsene" value="${_e(sega[f.klyuch] || '')}"
-                       placeholder="[___]" onchange="momentZapishiOstatak('${_e(f.klyuch)}', this.value)">
+                       placeholder="${f.data ? 'дд.мм.гггг' : '[___]'}" onchange="momentZapishiOstatak('${_e(f.klyuch)}', this.value)">
             </label>`).join('')}
     </div>`;
 }
