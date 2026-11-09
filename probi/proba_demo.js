@@ -23,7 +23,7 @@ const F = new Function(
        grab(s, '_dokStoynost'), grab(s, '_dokRed'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'), grab(s, 'dokIzrechenie'),
        grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
        grab(s, '_a15Sortirai'), grab(s, '_a15Red'), grab(s, '_a15BezPovtor'),
-       grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15AktoveProtokoli'),
+       grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15PoOtdelno'), grab(s, '_a15AktoveProtokoli'),
        grab(s, '_a15Sobstvenost'), grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
@@ -46,9 +46,9 @@ t('и точно един документ чака сверяване',
   tet.length - vliza.length === 1, [tet.length, vliza.length]);
 
 const r13 = F._a15AktoveProtokoli(O, O);
-t('1.3 показва диапазон при трите акта обр. 7',
-  /от 14\.03\.2025 до 11\.09\.2025 г\./.test(r13.join('')), r13);
-t('и брой', /— 3 броя/.test(r13.join('')), r13);
+// Обърнато на 09.11.2026: обр. 7 — по един ред на акт, с обхвата.
+t('1.3 изрежда трите акта обр. 7 поотделно', r13.filter(r => /^Акт обр\.7/.test(r)).length === 3, r13);
+t('с обхвата от прочетеното', r13.some(r => /за ниво кота ±0,00/.test(r)), r13);
 t('1.1 изрежда нотариалния акт', F._a15Sobstvenost(O, O).length === 1, F._a15Sobstvenost(O, O));
 t('1.4 изрежда скицата', F._a15Skici(O, O).length === 1, F._a15Skici(O, O));
 t('1.5 изрежда договора с мрежата',

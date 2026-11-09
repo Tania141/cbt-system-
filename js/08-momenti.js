@@ -2116,8 +2116,10 @@ const _A15_VIDOVE = [
     { kod: 'obr6',  kodove: ['AKT6'], kak: /акт\s*(обр\.?|образец)?\s*№?\s*6(?![\dа-я])/i,
       ime: 'Акт Образец 6',
       opis: 'за приемане на земната основа и действителните коти на извършените изкопни работи' },
+    // Всеки акт поотделно, с обхвата си — не „от … до … — N броя“.
+    // (Операторът, 09.11.2026)
     { kod: 'obr7',  kodove: ['AKT7'], kak: /акт\s*(обр\.?|образец)?\s*№?\s*7(?![\dа-я])/i,
-      ime: 'Акт Образец 7',
+      ime: 'Акт обр.7', poOtdelno: true,
       opis: 'за приемане на извършените СМР по нива и елементи на строителната конструкция' },
     { kod: 'obr12', kodove: ['AKT12'], kak: /акт\s*(обр\.?|образец)?\s*№?\s*12(?![\dа-я])/i,
       ime: 'Акт Образец 12', poChasti: true,
@@ -2127,8 +2129,10 @@ const _A15_VIDOVE = [
       opis: 'за проведена 72-часова проба при експлоатационни условия' },
     { kod: 'beton', kodove: ['BETON_DNEVNIK'], kak: /бетонов\s+дневник/i,
       ime: 'Бетонов дневник', bezData: true, opis: '' },
+    // Думите на истинския акт (операторът, 09.11.2026).
     { kod: 'obr14', kodove: ['AKT14'], kak: /акт\s*(обр\.?|образец)?\s*№?\s*14(?![\dа-я])/i,
-      ime: 'Акт Образец 14', opis: 'за приемане на конструкцията' },
+      ime: 'Приложение № 14 към чл. 7, ал. 3, т. 14, Образец 14', dataNakraya: true,
+      opis: 'за приемането на конструкцията' },
 ];
 
 // Ред с код се съди по КОДА; ред без код — по думите. „DRUGO“ не е код: той
@@ -2233,12 +2237,33 @@ function _a15BezPovtor(spisak) {
 }
 
 // 1.3 — актовете и протоколите по време на строителството.
+// По един ред на документ, по датите: „… от 09.09.2020 г. за кофраж и
+// армировка на колони и шайби, изпълнени от ниво … до ниво …“. Липсващото
+// излиза [___] — само отметка без прочетен акт личи, вместо да мълчи.
+function _a15PoOtdelno(v, dokumenti) {
+    const sCifri = dokumenti.filter(r => _a15DataNa(r));
+    const klyuch = r => { const m = _a15DataNa(r).match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+        return m ? m[3].padStart(4, '20') + m[2].padStart(2, '0') + m[1].padStart(2, '0') : '99999999'; };
+    const spisak = (sCifri.length ? sCifri : dokumenti).slice().sort((a, b) => klyuch(a).localeCompare(klyuch(b)));
+    return spisak.map(r => {
+        const sad = String(r.sadarzhanie || ((r.izvor || {}).sadarzhanie || {}).stoynost || '')
+            .trim().replace(/^за\s+/i, '');
+        return `${v.ime} ${v.opis} от ${_a15DataNa(r) || '[___]'} г. за ${sad || '[___]'}`;
+    });
+}
+
 function _a15AktoveProtokoli(p, st) {
     const svereni = _a15Svereni(p, st);
     const redove = [];
     for (const v of _A15_VIDOVE) {
         const moi = _a15BezPovtor(svereni.filter(r => _a15Negov(r, v)));
         if (!moi.length) continue;
+        if (v.poOtdelno) { _a15PoOtdelno(v, moi).forEach(r => redove.push(r)); continue; }
+        if (v.dataNakraya) {
+            const d = _a15Sortirai(moi.map(_a15DataNa));
+            redove.push(`${v.ime} ${v.opis} от ${d.length ? d[0] : '[___]'} г.`);
+            continue;
+        }
         if (!v.poChasti) { redove.push(_a15Red(v.ime, v.opis, moi, '', v.bezData)); continue; }
         // По части: всяка част на свой ред, с диапазон и брой.
         const chasti = new Map();
