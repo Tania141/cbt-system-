@@ -438,6 +438,7 @@ function momentOstatakHtml(st) {
     <div class="kutiya-razdel">
         <div class="nadpis">Това, което само ти знаеш</div>
         <p class="poyasnenie">Системата няма откъде да го вземе. Попълненото влиза направо в текста.</p>
+        ${momentIme === 'Протокол 2' ? momentNivaHtml() : ''}
         ${polya.map(f => `
             <label class="ostatak-red">
                 <span>${_e(f.ime)}</span>
@@ -445,6 +446,72 @@ function momentOstatakHtml(st) {
                        placeholder="[___]" onchange="momentZapishiOstatak('${_e(f.klyuch)}', this.value)">
             </label>`).join('')}
     </div>`;
+}
+
+// ── Заверките на нивата — прочетени от сканираните проверки ──────────────────
+// Операторът, 09.11.2026: нивата да се четат от раздел III на Протокол 2 и да
+// попълват датите (те отиват в 1.2 на Акт 15). Датите са на ръка — затова
+// прочетеното е ПРЕДЛОЖЕНИЕ; влиза само след „Приеми“.
+let momentNivaProcheteno = null;
+const _NIVA_KLYUCH = { 'изкоп': 'niva_izkop', 'цокъл': 'niva_cokul', 'корниз': 'niva_korniz', 'било': 'niva_bilo' };
+
+function momentNivaHtml() {
+    const ch = momentNivaProcheteno;
+    return `
+        <div class="redica" style="margin:6px 0">
+            <input type="file" id="moment-niva-fajl" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff"
+                   onchange="momentNivaCheti()">
+            <span class="tiho">прочети заверките на нивата от сканирания Протокол 2</span>
+        </div>
+        <div id="moment-niva-hod"></div>
+        ${ch ? `<div class="kutiya-razdel" style="border-color:var(--gold)">
+            <p class="tiho">Прочетено от „${_e(ch.fajl || '')}“ — датите са на ръка, свери ги.</p>
+            ${ch.proverki.map((p, i) => `
+                <label class="ostatak-red"><span>Ниво ${_e(p.nivo)}${p.kota ? ', кота ' + _e(p.kota) : ''}</span>
+                    <input type="text" class="tarsene" value="${_e(p.data || '')}" placeholder="дд.мм.гггг"
+                           onchange="momentNivaPoprav(${i}, this.value)"></label>
+                ${p.razreshava ? `<p class="otkade" style="margin:0 0 6px">разрешено: ${_e(p.razreshava)}</p>` : ''}`).join('')}
+            <div class="redica"><button class="bt bt-glaven" onclick="momentNivaPriemi()">Приеми датите</button>
+                <button class="bt bt-tih" onclick="momentNivaOtkazhi()">Откажи</button></div>
+        </div>` : ''}`;
+}
+
+async function momentNivaCheti() {
+    const vhod = document.getElementById('moment-niva-fajl');
+    const hod = document.getElementById('moment-niva-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!f) return;
+    hod.innerHTML = `<p class="tiho">Чета „${_e(f.name)}“…</p>`;
+    try {
+        const r = await aktApi('/api/p2/niva/chete', 'POST', {
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) } });
+        if (r.greshka) { hod.innerHTML = `<p class="greshka">⚠ ${_e(r.greshka)}</p>`; return; }
+        momentNivaProcheteno = r.niva;
+        momentRisuvai();
+    } catch (e) {
+        hod.innerHTML = `<p class="greshka">✗ ${_e(e.message)}</p>`;
+    }
+}
+
+function momentNivaPoprav(i, v) {
+    if (momentNivaProcheteno) momentNivaProcheteno.proverki[i].data = String(v || '').trim();
+}
+
+function momentNivaOtkazhi() { momentNivaProcheteno = null; momentRisuvai(); }
+
+function momentNivaPriemi() {
+    const z = momentZhiv(); const ch = momentNivaProcheteno;
+    if (!z || !ch) return;
+    const o = (z.st.ostatak = z.st.ostatak || {});
+    for (const p of ch.proverki) {
+        const k = _NIVA_KLYUCH[p.nivo];
+        if (!k || !p.data) continue;
+        o[k] = p.data;
+        if (p.kota) o[k + '_kota'] = p.kota;
+    }
+    momentNivaProcheteno = null;
+    aktZapishi();
+    momentRisuvai();
 }
 
 function momentZapishiOstatak(klyuch, stoynost) {
