@@ -196,34 +196,8 @@ async function momentProchetiOtmetnatite() {
     for (const f of izbrani) {
         if (hod) hod.textContent = `Чета „${f.ime}“…`;
         try {
-            const osnova = { agenda: 'od', pi: z.p.pi,
-                             chetec: localStorage.getItem('s2_chetec') || 'auto',
-                             fajl: { ime: f.ime, media_type: f.fajl.type, data: await momentBase64(f.fajl) } };
-            // PDF С МНОГО ДОКУМЕНТИ — първо се разделя, после всеки се чете
-            // поотделно. Така е в старото ПВА (16.09.2026); при местенето на
-            // четенето разделянето беше изпуснато и 24 акта обр. 7 в един файл
-            // излизаха като един. (Радулов, 09.11.2026)
-            let chasti = null;
-            if (/\.pdf$/i.test(f.ime)) {
-                if (hod) hod.textContent = `„${f.ime}“ — разделям на документи…`;
-                const rz = await aktApi('/api/sloy2/razdeli', 'POST', osnova);
-                if (rz.greshka) throw new Error(rz.greshka);
-                if ((rz.chasti || []).length > 1) chasti = rz.chasti;
-            }
-            let novi = [];
-            if (!chasti) {
-                const r = await aktApi('/api/sloy2/chete', 'POST', { ...osnova, edin: true });
-                if (r.greshka) throw new Error(r.greshka);
-                novi = r.dokumenti || [r.dokument].filter(Boolean);
-            } else {
-                for (let k = 0; k < chasti.length; k++) {
-                    if (hod) hod.textContent = `„${f.ime}“ — чета документ ${k + 1} от ${chasti.length} (стр. ${chasti[k].stranici})…`;
-                    const r = await aktApi('/api/sloy2/chete', 'POST',
-                        { ...osnova, stranici: chasti[k].stranici, edin: true });
-                    if (r.greshka) throw new Error(`документ ${k + 1} (стр. ${chasti[k].stranici}): ${r.greshka}`);
-                    novi = novi.concat(r.dokumenti || [r.dokument].filter(Boolean));
-                }
-            }
+            const novi = await momentChetiFajl(z, f.fajl, f.ime,
+                t => { if (hod) hod.textContent = t; });
             momentPriberiProcheteno(z, novi, f.ime);
             prochetenite++;
         } catch (e) {
@@ -235,6 +209,41 @@ async function momentProchetiOtmetnatite() {
     if (hod) hod.textContent = `Прочетени ${prochetenite}. Нищо не е влязло без твоето ✔.`;
     momentPapka = momentPapka.filter(f => !f.otmetnat);
     momentZaredi();
+}
+
+// ЧЕТЕНЕ НА ЕДИН ФАЙЛ — общо за „Папката“ и за „📎 качи“.
+//
+// PDF С МНОГО ДОКУМЕНТИ — първо се разделя, после всеки се чете поотделно.
+// Така е в старото ПВА (16.09.2026); при местенето на четенето разделянето
+// беше изпуснато и 24 акта обр. 7 в един файл излизаха като един. Върнато беше
+// само в „Папката“ — „📎 качи“ на реда продължаваше да чете целия файл като
+// един документ (Радулов, акт7-1_8.pdf: 8 акта → 1, 09.11.2026).
+async function momentChetiFajl(z, fajl, ime, kazhi) {
+    const osnova = { agenda: 'od', pi: z.p.pi,
+                     chetec: localStorage.getItem('s2_chetec') || 'auto',
+                     fajl: { ime, media_type: fajl.type, data: await momentBase64(fajl) } };
+    let chasti = null;
+    if (/\.pdf$/i.test(ime)) {
+        kazhi(`„${ime}“ — разделям на документи…`);
+        const rz = await aktApi('/api/sloy2/razdeli', 'POST', osnova);
+        if (rz.greshka) throw new Error(rz.greshka);
+        if ((rz.chasti || []).length > 1) chasti = rz.chasti;
+    }
+    if (!chasti) {
+        kazhi(`Чета „${ime}“…`);
+        const r = await aktApi('/api/sloy2/chete', 'POST', { ...osnova, edin: true });
+        if (r.greshka) throw new Error(r.greshka);
+        return r.dokumenti || [r.dokument].filter(Boolean);
+    }
+    let novi = [];
+    for (let k = 0; k < chasti.length; k++) {
+        kazhi(`„${ime}“ — чета документ ${k + 1} от ${chasti.length} (стр. ${chasti[k].stranici})…`);
+        const r = await aktApi('/api/sloy2/chete', 'POST',
+            { ...osnova, stranici: chasti[k].stranici, edin: true });
+        if (r.greshka) throw new Error(`документ ${k + 1} (стр. ${chasti[k].stranici}): ${r.greshka}`);
+        novi = novi.concat(r.dokumenti || [r.dokument].filter(Boolean));
+    }
+    return novi;
 }
 
 // Прочетеното е ПРЕДЛОЖЕНИЕ (правило 1): пази се при строежа и чака ✔.
@@ -317,13 +326,8 @@ async function momentKachiFajl(dokument, fajl) {
     momentHod[dokument] = `Чета „${_e(fajl.name)}“…`;
     momentRisuvai();
     try {
-        const r = await aktApi('/api/sloy2/chete', 'POST', {
-            agenda: 'od', pi: z.p.pi, edin: true,
-            chetec: localStorage.getItem('s2_chetec') || 'auto',
-            fajl: { ime: fajl.name, media_type: fajl.type, data: await momentBase64(fajl) },
-        });
-        if (r.greshka) throw new Error(r.greshka);
-        const novi = r.dokumenti || [r.dokument].filter(Boolean);
+        const novi = await momentChetiFajl(z, fajl, fajl.name,
+            t => { momentHod[dokument] = _e(t); momentRisuvai(); });
         momentPriberiProcheteno(z, novi, fajl.name);
         momentRazbrano(dokument, novi, fajl.name);
     } catch (e) {
@@ -342,6 +346,8 @@ function momentRazbrano(dokument, novi, imeFajl) {
         <div class="razbrano">
             <div>Прочетох: <strong>${_e(d.vid || aktPodskazkaOtIme(imeFajl))}</strong>
                 ${nomer ? ` · № ${_e(nomer)}` : ''}${data ? ` · от ${_e(data)}` : ''}</div>
+            ${novi.length > 1 ? `<div>Файлът е разделен на <strong>${novi.length} документа</strong> —
+                всеки е отделен ред в Досието, там се сверяват.</div>` : ''}
             <div class="otkade">подсказка от името: ${_e(aktPodskazkaOtIme(imeFajl))} — не влиза никъде</div>
             <button class="bt bt-glaven" onclick="momentPotvardi('${encodeURIComponent(dokument)}','${
                 encodeURIComponent([nomer && '№ ' + nomer, data && 'от ' + data].filter(Boolean).join(' '))}')">✔ това е</button>
