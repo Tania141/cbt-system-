@@ -22,6 +22,11 @@ let momentIme = '';
 let momentGrupa = null;
 let momentPapka = [];        // изброеното от папката — имена, без четене
 let momentHod = {};          // какво става с ред, който се чете в момента
+// Последното съобщение от четенето — оцелява прерисуването. Дотук „Прочетени
+// N“ се изтриваше от momentZaredi веднага след като се напише.
+let momentSaobshtenie = '';
+// Файловете от последното четене — за „раздели по 1 страница“ без ново качване.
+let momentFajlove = {};
 
 function momentOtvori(id, i, ime) {
     momentId = id;
@@ -29,6 +34,8 @@ function momentOtvori(id, i, ime) {
     momentIme = ime || '';
     momentGrupa = null;
     momentPapka = [];
+    momentSaobshtenie = '';
+    momentFajlove = {};
     momentHod = {};
     const p = aktObekt(id);
     if (!p) {
@@ -170,7 +177,7 @@ function momentPapkaHtml() {
             <button class="bt bt-glaven" ${momentPapka.some(f => f.otmetnat) ? '' : 'disabled'}
                     onclick="momentProchetiOtmetnatite()">прочети отметнатите (${
                 momentPapka.filter(f => f.otmetnat).length})</button>` : ''}
-        <div id="moment-chetene" class="chaka"></div>
+        <div id="moment-chetene" class="chaka">${momentSaobshtenie}</div>
     </div>`;
 }
 
@@ -191,22 +198,27 @@ async function momentProchetiOtmetnatite() {
     const z = momentZhiv();
     if (!z) return;
     const izbrani = momentPapka.filter(f => f.otmetnat);
-    const hod = document.getElementById('moment-chetene');
+    const hod = () => document.getElementById('moment-chetene');
+    const kazhi = t => { const h = hod(); if (h) h.textContent = t; };
     let prochetenite = 0;
+    const razdeleni = [];
+    momentSaobshtenie = '';
     for (const f of izbrani) {
-        if (hod) hod.textContent = `Чета „${f.ime}“…`;
+        kazhi(`Чета „${f.ime}“…`);
         try {
-            const novi = await momentChetiFajl(z, f.fajl, f.ime,
-                t => { if (hod) hod.textContent = t; });
+            const novi = await momentChetiFajl(z, f.fajl, f.ime, kazhi);
             momentPriberiProcheteno(z, novi, f.ime);
+            razdeleni.push(momentRazdelyaneHtml(novi.razdelyane));
             prochetenite++;
         } catch (e) {
-            if (hod) hod.innerHTML = e.izteklo ? aktGreshkaHtml(e)
-                : `❌ „${_e(f.ime)}“: ${_e(e.message)}`;
+            momentSaobshtenie = e.izteklo ? aktGreshkaHtml(e) : `❌ „${_e(f.ime)}“: ${_e(e.message)}`;
+            const h = hod(); if (h) h.innerHTML = momentSaobshtenie;
             return;
         }
     }
-    if (hod) hod.textContent = `Прочетени ${prochetenite}. Нищо не е влязло без твоето ✔.`;
+    momentSaobshtenie = `<div>Прочетени ${prochetenite}. Нищо не е влязло без твоето ✔.</div>`
+        + razdeleni.join('');
+    const h = hod(); if (h) h.innerHTML = momentSaobshtenie;
     momentPapka = momentPapka.filter(f => !f.otmetnat);
     momentZaredi();
 }
@@ -218,22 +230,35 @@ async function momentProchetiOtmetnatite() {
 // беше изпуснато и 24 акта обр. 7 в един файл излизаха като един. Върнато беше
 // само в „Папката“ — „📎 качи“ на реда продължаваше да чете целия файл като
 // един документ (Радулов, акт7-1_8.pdf: 8 акта → 1, 09.11.2026).
-async function momentChetiFajl(z, fajl, ime, kazhi) {
+//
+// СИСТЕМАТА КАЗВА КАК Е РАЗДЕЛИЛА. Радулов, 09.11.2026: осем акта по една
+// страница излизаха като един и нищо на екрана не казваше, че разделянето е
+// видяло един документ. Сега прочетеното носи `razdelyane` — колко страници,
+// на колко части, кой е делил — и екранът го показва. `po` > 0 — операторът
+// казва „по N страници“ и се реже без АИ.
+async function momentChetiFajl(z, fajl, ime, kazhi, po) {
+    momentFajlove[ime] = fajl;
     const osnova = { agenda: 'od', pi: z.p.pi,
                      chetec: localStorage.getItem('s2_chetec') || 'auto',
                      fajl: { ime, media_type: fajl.type, data: await momentBase64(fajl) } };
     let chasti = null;
+    const razdelyane = { ime, n: 1, chasti: 1, koy: '' };
     if (/\.pdf$/i.test(ime)) {
-        kazhi(`„${ime}“ — разделям на документи…`);
-        const rz = await aktApi('/api/sloy2/razdeli', 'POST', osnova);
+        kazhi(po ? `„${ime}“ — режа по ${po} стр.…` : `„${ime}“ — разделям на документи…`);
+        const rz = await aktApi('/api/sloy2/razdeli', 'POST', { ...osnova, po_stranici: po || 0 });
         if (rz.greshka) throw new Error(rz.greshka);
+        razdelyane.n = Number(rz.n) || 1;
+        razdelyane.chasti = (rz.chasti || []).length || 1;
+        razdelyane.koy = rz.chetec || '';
         if ((rz.chasti || []).length > 1) chasti = rz.chasti;
     }
     if (!chasti) {
         kazhi(`Чета „${ime}“…`);
         const r = await aktApi('/api/sloy2/chete', 'POST', { ...osnova, edin: true });
         if (r.greshka) throw new Error(r.greshka);
-        return r.dokumenti || [r.dokument].filter(Boolean);
+        const novi = r.dokumenti || [r.dokument].filter(Boolean);
+        novi.razdelyane = razdelyane;
+        return novi;
     }
     let novi = [];
     for (let k = 0; k < chasti.length; k++) {
@@ -243,7 +268,37 @@ async function momentChetiFajl(z, fajl, ime, kazhi) {
         if (r.greshka) throw new Error(`документ ${k + 1} (стр. ${chasti[k].stranici}): ${r.greshka}`);
         novi = novi.concat(r.dokumenti || [r.dokument].filter(Boolean));
     }
+    novi.razdelyane = razdelyane;
     return novi;
+}
+
+// Как е разделен файлът — с думи. Един документ от много страници не е
+// грешка сам по себе си (нотариалният акт е 24 стр.), но трябва да личи.
+function momentRazdelyaneHtml(r) {
+    if (!r || r.n <= 1) return '';
+    const ime = _e(r.ime), k = encodeURIComponent(r.ime);
+    if (r.chasti > 1) return `<div class="tiho">„${ime}“ — ${r.n} стр., разделен на
+        <strong>${r.chasti} документа</strong>${r.koy ? ' (' + _e(r.koy) + ')' : ''}.</div>`;
+    return `<div class="predupr">„${ime}“ има <strong>${r.n} страници</strong>, а четецът го видя
+        като <strong>един документ</strong>. Ако са отделни документи, раздели го:
+        <button class="bt" onclick="momentRazdeliPo('${k}', 1)">по 1 страница</button>
+        <button class="bt bt-tih" onclick="momentRazdeliPo('${k}', 2)">по 2 страници</button></div>`;
+}
+
+async function momentRazdeliPo(k, po) {
+    const z = momentZhiv();
+    const ime = decodeURIComponent(k), fajl = momentFajlove[ime];
+    if (!z || !fajl) { alert('Файлът не е тук вече — качи го пак.'); return; }
+    const kazhi = t => { momentSaobshtenie = _e(t); const h = document.getElementById('moment-chetene'); if (h) h.textContent = t; };
+    try {
+        const novi = await momentChetiFajl(z, fajl, ime, kazhi, po);
+        momentPriberiProcheteno(z, novi, ime);
+        momentSaobshtenie = `<div>„${_e(ime)}“ — прочетени ${novi.length} документа. Сверяват се в Досието.</div>`
+            + momentRazdelyaneHtml(novi.razdelyane);
+    } catch (e) {
+        momentSaobshtenie = e.izteklo ? aktGreshkaHtml(e) : `❌ „${_e(ime)}“: ${_e(e.message)}`;
+    }
+    momentRisuvai();
 }
 
 // Прочетеното е ПРЕДЛОЖЕНИЕ (правило 1): пази се при строежа и чака ✔.
@@ -345,6 +400,7 @@ function momentRazbrano(dokument, novi, imeFajl) {
                 ${nomer ? ` · № ${_e(nomer)}` : ''}${data ? ` · от ${_e(data)}` : ''}</div>
             ${novi.length > 1 ? `<div>Файлът е разделен на <strong>${novi.length} документа</strong> —
                 всеки е отделен ред в Досието, там се сверяват.</div>` : ''}
+            ${novi.length <= 1 ? momentRazdelyaneHtml(novi.razdelyane) : ''}
             <div class="otkade">подсказка от името: ${_e(aktPodskazkaOtIme(imeFajl))} — не влиза никъде</div>
             <button class="bt bt-glaven" onclick="momentPotvardi('${encodeURIComponent(dokument)}','${
                 encodeURIComponent([nomer && '№ ' + nomer, data && 'от ' + data].filter(Boolean).join(' '))}')">✔ това е</button>
