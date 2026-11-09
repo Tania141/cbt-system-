@@ -191,7 +191,26 @@ function dosieRedHtml(d, potv) {
         </div>
         ${dosieRazcepenHtml(dosieZhiv(), d)}
         ${otvoren ? dosieFaktiHtml(id, fakti, potv) : ''}
+        ${otvoren ? `<div class="redica"><button class="bt bt-tih" onclick="dosieMahni('${encodeURIComponent(id)}')">
+            махни от досието</button></div>` : ''}
     </div>`;
+}
+
+// Махане на прочетен документ — например 24 акта, прочетени като един
+// (Радулов, 09.11.2026). Махат се и потвържденията му. Файлът не се пипа.
+function dosieMahni(id64) {
+    const z = dosieZhiv();
+    if (!z) return;
+    const id = decodeURIComponent(id64);
+    const d = (z.s2.dokumenti || []).find(x => _s2Id(x) === id);
+    if (!d) return;
+    if (!confirm(`Да махна ли от досието „${d.vid || 'документ'}“${d.fajl ? ' от „' + d.fajl + '“' : ''}?\n\n`
+        + 'Махат се прочетеното и сверките му. Файлът на диска не се пипа — може да се прочете пак.')) return;
+    z.s2.dokumenti = z.s2.dokumenti.filter(x => x !== d);
+    const potv = z.s2.potvardeni || {};
+    for (const k of Object.keys(potv)) if (k.startsWith(id + '::')) delete potv[k];
+    aktZapishi();
+    dosieRisuvai();
 }
 
 // ── Разцепеният файл ─────────────────────────────────────────────────────────
