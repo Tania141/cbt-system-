@@ -196,13 +196,35 @@ async function momentProchetiOtmetnatite() {
     for (const f of izbrani) {
         if (hod) hod.textContent = `Чета „${f.ime}“…`;
         try {
-            const r = await aktApi('/api/sloy2/chete', 'POST', {
-                agenda: 'od', pi: z.p.pi, edin: true,
-                chetec: localStorage.getItem('s2_chetec') || 'auto',
-                fajl: { ime: f.ime, media_type: f.fajl.type, data: await momentBase64(f.fajl) },
-            });
-            if (r.greshka) throw new Error(r.greshka);
-            momentPriberiProcheteno(z, r.dokumenti || [r.dokument].filter(Boolean), f.ime);
+            const osnova = { agenda: 'od', pi: z.p.pi,
+                             chetec: localStorage.getItem('s2_chetec') || 'auto',
+                             fajl: { ime: f.ime, media_type: f.fajl.type, data: await momentBase64(f.fajl) } };
+            // PDF С МНОГО ДОКУМЕНТИ — първо се разделя, после всеки се чете
+            // поотделно. Така е в старото ПВА (16.09.2026); при местенето на
+            // четенето разделянето беше изпуснато и 24 акта обр. 7 в един файл
+            // излизаха като един. (Радулов, 09.11.2026)
+            let chasti = null;
+            if (/\.pdf$/i.test(f.ime)) {
+                if (hod) hod.textContent = `„${f.ime}“ — разделям на документи…`;
+                const rz = await aktApi('/api/sloy2/razdeli', 'POST', osnova);
+                if (rz.greshka) throw new Error(rz.greshka);
+                if ((rz.chasti || []).length > 1) chasti = rz.chasti;
+            }
+            let novi = [];
+            if (!chasti) {
+                const r = await aktApi('/api/sloy2/chete', 'POST', { ...osnova, edin: true });
+                if (r.greshka) throw new Error(r.greshka);
+                novi = r.dokumenti || [r.dokument].filter(Boolean);
+            } else {
+                for (let k = 0; k < chasti.length; k++) {
+                    if (hod) hod.textContent = `„${f.ime}“ — чета документ ${k + 1} от ${chasti.length} (стр. ${chasti[k].stranici})…`;
+                    const r = await aktApi('/api/sloy2/chete', 'POST',
+                        { ...osnova, stranici: chasti[k].stranici, edin: true });
+                    if (r.greshka) throw new Error(`документ ${k + 1} (стр. ${chasti[k].stranici}): ${r.greshka}`);
+                    novi = novi.concat(r.dokumenti || [r.dokument].filter(Boolean));
+                }
+            }
+            momentPriberiProcheteno(z, novi, f.ime);
             prochetenite++;
         } catch (e) {
             if (hod) hod.innerHTML = e.izteklo ? aktGreshkaHtml(e)
