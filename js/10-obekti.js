@@ -507,6 +507,10 @@ async function chetiDogovorStroitel() {
         });
         if (r.greshka) { hod.innerHTML = `<span style="color:var(--red)">⚠️ ${_s2esc(r.greshka)}</span>`; return; }
         hod.innerHTML = _dogovorNapalni(r.dokument || {}, f.name);
+        // Новото ПВА: прочетеният договор влиза и в досието (09.11.2026).
+        const dok = r.dokument || {};
+        const imaStroitel = (dok.uchastnici || []).some(u => _dogovorTekst(u.rolya) === 'строител' || u.rolya === 'строител');
+        if (imaStroitel && typeof pasportVDosietoHtml === 'function') hod.innerHTML += pasportVDosietoHtml([dok], f.name);
     } catch (e) {
         hod.innerHTML = `<span style="color:var(--red)">❌ ${_s2esc(e.message)}</span>`;
     }

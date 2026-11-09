@@ -53,7 +53,51 @@ function dosieRisuvai() {
         dosieTarseneHtml(z)
         + dosieIstoriyaHtml(z)
         + dosieSpisakHtml(z)
+        + dosieSobstvenostHtml(z)
         + dosieKandidatiHtml();
+}
+
+// ── Прочетеното в Собствеността ──────────────────────────────────────────────
+// Операторът, 09.11.2026: всеки прочетен документ да се вижда в досието.
+// Нотариалните актове и пълномощните живеят в регистъра на собствеността —
+// там са прочетени, там са сверени, с обектите и дяловете. Тук само се
+// виждат; втора сверка няма, за да не се чекват два пъти.
+function dosieSobstvenostAktove(p) {
+    if (!p || !p.sobstvenost || typeof _sbDanni !== 'function') return { aktove: [], pal: [] };
+    const s = _sbDanni(p);
+    const vidyani = new Set(), aktove = [];
+    for (const e of s.sabitia || []) {
+        const k = (typeof _sbNomerDelo === 'function' && _sbNomerDelo(e.dokument)) || e.dokument || e.id;
+        if (!k || vidyani.has(k)) continue;
+        vidyani.add(k);
+        const t = typeof _sbAkt11Tekst === 'function' ? _sbAkt11Tekst(e) : String(e.dokument || '');
+        if (t) aktove.push(t);
+    }
+    const vp = new Set(), pal = [];
+    for (const l of s.lica || []) {
+        const pr = l.predstavitel;
+        if (!pr || !(pr.nomer || pr.data)) continue;
+        const k = [pr.nomer, pr.data].join('|');
+        if (vp.has(k)) continue;
+        vp.add(k);
+        pal.push(['Нотариално заверено пълномощно', pr.nomer && 'рег. № ' + pr.nomer,
+                  pr.data && 'от ' + pr.data + ' г.'].filter(Boolean).join(' '));
+    }
+    return { aktove, pal };
+}
+
+function dosieSobstvenostHtml(z) {
+    const { aktove, pal } = dosieSobstvenostAktove(z.p);
+    if (!aktove.length && !pal.length) return '';
+    const red = t => `<div class="dok"><div class="dok-glava"><span class="dok-znak">§</span>
+        <span class="dok-vid">${_e(t)}</span></div></div>`;
+    return `
+    <div class="kutiya-razdel">
+        <div class="nadpis">От Собствеността · ${aktove.length + pal.length}</div>
+        <p class="poyasnenie">Прочетени и сверени в регистъра на собствеността — тук само се
+           виждат. Поправка — <a href="#/sobstvenost/${encodeURIComponent(z.p.id)}/${dosieIndeks}">в Собствеността</a>.</p>
+        ${aktove.map(red).join('')}${pal.map(red).join('')}
+    </div>`;
 }
 
 // ── Историята на строежа ─────────────────────────────────────────────────────

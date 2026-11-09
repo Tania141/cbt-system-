@@ -248,10 +248,7 @@ async function momentChetiFajl(z, fajl, ime, kazhi) {
 
 // Прочетеното е ПРЕДЛОЖЕНИЕ (правило 1): пази се при строежа и чака ✔.
 function momentPriberiProcheteno(z, novi, imeFajl) {
-    const s2 = ((z.st.sloy2 = z.st.sloy2 || {}).od = z.st.sloy2.od || { dokumenti: [] });
-    s2.dokumenti = s2.dokumenti.filter(x => x.fajl !== imeFajl).concat(novi);
-    s2.koga = new Date().toISOString();
-    aktZapishi();
+    aktVDosieto(z.st, novi, imeFajl);
 }
 
 function momentBase64(fajl) {

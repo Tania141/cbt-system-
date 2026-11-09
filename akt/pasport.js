@@ -136,18 +136,37 @@ async function pasportChetiRS() {
             fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
         });
         if (r.greshka) { hod.innerHTML = `<p class="greshka">⚠️ ${_e(r.greshka)}</p>`; return; }
-        hod.innerHTML = pasportRSNapalni(r.dokument || {}, f.name);
+        const dok = r.dokument || {};
+        hod.innerHTML = pasportRSNapalni(dok, f.name)
+            + (pasportRazreshenieLi(dok) ? pasportVDosietoHtml([dok], f.name) : '');
     } catch (e) {
         hod.innerHTML = `<p class="greshka">✗ ${_e(e.message)}</p>`;
     }
 }
 
+function pasportRazreshenieLi(dok) {
+    return String(dok.vid_kod || '') === 'RS' || /разрешение\s+за\s+строеж/i.test(String(dok.vid || ''));
+}
+
+// Прочетеното в паспорта влиза и в досието — вж. aktVDosieto. При нов обект
+// още няма къде: досието е на строежа, а строежът се ражда при записа.
+function pasportVDosieto(novi, imeFajl) {
+    if (pasportNov()) return false;
+    const p = aktObekt(pasId);
+    return p ? aktVDosieto(aktStroezh(p, pasI), novi, imeFajl) : false;
+}
+
+function pasportVDosietoHtml(novi, imeFajl) {
+    return pasportVDosieto(novi, imeFajl)
+        ? '<p class="tiho">Прочетеното влезе и в <strong>Досието</strong> — там се сверява.</p>'
+        : (pasportNov() ? '<p class="tiho">В Досието ще влезе, когато прочетеш документа след първия запис на паспорта.</p>' : '');
+}
+
 function pasportRSNapalni(dok, imeFajl) {
     // Чужд документ: ако четецът не го е познал за разрешение за строеж, не се
     // пълни нищо. Скица, качена по погрешка, не бива да става разрешение.
-    const kod = String(dok.vid_kod || '');
     const vid = String(dok.vid || '');
-    if (kod !== 'RS' && !/разрешение\s+за\s+строеж/i.test(vid))
+    if (!pasportRazreshenieLi(dok))
         return `<p class="tiho">„${_e(imeFajl)}“ не изглежда като разрешение за строеж
             ${vid ? `— четецът го чете като „${_e(vid)}“` : ''}.</p>`;
 

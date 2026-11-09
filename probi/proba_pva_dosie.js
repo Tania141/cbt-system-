@@ -327,6 +327,29 @@ t('и го казва с думи',
   /Още няма/.test(tekst(c.d.getElementById('dosie-telo'))),
   tekst(c.d.getElementById('dosie-telo')).slice(0, 160));
 
+// ВСЯКО ПРОЧЕТЕНО ВЛИЗА В ДОСИЕТО (09.11.2026). Разрешението и договорът,
+// прочетени в паспорта, дотук пълнеха само полетата.
+const SOB = { id: 'sob', pi: '1', stroej: 'Проба', sobstvenost: {
+    lica: [{ id: 'l1', ime: 'Иван Петров', predstavitel: { ime: 'Делчо', nomer: '8577', data: '12.03.2024' } }],
+    obekti: [{ id: 'o1', vid: 'земя', identifikator: '68134.702.9889' }],
+    sabitia: [{ id: 'e1', vid: 'учредяване на право на строеж', obekt: 'o1', data: '27.07.2023',
+                dokument: 'Нотариален акт № 148, том II, рег. № 5000, дело № 76 от 2023 г.',
+                pridobivashti: [], otchuzhdavashti: [] }] } };
+const e = await otvori('#/pasport/sob/0', SOB);
+t('паспортът пише в досието', e.w.pasportVDosieto([{ id: 'rs1', fajl: 'rs.pdf', vid: 'Разрешение за строеж', vid_kod: 'RS' }], 'rs.pdf') === true, '');
+t('и прочетеното стои при строежа',
+  ((e.w.aktObekt('sob').sloy2 || {}).od || {}).dokumenti?.some(d => d.fajl === 'rs.pdf'), e.w.aktObekt('sob').sloy2);
+e.w.pasportVDosieto([{ id: 'rs2', fajl: 'rs.pdf', vid: 'Разрешение за строеж', vid_kod: 'RS' }], 'rs.pdf');
+t('същият файл пак — заменя, не дублира',
+  e.w.aktObekt('sob').sloy2.od.dokumenti.filter(d => d.fajl === 'rs.pdf').length === 1, e.w.aktObekt('sob').sloy2.od.dokumenti);
+const ps = fs.readFileSync(path.join(KOREN, 'js', '10-obekti.js'), 'utf8');
+t('договорът от паспорта също влиза', /pasportVDosietoHtml\(\[dok\], f\.name\)/.test(ps), '');
+
+const sb = await otvori("#/dosie/sob/0", SOB);
+const tl = tekst(sb.d.getElementById('dosie-telo'));
+t('актовете от собствеността се виждат в досието', /От Собствеността · 2/.test(tl) && /Нотариален акт за учредено право на строеж №148/.test(tl), tl.slice(0, 300));
+t('и пълномощното — без име', /пълномощно рег\. № 8577 от 12\.03\.2024/.test(tl) && !/Делчо/.test(tl), tl.slice(0, 400));
+
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
 console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — досието стои`);

@@ -596,9 +596,27 @@ if (typeof module !== 'undefined' && module.exports) {
         aktStroezhi, aktImeStroezh, aktArhiviran, aktVremeZaArhiv, aktData, AKT_SLED,
         aktSastavki, aktNalichni, aktPriznaci,
         aktKakvoMozhe, aktPraviloNaMomenta, aktCenaNaFajl, aktPodskazkaOtIme,
-        aktOstatak, AKT_OSTATAK, aktDataTochki,
+        aktOstatak, AKT_OSTATAK, aktDataTochki, aktVDosieto,
         aktKrugove, aktIndeksKrug, aktKrug, aktImeKrug,
     };
+}
+
+// ВСЯКО ПРОЧЕТЕНО ВЛИЗА В ДОСИЕТО.
+//
+// Операторът, 09.11.2026: „когато прочете документ, в което и поле да бъде,
+// в който и да е момент — не трябва ли да го слага и в досието?“. Дотук само
+// моментът го правеше; разрешението и договорът, прочетени в паспорта,
+// пълнеха полетата и изчезваха. Един запис за всички четци.
+//
+// Прочетеното е ПРЕДЛОЖЕНИЕ (правило 1): пази се при строежа и чака ✔ в
+// досието. Същият файл, прочетен пак, заменя предишното си четене.
+function aktVDosieto(st, novi, imeFajl) {
+    if (!st || !(novi || []).length) return false;
+    const s2 = ((st.sloy2 = st.sloy2 || {}).od = st.sloy2.od || { dokumenti: [] });
+    s2.dokumenti = (s2.dokumenti || []).filter(x => x.fajl !== imeFajl).concat(novi);
+    s2.koga = new Date().toISOString();
+    aktZapishi();
+    return true;
 }
 
 // ТОЧКИТЕ В ДАТАТА СЕ СЛАГАТ САМИ.
