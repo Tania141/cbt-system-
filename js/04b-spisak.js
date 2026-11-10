@@ -69,6 +69,9 @@ function _dokRed(kak) {
         vid: String(kak.vid || '').trim(),
         // Какво е прието — за частите при обр. 12 и протокол 17.
         sadarzhanie: String(kak.sadarzhanie || '').trim(),
+        // Нивата — само при актовете обр. 7 от бетоновия дневник (10.11.2026).
+        ot: String(kak.ot || '').trim(),
+        do: String(kak.do || '').trim(),
         kod: String(kak.kod || '').trim(),
         otkade: kak.otkade,
         sveren: !!kak.sveren,
@@ -148,7 +151,7 @@ function dokTetradka(p, st) {
     for (const a of ((st && st.akt7_dnevnik) || {}).aktove || []) {
         if (!a.podpisan || skanirani.has(dataKl(a.data))) continue;
         redove.push(_dokRed({ ime: 'Акт обр. 7', data: a.data, kod: 'AKT7', vid: 'акт обр. 7',
-                              sadarzhanie: a.smr, otkade: _DOK_SASTAVEN, sveren: true }));
+                              sadarzhanie: a.smr, ot: a.ot, do: a.do, otkade: _DOK_SASTAVEN, sveren: true }));
     }
 
     return redove;

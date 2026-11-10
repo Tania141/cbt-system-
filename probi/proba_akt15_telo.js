@@ -22,7 +22,7 @@ const f = new Function(
      grab(s, 'dokIzrechenie'),
      grab(s, '_a15Chast'), grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'),
      grab(s, '_a15Sortirai'), grab(s, '_a15Red'), grab(s, '_a15BezPovtor'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'),
-     grab(s, '_a15PoOtdelno'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
+     (s.match(/^const _A15_AKT7_\w+ = .+$/gm) || []).join('\n'), grab(s, '_a15Akt7Tablica'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
      grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi'),
      'const _s2Id = d => d.id || d.fajl;',
      'const _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";',

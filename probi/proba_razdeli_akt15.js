@@ -33,12 +33,12 @@ const F = new Function(
               grab(s, '_dokStoynost'), grab(s, '_dokRed'), grab(s, '_dokIme'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
               grab(s, 'dokIzrechenie'), grab(s, '_a15Chast'),
               grab(s, '_a15Svereni'), grab(s, '_a15TekstNa'), grab(s, '_a15Sortirai'),
-              grab(s, '_a15Red'), grab(s, '_a15BezPovtor'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15PoOtdelno'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
+              grab(s, '_a15Red'), grab(s, '_a15BezPovtor'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), (s.match(/^const _A15_AKT7_\w+ = .+$/gm) || []).join('\n'), grab(s, '_a15Akt7Tablica'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
               grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
     + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";'
     + '\nconst _a15DataNa = r => String(r.data || "").trim();'
-    + '\nreturn {_a15AktoveProtokoli,_a15Sobstvenost,_a15Skici,_a15DogovoriMrezhi,'
+    + '\nreturn {_a15AktoveProtokoli,_a15Akt7Tablica,_a15Sobstvenost,_a15Skici,_a15DogovoriMrezhi,'
     + '_a15Chast,_a15Sortirai,_a15Svereni};')();
 
 const dobri = [], loshi = [];
@@ -83,19 +83,23 @@ const st1 = stroezh([
 ]);
 const r1 = F._a15AktoveProtokoli({}, st1);
 
-// ОБЪРНАТО на 09.11.2026: обр. 7 вече е по един ред на акт, с обхвата си —
-// „от … до … — N броя“ беше по акта на Денка; операторът избра поотделно.
-t('обр. 7 — по един ред на акт', r1.length === 27, r1.length);
+// ОБЪРНАТО на 09.11.2026: обр. 7 по един ред на акт, с обхвата си.
+// ОБЪРНАТО ПАК на 10.11.2026: обр. 7 е ТАБЛИЦА — в 1.3 стоят заглавие и
+// маркер; редовете идват от `_a15Akt7Tablica` (операторът: при 50–60 акта
+// таблицата е по-прегледна, а в Word става на редове с един жест).
+const t1 = F._a15Akt7Tablica({}, st1);
+t('обр. 7 — в 1.3 заглавие и маркер, не 24 реда',
+  r1.length === 5 && r1[2].startsWith('Актове обр. 7') && r1[3] === '§АКТ7_ТАБЛИЦА§', r1);
 t('обр. 5 излиза с датата си',
   /^Акт Образец 5 от 15\.03\.2022 г\. за установяване/.test(r1[0]), r1[0]);
 t('единичният акт НЯМА „броя“', !/броя/.test(r1[0]), r1[0]);
-t('обр. 7 — първият по дата',
-  /^Акт обр\.7 за приемане на извършените СМР по нива и елементи на строителната конструкция от 24\.05\.2022 г\. за /.test(r1[2]), r1[2]);
-t('обр. 7 — последният по дата', /от 29\.12\.2022 г\./.test(r1[25]), r1[25]);
-t('без „броя“ при обр. 7', !r1.some(r => /броя/.test(r)), r1.filter(r => /броя/.test(r)));
-t('без обхват — [___], не мълчание', /за \[___\]$/.test(r1[2]), r1[2]);
+t('обр. 7 — таблицата има всичките 24', t1.length === 24, t1.length);
+t('обр. 7 — първият по дата, номериран', t1[0].n === 1 && t1[0].data === '24.05.2022', t1[0]);
+t('обр. 7 — последният по дата', t1[23].data === '29.12.2022', t1[23]);
+t('без обхват — [___], не мълчание', t1[0].smr === '[___]', t1[0]);
+t('сканираният — без отделни нива („—“)', t1[0].ot === '—' && t1[0].do === '—', t1[0]);
 t('Акт 14 — с думите на истинския акт',
-  r1[26] === 'Приложение № 14 към чл. 7, ал. 3, т. 14, Образец 14 за приемането на конструкцията от 09.03.2023 г.', r1[26]);
+  r1[4] === 'Приложение № 14 към чл. 7, ал. 3, т. 14, Образец 14 за приемането на конструкцията от 09.03.2023 г.', r1[4]);
 
 // ── обр. 12 и Протокол 17 — ОТДЕЛНО ПО ЧАСТИ ────────────────────────────────
 const dvanadeset = [
@@ -231,16 +235,18 @@ const sDnevnik = {
         sadarzhanie: fakt('кофраж и армировка на стоманобетонна плоча на к.+2,61') })]),
     akt7_dnevnik: { aktove: [
         { data: '23.07.2024', smr: 'Кофраж и армировка на плоча на к+2,61', podpisan: true },
-        { data: '03.08.2024', smr: 'Кофраж и армировка на вертикали от к+2,61 до +5,50', podpisan: true },
+        { data: '03.08.2024', smr: 'Кофраж и армировка на вертикали от к+2,61 до +5,50', ot: '+2,61', do: '+5,50', podpisan: true },
         { data: '20.08.2024', smr: 'Кофраж и армировка на плоча на к+5,50', podpisan: false },
     ] },
 };
-const r7 = F._a15AktoveProtokoli({}, sDnevnik);
-t('подписаният от дневника влиза в 1.3', r7.some(x => /от 03\.08\.2024 г\. за Кофраж и армировка на вертикали/.test(x)), r7);
-t('неподписаният не влиза', !r7.some(x => /20\.08\.2024/.test(x)), r7);
+const r7 = F._a15Akt7Tablica({}, sDnevnik);
+t('подписаният от дневника влиза в таблицата',
+  r7.some(x => x.data === '03.08.2024' && /^Кофраж и армировка на вертикали/.test(x.smr)), r7);
+t('и носи нивата си', r7.some(x => x.data === '03.08.2024' && x.ot === '+2,61' && x.do === '+5,50'), r7);
+t('неподписаният не влиза', !r7.some(x => x.data === '20.08.2024'), r7);
 t('сканът със същата дата бие — един ред, с думите на скана',
-  r7.filter(x => /23\.07\.2024/.test(x)).length === 1 && r7.some(x => /стоманобетонна плоча/.test(x)), r7);
-t('по датите', r7.findIndex(x => /23\.07/.test(x)) < r7.findIndex(x => /03\.08/.test(x)), r7);
+  r7.filter(x => x.data === '23.07.2024').length === 1 && r7.some(x => /стоманобетонна плоча/.test(x.smr)), r7);
+t('по датите и номерирани', r7[0].data === '23.07.2024' && r7[1].n === 2, r7);
 
 // ── КОДЪТ БИЕ ДУМИТЕ ────────────────────────────────────────────────────────
 // Операторът, 29.10.2026: видът се казва веднъж, при четенето, и се потвърждава.
@@ -252,15 +258,17 @@ const kodiran = stroezh([
     dok('писмо', '01.06.2022', { kod: 'STANOVISHTE',
         naimenovanie: fakt('Писмо относно акт обр. 7 на съседния строеж') }),
 ]);
-const rk = F._a15AktoveProtokoli({}, kodiran);
+// Обр. 7 е таблица от 10.11.2026 — броят се редовете ѝ.
+const rk = F._a15Akt7Tablica({}, kodiran);
 t('документ с код влиза, макар заглавието да мълчи', rk.length === 1, rk);
-t('и писмото за чужд акт обр. 7 НЕ влиза', !/Писмо/.test(rk.join(' ')), rk);
+t('и писмото за чужд акт обр. 7 НЕ влиза',
+  !/Писмо/.test(F._a15AktoveProtokoli({}, kodiran).join(' ') + JSON.stringify(rk)), rk);
 
 const bezKod = stroezh([dok('акт обр. 7', '24.05.2022')]);
-t('без код пак се съди по думите', F._a15AktoveProtokoli({}, bezKod).length === 1);
+t('без код пак се съди по думите', F._a15Akt7Tablica({}, bezKod).length === 1);
 const drugo = stroezh([dok('акт обр. 7', '24.05.2022', { kod: 'DRUGO' })]);
 t('„DRUGO“ значи „четецът не позна“ — пак думите',
-  F._a15AktoveProtokoli({}, drugo).length === 1, F._a15AktoveProtokoli({}, drugo));
+  F._a15Akt7Tablica({}, drugo).length === 1, F._a15Akt7Tablica({}, drugo));
 
 // Техническото досие пак не е СКО — сега и по код.
 const dosie = stroezh([dok('техническо досие', '', { kod: 'DRUGO',

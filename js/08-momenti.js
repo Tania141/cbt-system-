@@ -2242,19 +2242,26 @@ function _a15BezPovtor(spisak) {
     return sami.length ? sami : spisak;
 }
 
-// 1.3 — актовете и протоколите по време на строителството.
-// По един ред на документ, по датите: „… от 09.09.2020 г. за кофраж и
-// армировка на колони и шайби, изпълнени от ниво … до ниво …“. Липсващото
-// излиза [___] — само отметка без прочетен акт личи, вместо да мълчи.
-function _a15PoOtdelno(v, dokumenti) {
-    const sCifri = dokumenti.filter(r => _a15DataNa(r));
+// 1.3 — актовете обр. 7. До 10.11.2026 — по един ред на акт („… от
+// 09.09.2020 г. за кофраж и армировка …“). Сега — ТАБЛИЦА (операторът: при
+// 50–60 акта е по-прегледна; в Word се превръща в редове с един жест).
+// Липсващото излиза [___] — само отметка без прочетен акт личи.
+const _A15_AKT7_MARKER = '§АКТ7_ТАБЛИЦА§';
+const _A15_AKT7_ZAGLAVIE = 'Актове обр. 7 за приемане на извършените СМР по нива и елементи на строителната конструкция:';
+
+// Редовете на таблицата: №, дата, изпълнени СМР, от ниво, до ниво — по датите.
+// Сканираните носят обхвата с думите на акта и нямат отделни нива („—“);
+// подписаните от дневника носят нивата си.
+function _a15Akt7Tablica(p, st) {
+    const v = _A15_VIDOVE.find(x => x.kod === 'obr7');
+    const moi = _a15BezPovtor(_a15Svereni(p, st).filter(r => _a15Negov(r, v)));
     const klyuch = r => { const m = _a15DataNa(r).match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
         return m ? m[3].padStart(4, '20') + m[2].padStart(2, '0') + m[1].padStart(2, '0') : '99999999'; };
-    const spisak = (sCifri.length ? sCifri : dokumenti).slice().sort((a, b) => klyuch(a).localeCompare(klyuch(b)));
-    return spisak.map(r => {
+    return moi.slice().sort((a, b) => klyuch(a).localeCompare(klyuch(b))).map((r, i) => {
         const sad = String(r.sadarzhanie || ((r.izvor || {}).sadarzhanie || {}).stoynost || '')
             .trim().replace(/^за\s+/i, '');
-        return `${v.ime} ${v.opis} от ${_a15DataNa(r) || '[___]'} г. за ${sad || '[___]'}`;
+        return { n: i + 1, data: _a15DataNa(r) || '[___]', smr: sad || '[___]',
+                 ot: String(r.ot || '').trim() || '—', do: String(r.do || '').trim() || '—' };
     });
 }
 
@@ -2264,7 +2271,9 @@ function _a15AktoveProtokoli(p, st) {
     for (const v of _A15_VIDOVE) {
         const moi = _a15BezPovtor(svereni.filter(r => _a15Negov(r, v)));
         if (!moi.length) continue;
-        if (v.poOtdelno) { _a15PoOtdelno(v, moi).forEach(r => redove.push(r)); continue; }
+        // Актовете обр. 7 — ТАБЛИЦА (операторът, 10.11.2026): заглавие и маркер;
+        // сървърът слага таблицата от „Акт7_Таблица“ на мястото на маркера.
+        if (v.poOtdelno) { redove.push(_A15_AKT7_ZAGLAVIE, _A15_AKT7_MARKER); continue; }
         if (v.dataNakraya) {
             const d = _a15Sortirai(moi.map(_a15DataNa));
             redove.push(`${v.ime} ${v.opis} от ${d.length ? d[0] : '[___]'} г.`);
@@ -2368,6 +2377,7 @@ function _a15Redove(project, st) {
         // Празен раздел не се праща: сървърът оставя точки, вместо да твърди.
         ['Собственост_Актове', _a15Sobstvenost(project, st).join('\n')],
         ['Актове_Протоколи', _a15AktoveProtokoli(project, st).join('\n')],
+        ['Акт7_Таблица', (() => { const t = _a15Akt7Tablica(project, st); return t.length ? JSON.stringify(t) : ''; })()],
         ['Съответствие_Скици', _a15Skici(project, st).join('\n')],
         ['Договори_Мрежи', _a15DogovoriMrezhi(project, st).join('\n')],
         ['Строеж_Представлява', st.stroej],
