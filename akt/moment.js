@@ -519,7 +519,7 @@ function momentOstatakHtml(st) {
     <div class="kutiya-razdel">
         <div class="nadpis">Това, което само ти знаеш</div>
         <p class="poyasnenie">Системата няма откъде да го вземе. Попълненото влиза направо в текста.</p>
-        ${momentIme === 'Протокол 2' ? momentNivaHtml() : ''}
+        ${momentIme === 'Протокол 2' ? momentNivaHtml() + momentNivaOtDnevnikHtml(st) : ''}
         ${polya.map(f => `
             <label class="ostatak-red">
                 <span>${_e(f.ime)}</span>
@@ -535,6 +535,94 @@ function momentOstatakHtml(st) {
 // прочетеното е ПРЕДЛОЖЕНИЕ; влиза само след „Приеми“.
 let momentNivaProcheteno = null;
 const _NIVA_KLYUCH = { 'изкоп': 'niva_izkop', 'цокъл': 'niva_cokul', 'корниз': 'niva_korniz', 'било': 'niva_bilo' };
+
+// ── Датите на нивата — от бетоновия дневник ─────────────────────────────────
+// Операторът, 21.10.2026: раздел III се пише ОТПОСЛЕ и датите се синхронизират
+// с бетоновия дневник. 10.11.2026: „Да“ — системата ги предлага, тя приема.
+//
+// Как се търси (всяко предложение казва от кой ред е):
+//   изкоп  — първото бетониране в дневника (подложният бетон идва след
+//            приемането на изкопа; при Радулов — 27.02.2024 и двете);
+//   цокъл  — бетонирането на плочата на ±0,00;
+//   корниз, било — бетонирането на плочата на котата им (котите — от
+//            „Протокол 2 — коти“ при съставянето или от прочетените проверки).
+// Без кота корнизът и билото не се гадаят.
+function _nvKota(s) {
+    const m = String(s || '').replace(/±/g, '+').match(/([+\-–−])?\s*(\d+)\s*[.,]\s*(\d+)/);
+    if (!m) return null;
+    const v = parseFloat(m[2] + '.' + m[3]);
+    return m[1] && /[\-–−]/.test(m[1]) ? -v : v;
+}
+
+function _nvKotiNaRed(element) {
+    const out = [];
+    const re = /([±+\-–−])?\s*(\d+)\s*[.,]\s*(\d+)/g;
+    let m;
+    while ((m = re.exec(String(element || '')))) {
+        const v = parseFloat(m[2] + '.' + m[3]);
+        out.push(m[1] && /[\-–−]/.test(m[1]) ? -v : v);
+    }
+    return out;
+}
+
+function aktNivaOtDnevnik(aktove, koti) {
+    const s = (aktove || []).filter(a => /\d{1,2}\.\d{1,2}\.\d{4}/.test(String(a.data_beton || '')));
+    const red = a => { const m = String(a.data_beton).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        return m[3] + m[2].padStart(2, '0') + m[1].padStart(2, '0'); };
+    const po = s.slice().sort((a, b) => red(a).localeCompare(red(b)));
+    const purva = d => String(d || '').match(/\d{1,2}\.\d{1,2}\.\d{4}/)[0];
+    const naKota = k => {
+        if (k === null || k === undefined || isNaN(k)) return null;
+        const sKota = po.filter(a => _nvKotiNaRed(a.element).some(x => Math.abs(x - k) < 0.02));
+        return sKota.find(a => /плоч/i.test(a.element) && _nvKotiNaRed(a.element).length === 1)
+            || sKota.find(a => /плоч/i.test(a.element)) || sKota[0] || null;
+    };
+    const izhod = {};
+    if (po[0]) izhod.izkop = { data: purva(po[0].data_beton), red: po[0].element, kak: 'първото бетониране' };
+    const c = naKota(0);
+    if (c) izhod.cokul = { data: purva(c.data_beton), red: c.element, kak: 'плочата на ±0,00' };
+    for (const [kl, ime] of [['korniz', 'корниза'], ['bilo', 'билото']]) {
+        const a = naKota(_nvKota((koti || {})[kl]));
+        if (a) izhod[kl] = { data: purva(a.data_beton), red: a.element, kak: `плочата на котата на ${ime}` };
+    }
+    return izhod;
+}
+
+function momentNivaOtDnevnikHtml(st) {
+    const aktove = ((st && st.akt7_dnevnik) || {}).aktove || [];
+    if (!aktove.length) return '';
+    const o = st.ostatak || {};
+    const koti = { ...(st.p2_koti || {}) };
+    for (const kl of ['korniz', 'bilo']) if (!koti[kl] && o['niva_' + kl + '_kota']) koti[kl] = o['niva_' + kl + '_kota'];
+    const pr = aktNivaOtDnevnik(aktove, koti);
+    const IME = { izkop: 'изкоп', cokul: 'цокъл', korniz: 'корниз', bilo: 'било' };
+    const redove = Object.keys(IME).map(kl => {
+        const p = pr[kl], sega = o['niva_' + kl];
+        if (!p) return `<li class="tiho">${IME[kl]} — ${['korniz', 'bilo'].includes(kl) && !koti[kl]
+            ? 'няма кота (впиши я в „Протокол 2 — коти“ при съставянето)' : 'няма такъв ред в дневника'}</li>`;
+        return `<li><strong>${IME[kl]} ${_e(p.data)}</strong> — ${_e(p.kak)}: „${_e(p.red)}“${
+            sega && sega !== p.data ? ` <span class="predupr">сега пише ${_e(sega)}</span>` : ''}</li>`;
+    }).join('');
+    const ima = Object.keys(pr).length;
+    return `
+        <div class="kutiya-razdel" style="border-color:var(--gold)">
+            <p class="tiho"><strong>Датите на нивата по бетоновия дневник</strong> — предложение, провери ги.</p>
+            <ul style="margin:4px 0 8px 18px">${redove}</ul>
+            ${ima ? `<button class="bt" onclick="momentNivaOtDnevnikPriemi()">Приеми датите от дневника</button>` : ''}
+        </div>`;
+}
+
+function momentNivaOtDnevnikPriemi() {
+    const z = momentZhiv();
+    if (!z) return;
+    const st = z.st, o = (st.ostatak = st.ostatak || {});
+    const koti = { ...(st.p2_koti || {}) };
+    for (const kl of ['korniz', 'bilo']) if (!koti[kl] && o['niva_' + kl + '_kota']) koti[kl] = o['niva_' + kl + '_kota'];
+    const pr = aktNivaOtDnevnik(((st.akt7_dnevnik || {}).aktove) || [], koti);
+    for (const [kl, p] of Object.entries(pr)) o['niva_' + kl] = p.data;
+    aktZapishi();
+    momentRisuvai();
+}
 
 function momentNivaHtml() {
     const ch = momentNivaProcheteno;

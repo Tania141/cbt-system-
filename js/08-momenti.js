@@ -2357,6 +2357,11 @@ function _a15Redove(project, st) {
         ['Проект_Издател', _a15OtTetradka(project, st, /одобрен.*проект|проект.*одобрен/i).izdatel],
         ['Проект_Части', _a15ChastiProekt(project)],
         ['Нива_Заверки', _a15Niva(st).join('\n')],
+        // Същите дати — в „Днес, …“ на раздел III на Протокол 2 (10.11.2026).
+        ['Niva_Data_Izkop', (st.ostatak || {}).niva_izkop],
+        ['Niva_Data_Cokul', (st.ostatak || {}).niva_cokul],
+        ['Niva_Data_Korniz', (st.ostatak || {}).niva_korniz],
+        ['Niva_Data_Bilo', (st.ostatak || {}).niva_bilo],
         // Заповедната книга: от системата, ако е генерирана тук; иначе
         // сверената от досието — с това кой я е заверил. Така е при започнат
         // обект. (Операторът, 06.11.2026)

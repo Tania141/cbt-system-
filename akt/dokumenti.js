@@ -115,14 +115,22 @@ function dokumentiP2Html() {
     const pole = (id, etiket, mysto) => `
         <label class="p2-pole"><span>${etiket}</span>
             <input type="text" id="${id}" placeholder="${mysto || ''}"></label>`;
+    // Котите на нивата се ПАЗЯТ при строежа (10.11.2026): по тях датите на
+    // проверките се търсят в бетоновия дневник. Дотук се пишеха всеки път.
+    const z = dokumentiZhiv();
+    const koti = (z && z.st.p2_koti) || {};
+    const kota = (id, kl, etiket) => `
+        <label class="p2-pole"><span>${etiket}</span>
+            <input type="text" id="${id}" value="${_e(koti[kl] || '')}"
+                   onchange="dokumentiP2Kota('${kl}', this.value)"></label>`;
     return `
     <div class="kutiya-razdel">
         <div class="nadpis">Протокол 2 — коти и репер</div>
         <div class="p2-mrezha">
-            ${pole('p2-kota-izkop', 'Кота изкоп')}
-            ${pole('p2-kota-cokul', 'Кота цокъл')}
-            ${pole('p2-kota-korniz', 'Кота корниз')}
-            ${pole('p2-kota-bilo', 'Кота било')}
+            ${kota('p2-kota-izkop', 'izkop', 'Кота изкоп')}
+            ${kota('p2-kota-cokul', 'cokul', 'Кота цокъл')}
+            ${kota('p2-kota-korniz', 'korniz', 'Кота корниз')}
+            ${kota('p2-kota-bilo', 'bilo', 'Кота било')}
             ${pole('p2-reper-nomer', 'Репер №')}
             ${pole('p2-reper-kota', 'Кота на репера')}
         </div>
@@ -141,6 +149,13 @@ function dokumentiP2Html() {
 // Отметките на Протокол 2 отварят поле — затова екранът се прерисува, а
 // въведеното дотогава се пази.
 let dokP2Darv = false, dokP2Sast = false;
+
+function dokumentiP2Kota(kl, v) {
+    const z = dokumentiZhiv();
+    if (!z) return;
+    (z.st.p2_koti = z.st.p2_koti || {})[kl] = String(v || '').trim();
+    aktZapishi();
+}
 
 function dokumentiRisuvaiZapazi() {
     const v = dokumentiChetiP2();
