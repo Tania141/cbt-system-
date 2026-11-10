@@ -41,6 +41,8 @@ async function genDokument(project, consultant, apiType, extra) {
     if (dop.p2) redove.push(...genRedoveP2(dop.p2));
     const telo = { passport: redove, pi: project.pi };
     if (dop.chast) { telo.chast = dop.chast; telo.akt12_number = dop.akt12_number; }
+    // Актовете обр. 7 от бетоновия дневник — всички в един файл (10.11.2026).
+    if (dop.akt7_seriya) telo.akt7_seriya = dop.akt7_seriya;
 
     const adres = String((typeof appData !== 'undefined' && appData.apiUrl) || '').replace(/\/$/, '');
     if (!adres) throw new Error('няма адрес на сървъра');

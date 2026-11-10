@@ -515,7 +515,7 @@ function momentImamHtml() {
 function momentOstatakHtml(st) {
     const polya = aktOstatak(momentIme);
     const sega = st.ostatak || {};
-    return `
+    return `${momentIme === 'Акт 7' ? momentDnevnikHtml(st) : ''}
     <div class="kutiya-razdel">
         <div class="nadpis">Това, което само ти знаеш</div>
         <p class="poyasnenie">Системата няма откъде да го вземе. Попълненото влиза направо в текста.</p>
@@ -593,6 +593,156 @@ function momentNivaPriemi() {
     momentNivaProcheteno = null;
     aktZapishi();
     momentRisuvai();
+}
+
+// ── Бетоновият дневник → актовете обр. 7 ─────────────────────────────────────
+// Операторът, 09–10.11.2026: актовете обр. 7 се съставят по бетоновия дневник,
+// по един на бетониране; актът е ПРЕДИ бетона (кофраж и армировка се приемат,
+// бетонирането се разрешава). Дневникът — скан (с АИ) или xlsx (с код).
+// Всички актове — в ЕДИН файл.
+//
+// Прочетеното е ПРЕДЛОЖЕНИЕ: всеки ред казва какво пише в дневника и как е
+// изведена датата. Поправя се, слива се, маха се — и чак тогава се съставя.
+// Пази се при строежа (`st.akt7_dnevnik`), за да не се чете пак.
+
+function momentDnevnikHtml(st) {
+    const dn = st.akt7_dnevnik;
+    const aktove = (dn && dn.aktove) || [];
+    const red = (a, i) => `
+        <div class="dok" style="padding:8px">
+            <div class="otkade">дневник${a.stranica ? ', стр. ' + _e(a.stranica) : ''}: „${_e(a.element || '')}“${
+                a.obem ? ' · ' + _e(a.obem) + ' м³' : ''}${a.data_beton ? ' · бетон ' + _e(a.data_beton) : ''}${
+                a.belezhka ? ` · <strong>${_e(a.belezhka)}</strong>` : ''}</div>
+            <div class="p2-mrezha">
+                <label class="p2-pole"><span>Акт от</span>
+                    <input type="text" value="${_e(a.data || '')}" placeholder="дд.мм.гггг"
+                           onchange="momentDnevnikPoprav(${i}, 'data', this.value)"></label>
+                <label class="p2-pole"><span>от ниво</span>
+                    <input type="text" value="${_e(a.ot || '')}" onchange="momentDnevnikPoprav(${i}, 'ot', this.value)"></label>
+                <label class="p2-pole"><span>до ниво</span>
+                    <input type="text" value="${_e(a.do || '')}" onchange="momentDnevnikPoprav(${i}, 'do', this.value)"></label>
+            </div>
+            <label class="p2-pole"><span>Изпълнени СМР</span>
+                <input type="text" value="${_e(a.smr || '')}" onchange="momentDnevnikPoprav(${i}, 'smr', this.value)"></label>
+            <label class="p2-pole"><span>Разрешава се</span>
+                <input type="text" value="${_e(a.razreshava || '')}" onchange="momentDnevnikPoprav(${i}, 'razreshava', this.value)"></label>
+            <div class="redica">
+                ${i < aktove.length - 1 ? `<button class="bt bt-tih" onclick="momentDnevnikSlei(${i})">слей със следващия</button>` : ''}
+                <button class="bt bt-tih" onclick="momentDnevnikMahni(${i})">махни</button>
+            </div>
+        </div>`;
+    return `
+    <div class="kutiya-razdel">
+        <div class="nadpis">Бетоновият дневник → актове обр. 7</div>
+        <p class="poyasnenie">По един акт на бетониране. Датата на акта е предложена ден
+           преди бетона — провери я. Скан се чете с АИ; .xlsx — с код.</p>
+        <div class="redica" style="margin:6px 0">
+            <input type="file" id="moment-dnevnik-fajl" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.xlsx"
+                   onchange="momentDnevnikCheti()">
+            <span class="tiho">${dn ? 'прочети друг дневник — заменя предложението' : 'качи дневника'}</span>
+        </div>
+        <div id="moment-dnevnik-hod"></div>
+        ${dn ? `<p class="tiho">„${_e(dn.fajl || '')}“ · чел го е ${_e(dn.chetec || '')}${
+            dn.zapochnat ? ' · започнат на ' + _e(dn.zapochnat) : ''} · <strong>${aktove.length} акта</strong></p>
+            ${aktove.map(red).join('')}
+            <div class="redica">
+                <button class="bt bt-tih" onclick="momentDnevnikDobavi()">+ акт на ръка</button>
+                <button class="bt bt-glaven" ${aktove.length ? '' : 'disabled'}
+                        onclick="momentDnevnikSastavi()">Състави всички (${aktove.length}) в един файл</button>
+            </div>` : ''}
+    </div>`;
+}
+
+async function momentDnevnikCheti() {
+    const z = momentZhiv();
+    const vhod = document.getElementById('moment-dnevnik-fajl');
+    const hod = document.getElementById('moment-dnevnik-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!z || !f) return;
+    hod.innerHTML = `<p class="tiho">Чета „${_e(f.name)}“…</p>`;
+    try {
+        const r = await aktApi('/api/beton/dnevnik/chete', 'POST', {
+            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) } });
+        if (r.greshka) { hod.innerHTML = `<p class="greshka">⚠ ${_e(r.greshka)}</p>`; return; }
+        const dn = r.dnevnik || {};
+        z.st.akt7_dnevnik = { fajl: dn.fajl || f.name, chetec: dn.chetec || '', zapochnat: dn.zapochnat || '',
+                              koga: new Date().toISOString(), aktove: dn.predlozhenie || [] };
+        // Прочетеното влиза и в досието — като документ, който е там.
+        aktVDosieto(z.st, [{ id: f.name, fajl: f.name, vid: 'Дневник на бетоновите работи',
+                             vid_kod: 'DRUGO', chetec: dn.chetec || '', sken: !/\.xlsx$/i.test(f.name),
+                             data: { stoynost: dn.zapochnat || '' } }], f.name);
+        momentRisuvai();
+    } catch (e) {
+        hod.innerHTML = e.izteklo ? aktGreshkaHtml(e) : `<p class="greshka">✗ ${_e(e.message)}</p>`;
+    }
+}
+
+function _momentDnevnik() {
+    const z = momentZhiv();
+    return z && z.st.akt7_dnevnik ? z.st.akt7_dnevnik : null;
+}
+
+function momentDnevnikPoprav(i, pole, v) {
+    const dn = _momentDnevnik();
+    if (!dn || !dn.aktove[i]) return;
+    dn.aktove[i][pole] = String(v || '').trim();
+    aktZapishi();
+}
+
+// Две бетонирания, приети с един акт: СМР-то се събира, нивата обхващат и
+// двете, датата е на по-ранния.
+function momentDnevnikSlei(i) {
+    const dn = _momentDnevnik();
+    if (!dn || !dn.aktove[i + 1]) return;
+    const a = dn.aktove[i], b = dn.aktove[i + 1];
+    dn.aktove.splice(i, 2, {
+        ...a,
+        element: [a.element, b.element].filter(Boolean).join('; '),
+        data_beton: [a.data_beton, b.data_beton].filter(Boolean).join(', '),
+        do: b.do || a.do,
+        smr: [a.smr, String(b.smr || '').replace(/^Кофраж и армировка на\s+/i, '')].filter(Boolean).join('; '),
+        belezhka: 'слети два реда от дневника',
+    });
+    aktZapishi();
+    momentRisuvai();
+}
+
+function momentDnevnikMahni(i) {
+    const dn = _momentDnevnik();
+    if (!dn) return;
+    dn.aktove.splice(i, 1);
+    aktZapishi();
+    momentRisuvai();
+}
+
+function momentDnevnikDobavi() {
+    const dn = _momentDnevnik();
+    if (!dn) return;
+    dn.aktove.push({ element: '', data: '', ot: '', do: '', smr: 'Кофраж и армировка на ',
+                     razreshava: 'Бетониране на гореописаните елементи.', belezhka: 'вписан на ръка' });
+    aktZapishi();
+    momentRisuvai();
+}
+
+async function momentDnevnikSastavi() {
+    const z = momentZhiv(), dn = _momentDnevnik();
+    const hod = document.getElementById('moment-dnevnik-hod');
+    if (!z || !dn || !dn.aktove.length) return;
+    const konsultant = (aktDanni.consultants || []).find(c => c.id == (z.p.consultant || {}).id);
+    if (!konsultant) { hod.innerHTML = '<p class="greshka">Няма избран консултант в паспорта.</p>'; return; }
+    hod.innerHTML = `<p class="tiho">Съставям ${dn.aktove.length} акта…</p>`;
+    try {
+        const { sadarzhanie } = await genDokument(z.p, konsultant, 'akt7', {
+            akt7_seriya: dn.aktove.map(a => ({ data: a.data, ot: a.ot, do: a.do, smr: a.smr, razreshava: a.razreshava })),
+        });
+        genSvali(`akt7_vsichki_${z.p.pi}.docx`, sadarzhanie);
+        genZapishi(z.p, [{ type: `Акт 7 — ${dn.aktove.length} акта`, date: new Date().toISOString(), url: '', path: '' }]);
+        aktZapishi();
+        hod.innerHTML = `<p class="gotov">✔ ${dn.aktove.length} акта в един файл — свален.</p>`;
+    } catch (e) {
+        hod.innerHTML = e.izteklo ? aktGreshkaHtml(e) : `<p class="greshka">✗ ${_e(e.message)}</p>`;
+    }
 }
 
 function momentZapishiOstatak(klyuch, stoynost) {
