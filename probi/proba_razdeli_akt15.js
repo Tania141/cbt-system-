@@ -36,7 +36,7 @@ const F = new Function(
               grab(s, '_a15Red'), grab(s, '_a15BezPovtor'), grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15PoOtdelno'), grab(s, '_a15AktoveProtokoli'), grab(s, '_a15Sobstvenost'),
               grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
-    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
+    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";'
     + '\nconst _a15DataNa = r => String(r.data || "").trim();'
     + '\nreturn {_a15AktoveProtokoli,_a15Sobstvenost,_a15Skici,_a15DogovoriMrezhi,'
     + '_a15Chast,_a15Sortirai,_a15Svereni};')();
@@ -222,6 +222,25 @@ const beton = { nadzor_otmetnati: ['Бетонов дневник'] };
 t('бетоновият дневник не пада от правилото',
   F._a15AktoveProtokoli({}, beton).join('') === 'Бетонов дневник',
   F._a15AktoveProtokoli({}, beton));
+
+// ── АКТОВЕТЕ ОБР. 7 ОТ ДНЕВНИКА, ПОТВЪРДЕНИ „ПОДПИСАН“ (10.11.2026) ─────────
+// Твърдение на оператора — влизат в 1.3; нечекнатите не; сканът със същата
+// дата бие.
+const sDnevnik = {
+    ...stroezh([dok('акт обр. 7', '23.07.2024', { kod: 'AKT7',
+        sadarzhanie: fakt('кофраж и армировка на стоманобетонна плоча на к.+2,61') })]),
+    akt7_dnevnik: { aktove: [
+        { data: '23.07.2024', smr: 'Кофраж и армировка на плоча на к+2,61', podpisan: true },
+        { data: '03.08.2024', smr: 'Кофраж и армировка на вертикали от к+2,61 до +5,50', podpisan: true },
+        { data: '20.08.2024', smr: 'Кофраж и армировка на плоча на к+5,50', podpisan: false },
+    ] },
+};
+const r7 = F._a15AktoveProtokoli({}, sDnevnik);
+t('подписаният от дневника влиза в 1.3', r7.some(x => /от 03\.08\.2024 г\. за Кофраж и армировка на вертикали/.test(x)), r7);
+t('неподписаният не влиза', !r7.some(x => /20\.08\.2024/.test(x)), r7);
+t('сканът със същата дата бие — един ред, с думите на скана',
+  r7.filter(x => /23\.07\.2024/.test(x)).length === 1 && r7.some(x => /стоманобетонна плоча/.test(x)), r7);
+t('по датите', r7.findIndex(x => /23\.07/.test(x)) < r7.findIndex(x => /03\.08/.test(x)), r7);
 
 // ── КОДЪТ БИЕ ДУМИТЕ ────────────────────────────────────────────────────────
 // Операторът, 29.10.2026: видът се казва веднъж, при четенето, и се потвърждава.

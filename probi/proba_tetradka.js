@@ -20,7 +20,7 @@ const F = new Function(
        grab(s, '_dokStoynost'), grab(s, '_dokRed'), grab(s, 'dokTetradka'), grab(s, 'dokVliza'),
        grab(s, 'dokIzrechenie')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
-    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
+    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";'
     + '\nreturn {dokTetradka, dokVliza, dokIzrechenie, _dokKlyuchIme, _dokKlyuchNomer, _dokNomerOtTekst};')();
 
 const dobri = [], loshi = [];

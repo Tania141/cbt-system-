@@ -18,6 +18,8 @@
 const _DOK_PROCHETEN = 'прочетен';
 const _DOK_VPISAN = 'вписан';
 const _DOK_OTMETNAT = 'отметнат';
+// Съставен тук от бетоновия дневник и потвърден от оператора „подписан“ (10.11.2026).
+const _DOK_SASTAVEN = 'съставен тук, потвърден от оператора';
 
 // Познава се по НОМЕРА, когато има номер — иначе по името без номера и датата
 // след него („Протокол обр. 2“ и „Протокол обр. 2 — № 1 от 29.03.2026 г.“ са
@@ -131,6 +133,22 @@ function dokTetradka(p, st) {
     for (const ime of (st && st.nadzor_otmetnati) || []) {
         if (!String(ime || '').trim()) continue;
         dobavi(_dokRed({ ime, otkade: _DOK_OTMETNAT, sveren: true }));
+    }
+
+    // АКТОВЕТЕ ОБР. 7, СЪСТАВЕНИ ОТ ДНЕВНИКА И ПОТВЪРДЕНИ „ПОДПИСАН“.
+    // Твърдение на оператора, като вписаното на ръка (10.11.2026). Всеки е свой
+    // ред — не минават през `dobavi`, който би слял еднаквите имена в един.
+    // Сканът бие: прочетен акт обр. 7 със същата дата вече е тук.
+    const dataKl = s => { const m = String(s || '').match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+        return m ? [+m[1], +m[2], m[3].length === 2 ? 2000 + +m[3] : +m[3]].join('.') : ''; };
+    const AKT7 = /акт\s*(обр\.?|образец)?\s*№?\s*7(?![\dа-я])/i;
+    const skanirani = new Set(redove
+        .filter(r => r.otkade === _DOK_PROCHETEN && (r.kod === 'AKT7' || AKT7.test([r.ime, r.vid].join(' '))))
+        .map(r => dataKl(r.data)).filter(Boolean));
+    for (const a of ((st && st.akt7_dnevnik) || {}).aktove || []) {
+        if (!a.podpisan || skanirani.has(dataKl(a.data))) continue;
+        redove.push(_dokRed({ ime: 'Акт обр. 7', data: a.data, kod: 'AKT7', vid: 'акт обр. 7',
+                              sadarzhanie: a.smr, otkade: _DOK_SASTAVEN, sveren: true }));
     }
 
     return redove;

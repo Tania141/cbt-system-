@@ -83,29 +83,60 @@ t('прочетеното се пази при строежа', (st.akt7_dnevnik
 t('дневникът влиза и в досието',
   ((st.sloy2 || {}).od || {}).dokumenti?.some(d => d.vid === 'Дневник на бетоновите работи'), st.sloy2);
 const b = tekst(a.d.body);
-t('казва откъде е всеки ред', /дневник, стр\. 2: „Плоча на к\+2,61“/.test(b) && /бетон 29\.07\.2024/.test(b), b.slice(0, 600));
+t('таблица, не картички', a.d.querySelectorAll('.dn-tablica tr').length === 1 + 3 * 2,
+  a.d.querySelectorAll('.dn-tablica tr').length);
+t('казва откъде е всеки ред', /дневник, стр\. 2: „Плоча на к\+2,61“/.test(b) && /29\.07\.2024/.test(b), b.slice(0, 600));
 t('казва нечетливата дата', /не се чете — впиши я/.test(b), '');
-t('3 акта', /3 акта/.test(b), '');
+t('3 акта, 0 подписани', /3 акта, 0 подписани/.test(b), '');
 
 // Поправка, сливане, махане.
 a.w.momentDnevnikPoprav(2, 'data', '13.04.2025');
 t('поправката се пази', st.akt7_dnevnik.aktove[2].data === '13.04.2025', st.akt7_dnevnik.aktove[2]);
-a.w.momentDnevnikSlei(0);
+a.w.momentDnevnikSleiRed(0);
 const s = st.akt7_dnevnik.aktove[0];
 t('слети: един акт по-малко', st.akt7_dnevnik.aktove.length === 2, st.akt7_dnevnik.aktove.length);
 t('слети: нивата обхващат двата', s.ot === '+2,61' && s.do === '+5,50', s);
 t('слети: СМР е събрано, датата е на първия',
   s.smr === 'Кофраж и армировка на плоча на к+2,61; вертикали от к+2,61 до +5,50' && s.data === '28.07.2024', s);
 
-// Съставяне — един файл с всички.
-await a.w.momentDnevnikSastavi();
+// Съставяне — един файл с всички; общият бутон на момента води тук.
+a.w.momentSastavi();
+await new Promise(r => setTimeout(r, 50));
 const gen = a.zaiavki.find(z => /generate\/akt7/.test(z[0]));
-t('съставянето праща всички актове в една заявка', gen && gen[1].akt7_seriya.length === 2, gen && gen[1]);
+t('„Съставѝ документа“ в Акт 7 съставя таблицата', gen && gen[1].akt7_seriya.length === 2, gen && gen[1]);
 t('с датите и СМР', gen && gen[1].akt7_seriya[1].data === '13.04.2025', gen && gen[1].akt7_seriya);
 t('и казва, че е свален', /2 акта в един файл/.test(tekst(a.d.getElementById('moment-dnevnik-hod'))),
   tekst(a.d.getElementById('moment-dnevnik-hod')));
+
+// Подписан — заключва реда.
+a.w.momentDnevnikPodpisan(0, true);
+a.w.momentDnevnikPoprav(0, 'data', '01.01.2000');
+t('подписаният ред не се поправя', st.akt7_dnevnik.aktove[0].data === '28.07.2024', st.akt7_dnevnik.aktove[0]);
+a.w.momentDnevnikMahni(0);
+t('подписаният ред не се маха', st.akt7_dnevnik.aktove.length === 2, st.akt7_dnevnik.aktove.length);
+t('и полетата му са заключени', a.d.querySelector('.dn-podpisan input[type=text]').disabled, '');
+
+// Ново четене ДОБАВЯ: подписаното и поправеното стоят; махнатото не се връща.
 a.w.momentDnevnikMahni(1);
 t('махане', st.akt7_dnevnik.aktove.length === 1, st.akt7_dnevnik.aktove.length);
+Object.defineProperty(a.d.getElementById('moment-dnevnik-fajl'), 'files',
+    { value: [new a.w.File(['%PDF'], 'dnevnik.pdf', { type: 'application/pdf' })] });
+await a.w.momentDnevnikCheti();
+await new Promise(r => setTimeout(r, 50));
+const sled = st.akt7_dnevnik.aktove;
+t('ново четене: подписаният слят ред стои, нищо не се връща',
+  sled.length === 1 && sled[0].podpisan && /вертикали/.test(sled[0].smr), sled);
+t('и казва колко е добавило', /Добавени 0 нови бетонирания/.test(tekst(a.d.body)), '');
+a.w.momentDnevnikVsichki(false);
+t('„всички“ маха и слага подписа', !st.akt7_dnevnik.aktove[0].podpisan, '');
+
+// Редът в Акт 15.
+a.w.momentDnevnikPodpisan(0, false);
+a.w.location.hash = '#/moment/r/0/' + encodeURIComponent('Акт 15');
+await new Promise(r => setTimeout(r, 250));
+t('в Акт 15 — колко съставени, колко чакат, с връзка',
+  /Актове обр\. 7 от дневника: 1 съставени, 0 подписани, 1 чакат/.test(tekst(a.d.body))
+  && !!a.d.querySelector('a[href*="' + encodeURIComponent('Акт 7') + '"]'), tekst(a.d.body).slice(0, 400));
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

@@ -28,7 +28,7 @@ const F = new Function(
      grab(s, '_sabChast'), grab(s, '_sabVid'), grab(s, '_sabChislo'),
      grab(s, 'sabIstoria'), grab(s, 'sabKonflikti')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
-    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
+    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";'
     + '\nreturn {sabIstoria, sabKonflikti, _sabVid, _sabChast, _SAB_CHASTI};')();
 
 const dobri = [], loshi = [];

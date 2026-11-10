@@ -26,7 +26,7 @@ const F = new Function(
        grab(s, '_a15Negov'), grab(s, '_a15PoIzraz'), grab(s, '_a15PoOtdelno'), grab(s, '_a15AktoveProtokoli'),
        grab(s, '_a15Sobstvenost'), grab(s, '_a15Skici'), grab(s, '_a15DogovoriMrezhi')].join('\n')
     + '\nconst _s2Id = d => d.id || d.fajl;'
-    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат";'
+    + '\nconst _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";'
     + '\nconst _a15DataNa = r => String(r.data || "").trim();'
     + '\nreturn {dokTetradka, dokVliza, _a15AktoveProtokoli, _a15Sobstvenost,'
     + ' _a15Skici, _a15DogovoriMrezhi};')();

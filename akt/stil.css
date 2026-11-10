@@ -547,3 +547,12 @@ body {
 .sverka { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
 .sverka th, .sverka td { text-align:left; padding:3px 6px; border-bottom:1px solid var(--border-light); }
 .sverka th { color: var(--muted); font-weight:600; }
+
+/* Бетоновият дневник — таблицата на актовете обр. 7 (10.11.2026) */
+.dn-tablica td { vertical-align: top; }
+.dn-tablica input[type=text], .dn-tablica textarea { font: inherit; font-size: 13px; padding: 2px 4px; box-sizing: border-box; }
+.dn-tablica textarea { resize: vertical; }
+.dn-tablica .dn-izvor td { border-bottom: 1px solid var(--border-light); padding-top: 0; font-size: 12px; }
+.dn-tablica tr:not(.dn-izvor) td { border-bottom: none; }
+.dn-podpisan td, .dn-podpisan + .dn-izvor td { background: var(--green-light); }
+.dn-podpisan input, .dn-podpisan textarea { background: transparent; border-color: transparent; }
