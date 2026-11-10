@@ -2214,11 +2214,17 @@ const _A15_RAZDELI = {
               iPoDumi: ['STANOVISHTE'] },
 };
 
+// Отметката не е втора хартия — и в 1.1, 1.4, 1.5. Операторът, 10.11.2026:
+// „където има попълнен документ, да отпада от темплейта“ — в 1.5 стояха и
+// „Договор за присъединяване … ЕРМ Запад, № ДПЕРМ …“, и голото „Договор за
+// присъединяване от електроразпределителното дружество“ от чеклиста. Затова
+// същото правило като в 1.3: има ли в раздела редове с номер или дата, редовете
+// без нито едно отпадат.
 function _a15PoIzraz(p, st, pravilo) {
-    return _a15Svereni(p, st)
+    return _a15BezPovtor(_a15Svereni(p, st)
         .filter(r => (pravilo.iPoDumi || []).includes(String(r.kod || ''))
             ? pravilo.kak.test(_a15TekstNa(r))
-            : _a15Negov(r, pravilo))
+            : _a15Negov(r, pravilo)))
         .map(dokIzrechenie);
 }
 
