@@ -795,15 +795,15 @@ async function momentDnevnikSastavi() {
     const z = momentZhiv(), dn = _momentDnevnik();
     const hod = document.getElementById('moment-dnevnik-hod');
     if (!z || !dn || !dn.aktove.length) return;
-    const konsultant = (aktDanni.consultants || []).find(c => c.id == (z.p.consultant || {}).id);
+    const konsultant = (aktDanni.consultants || []).find(c => c.id == ((z.st && z.st.consultant) || z.p.consultant || {}).id);
     if (!konsultant) { hod.innerHTML = '<p class="greshka">Няма избран консултант в паспорта.</p>'; return; }
     hod.innerHTML = `<p class="tiho">Съставям ${dn.aktove.length} акта…</p>`;
     try {
-        const { sadarzhanie } = await genDokument(z.p, konsultant, 'akt7', {
+        const { sadarzhanie } = await genDokument(aktZaDokument(z.p, z.st), konsultant, 'akt7', {
             akt7_seriya: dn.aktove.map(a => ({ data: a.data, ot: a.ot, do: a.do, smr: a.smr, razreshava: a.razreshava })),
         });
         genSvali(`akt7_vsichki_${z.p.pi}.docx`, sadarzhanie);
-        genZapishi(z.p, [{ type: `Акт 7 — ${dn.aktove.length} акта`, date: new Date().toISOString(), url: '', path: '' }]);
+        genZapishi(z.st, [{ type: `Акт 7 — ${dn.aktove.length} акта`, date: new Date().toISOString(), url: '', path: '' }]);
         aktZapishi();
         hod.innerHTML = `<p class="gotov">✔ ${dn.aktove.length} акта в един файл — свален.</p>`;
     } catch (e) {

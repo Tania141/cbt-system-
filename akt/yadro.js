@@ -143,6 +143,23 @@ function aktStroezh(p, i) {
     return s[i === undefined ? aktIndeksStroezh(p) : i] || p;
 }
 
+// ОБЕКТЪТ, ВИДЯН ПРЕЗ СТРОЕЖА — за съставянето на документи.
+//
+// Строеж №1 живее в самия обект; вторият и следващите — в `stroezhi_dop` и
+// носят своите РС, категория, заповедна книга, консултант, досие (вж.
+// `_STROEZH_POLETA`). Документите се съставяха от ОБЕКТА — и при втория
+// строеж излизаха с разрешението на първия, без да личи. (10.11.2026)
+//
+// Имотът (ПИ, адрес, собственост, възложители) идва от обекта; каквото
+// строежът има свое — от строежа.
+function aktZaDokument(p, st) {
+    if (!p || !st || st === p) return p;
+    const svoe = Object.fromEntries(Object.entries(st).filter(([, v]) =>
+        v !== undefined && v !== null && v !== ''));
+    return { ...p, ...svoe, id: p.id, pi: p.pi, stroezhi_dop: p.stroezhi_dop,
+             tekusht_stroezh: p.tekusht_stroezh };
+}
+
 function aktImeStroezh(st, i) {
     return (st && st.stroej) || (i === 0 ? 'Строеж 1' : `Строеж ${i + 1}`);
 }
@@ -596,7 +613,7 @@ if (typeof module !== 'undefined' && module.exports) {
         aktStroezhi, aktImeStroezh, aktArhiviran, aktVremeZaArhiv, aktData, AKT_SLED,
         aktSastavki, aktNalichni, aktPriznaci,
         aktKakvoMozhe, aktPraviloNaMomenta, aktCenaNaFajl, aktPodskazkaOtIme,
-        aktOstatak, AKT_OSTATAK, aktDataTochki, aktVDosieto,
+        aktOstatak, AKT_OSTATAK, aktDataTochki, aktVDosieto, aktZaDokument,
         aktKrugove, aktIndeksKrug, aktKrug, aktImeKrug,
     };
 }

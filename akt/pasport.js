@@ -77,7 +77,10 @@ function pasportVazlozhiteliBuuton(p) {
 // екран: номерът и датата се преписват на ръка, защото сбъркана цифра не личи
 // никъде и излиза чак при приемателната комисия. (Операторът, 13.10.2026)
 function pasportRazreshenieHtml(p) {
-    const rs = (p && p.permit) || {};
+    // Разрешението е на СТРОЕЖА, не на имота (вж. `_STROEZH_POLETA`) — при
+    // втори строеж се пишеше върху първия. (10.11.2026)
+    const st = p ? aktStroezh(p, pasI) : null;
+    const rs = (st && st.permit) || {};
     const pole = (id, etiket, stoynost, mysto) => `
         <label class="p2-pole"><span>${etiket}</span>
             <input type="text" id="${id}" value="${_e(stoynost || '')}" placeholder="${mysto || ''}"></label>`;
@@ -200,8 +203,10 @@ function pasportZapazi() {
     // старото то е на друга страница.
     if (p) {
         const v = id => ((document.getElementById(id) || {}).value || '').trim();
-        p.permit = { ...(p.permit || {}), number: v('fp-permit-num'), date: v('fp-permit-date'),
-                     effective: v('fp-permit-effective'), issuer: v('fp-permit-issuer') };
+        // На строежа, който е отворен — не на имота (10.11.2026).
+        const st = aktStroezh(p, pasI);
+        st.permit = { ...(st.permit || {}), number: v('fp-permit-num'), date: v('fp-permit-date'),
+                      effective: v('fp-permit-effective'), issuer: v('fp-permit-issuer') };
     }
     if (typeof savePassport === 'function') savePassport();
     aktZapishi();

@@ -63,6 +63,25 @@ t('с „г.“ — не се пипа', D('04.11.2026 г.') === '04.11.2026 г.
 t('датите в остатъка имат образец', Y.aktOstatak('Протокол 2').filter(x => x.data).length === 4
   && Y.aktOstatak('Акт 15').some(x => x.klyuch === 'data_akt' && x.data), Y.aktOstatak('Протокол 2'));
 
+// 7. Втори строеж — документите от НЕГОВИТЕ данни (10.11.2026). Дотук
+// съставянето вземаше обекта и вторият строеж излизаше с РС на първия.
+const vtori = { stroej: 'Трафопост', permit: { number: '45', date: '01.02.2025' }, consultant: { id: 2 },
+                sloy2: { od: { dokumenti: [] } } };
+const imot = { id: 'x', pi: '68134.1', address: 'ул. Проба 1', stroej: 'Сграда', permit: { number: '277' },
+               consultant: { id: 1 }, owner: 'Иван', stroezhi_dop: [vtori], tekusht_stroezh: 1 };
+const zd = Y.aktZaDokument(imot, vtori);
+t('втори строеж: РС — неговото', zd.permit.number === '45', zd.permit);
+t('втори строеж: строежът и консултантът — неговите', zd.stroej === 'Трафопост' && zd.consultant.id === 2, zd);
+t('втори строеж: имотът — от обекта', zd.pi === '68134.1' && zd.address === 'ул. Проба 1' && zd.owner === 'Иван', zd);
+t('първи строеж — самият обект', Y.aktZaDokument(imot, imot) === imot, '');
+r = karta(f.buildPassportRows(zd, null, {}));
+t('втори строеж: РС_Номер в документа е неговият', r['РС_Номер'] === '45', r['РС_Номер']);
+const fs_ = require('fs'), path_ = require('path');
+const pas = fs_.readFileSync(path_.join(__dirname, '..', 'akt', 'pasport.js'), 'utf8');
+t('паспортът пише РС на отворения строеж', /st\.permit = \{ \.\.\.\(st\.permit/.test(pas) && !/\bp\.permit = /.test(pas), '');
+const dk = fs_.readFileSync(path_.join(__dirname, '..', 'akt', 'dokumenti.js'), 'utf8');
+t('„Състави“ подава строежа', /genDokument\(aktZaDokument\(z\.p, z\.st\)/.test(dk), '');
+
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
 console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — досието стига до паспорта`);

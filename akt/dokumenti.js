@@ -39,7 +39,7 @@ function dokumentiRisuvai() {
     const z = dokumentiZhiv();
     if (!z) return;
     const vidove = dokumentiVidove();
-    const konsultant = (aktDanni.consultants || []).find(c => c.id == (z.p.consultant || {}).id);
+    const konsultant = (aktDanni.consultants || []).find(c => c.id == ((z.st && z.st.consultant) || z.p.consultant || {}).id);
 
     const red = v => {
         const s = dokSastoyanie[v.apiType];
@@ -202,7 +202,7 @@ function dokumentiMarkirai(apiType, da) {
 async function dokumentiSastavi() {
     const z = dokumentiZhiv();
     if (!z || dokRaboti) return;
-    const konsultant = (aktDanni.consultants || []).find(c => c.id == (z.p.consultant || {}).id);
+    const konsultant = (aktDanni.consultants || []).find(c => c.id == ((z.st && z.st.consultant) || z.p.consultant || {}).id);
     if (!konsultant) return;
     const vidove = dokumentiVidove().filter(v => dokIzbrani.has(v.apiType));
     if (!vidove.length) { alert('Избери поне един документ.'); return; }
@@ -222,7 +222,7 @@ async function dokumentiSastavi() {
         dokSastoyanie[v.apiType] = 'chaka';
         dokumentiRisuvai();
         try {
-            const { ime, sadarzhanie } = await genDokument(z.p, konsultant, v.apiType, {
+            const { ime, sadarzhanie } = await genDokument(aktZaDokument(z.p, z.st), konsultant, v.apiType, {
                 ...zadacha,
                 passportExtra: { signers: podpisvashti },
                 p2: v.apiType === 'protokol2combined' ? p2 : null,
@@ -236,7 +236,7 @@ async function dokumentiSastavi() {
         }
         dokumentiRisuvai();
     }
-    if (rezultati.length) { genZapishi(z.p, rezultati); aktZapishi(); }
+    if (rezultati.length) { genZapishi(z.st, rezultati); aktZapishi(); }
     dokRaboti = false;
     dokumentiRisuvai();
 }
