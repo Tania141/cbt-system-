@@ -151,6 +151,7 @@ function proektKachvaneHtml() {
         ${proektPapka.length ? `
             <div class="fajlove">
                 ${proektPapka.map((f, i) => `
+                    <div class="fajl-red">
                     <label class="fajl ${f.cena === 'не се чете' ? 'fajl-ne' : ''}">
                         <input type="checkbox" ${f.otmetnat ? 'checked' : ''}
                                ${f.cena === 'не се чете' ? 'disabled' : ''}
@@ -159,19 +160,58 @@ function proektKachvaneHtml() {
                         <span class="fajl-cena fajl-cena-${f.cena === 'безплатно' ? 'free'
                             : f.cena === 'през АИ' ? 'ai' : 'ne'}">${_e(f.cena)} · ${_e(f.kak)}${
                             aktKojShteChete(f.cena) ? ' · ' + _e(aktKojShteChete(f.cena)) : ''}</span>
-                    </label>`).join('')}
+                    </label>
+                    <select onchange="proektChastNaFajl(${i}, this.value)" title="коя част е записката">
+                        <option value="">— коя част? —</option>
+                        ${PROEKT_CHASTI.map(([kod, ime]) =>
+                            `<option value="${kod}" ${f.chast === kod ? 'selected' : ''}>${_e(ime)}</option>`).join('')}
+                    </select>
+                    ${f.chast && f.chast_ot_imeto ? '<span class="tiho">по името на файла — провери</span>' : ''}
+                    </div>`).join('')}
             </div>
-            <button class="bt bt-glaven" ${otmetnati ? '' : 'disabled'}
+            ${proektPapka.some(f => f.otmetnat && !f.chast)
+                ? '<p class="zashto-ne">Кажи коя част е всяка отметната записка — частта е твоя, не на четеца.</p>' : ''}
+            <button class="bt bt-glaven" ${otmetnati && !proektPapka.some(f => f.otmetnat && !f.chast) ? '' : 'disabled'}
                     onclick="proektProcheti()">прочети отметнатите (${otmetnati})</button>` : ''}
         ${proektHod ? `<div class="chaka">${proektHod}</div>` : ''}
     </div>`;
 }
 
+// ЧАСТТА Я КАЗВА ОПЕРАТОРЪТ (11.11.2026). Четецът я гадаеше по съдържанието;
+// тя е факт, който операторът знае. Името на файла само подсказва — и казва,
+// че подсказва. Кодовете са тези на сървъра (`rules/zapiski.py`, CHASTI).
+const PROEKT_CHASTI = [
+    ['ARH', 'Архитектура'], ['KONSTR', 'Конструкции'], ['EL', 'Електро'], ['VIK', 'ВиК'],
+    ['OVK', 'ОВК'], ['EE', 'Енергийна ефективност'], ['PB', 'Пожарна безопасност'],
+    ['GEO', 'Геодезия'], ['OZELEN', 'Паркоустройство / озеленяване'], ['PBZ', 'ПБЗ'],
+    ['TRANSP', 'Пътна / транспортен достъп'], ['SITUACIA', 'Ситуация / вертикална планировка'],
+    ['VIZA', 'Виза за проектиране'], ['DRUGA', 'друга част'],
+];
+
+function proektChastOtImeto(ime) {
+    const t = ' ' + String(ime || '').replace(/[-_.\s]+/g, ' ').toLowerCase() + ' ';
+    const PO = [[/ a | арх| arh/, 'ARH'], [/ k | конст| konstr/, 'KONSTR'], [/ el | елект/, 'EL'],
+                [/ ws | вик | vik | вк /, 'VIK'], [/ hc | овк | ovk | hvac /, 'OVK'], [/ ee | енерг/, 'EE'],
+                [/ fs | пб | пожар/, 'PB'], [/ геод| geo /, 'GEO'], [/ паркоустр| озелен| ландш/, 'OZELEN'],
+                [/ пбз /, 'PBZ']];
+    const h = PO.find(([re]) => re.test(t));
+    return h ? h[1] : '';
+}
+
 function proektIzbroi(fajlove) {
     proektPapka = [...(fajlove || [])].map(f => {
         const c = aktCenaNaFajl(f.name);
-        return { ime: f.name, fajl: f, cena: c.cena, kak: c.kak, otmetnat: false };
+        const chast = proektChastOtImeto(f.name);
+        return { ime: f.name, fajl: f, cena: c.cena, kak: c.kak, otmetnat: false,
+                 chast, chast_ot_imeto: !!chast };
     });
+    proektRisuvai();
+}
+
+function proektChastNaFajl(i, kod) {
+    if (!proektPapka[i]) return;
+    proektPapka[i].chast = kod;
+    proektPapka[i].chast_ot_imeto = false;
     proektRisuvai();
 }
 
@@ -184,6 +224,11 @@ async function proektProcheti() {
     const z = proektZhiv();
     if (!z) return;
     const izbrani = proektPapka.filter(f => f.otmetnat);
+    if (izbrani.some(f => !f.chast)) {
+        proektHod = 'Кажи коя част е всяка отметната записка.';
+        proektRisuvai();
+        return;
+    }
     const zapiski = (z.k.zapiski = z.k.zapiski || { chasti: [] });
     let prochetenite = 0;
     for (const f of izbrani) {
@@ -191,7 +236,7 @@ async function proektProcheti() {
         proektRisuvai();
         try {
             const r = await aktApi('/api/zapiski/chete', 'POST', {
-                pi: z.p.pi, chetec: localStorage.getItem('s2_chetec') || 'auto',
+                pi: z.p.pi, chetec: localStorage.getItem('s2_chetec') || 'auto', chast_kod: f.chast,
                 fajl: { ime: f.ime, media_type: f.fajl.type, data: await proektBase64(f.fajl) },
             });
             if (r.greshka) throw new Error(r.greshka);
@@ -267,9 +312,14 @@ function proektChastiHtml(k) {
     return `
     <div class="kutiya-razdel">
         <div class="nadpis">Прочетени части · ${chasti.length}</div>
+        <div class="redica"><button class="bt bt-tih" onclick="proektMahniVsichko()">махни всичко прочетено</button>
+            <span class="tiho">записките и блоковете на този кръг — за ново четене</span></div>
         ${chasti.map(z => `
             <div class="chast-red">
-                <div class="chast-ime">${_e(z.chast_ime || z.chast_kod || '?')}</div>
+                <div class="chast-ime">${_e(((PROEKT_CHASTI.find(([k]) => k === z.chast_kod) || [])[1])
+                    || z.chast_ime || z.chast_kod || '?')}${z.chast_ot ? ' <span class="tiho">· ' + _e(z.chast_ot) + '</span>' : ''}</div>
+                ${(z.otpadnali_chasti || []).length ? `<div class="otkade">отпадна преразказът на:
+                    ${_e(z.otpadnali_chasti.join(' · '))} — те идват от своите записки</div>` : ''}
                 <div class="chast-kakvo">
                     ${(z.priznaci || []).length} признака ·
                     ${(z.materiali || []).length} материала ·
@@ -284,6 +334,24 @@ function proektChastiHtml(k) {
                         title="маха само прочетеното от този файл">×</button>
             </div>`).join('')}
     </div>`;
+}
+
+// Всичко прочетено в кръга — за ново четене (операторът, 11.11.2026).
+// Пита, защото с блоковете падат и потвърденото „изпълнено“ и поправките.
+function proektMahniVsichko() {
+    const z = proektZhiv();
+    if (!z) return;
+    const bl = Object.values(z.k.blokove || {});
+    const potv = bl.filter(b => b.sastoyanie !== 'predlozheno'
+        || (b.izpalnenie && b.izpalnenie.sastoyanie !== 'predlozheno')).length;
+    if (!confirm(`Да махна ли всичко прочетено в този кръг — ${((z.k.zapiski || {}).chasti || []).length} записки, `
+        + `${bl.length} блока${potv ? `, от които ${potv} потвърдени или поправени от теб` : ''}?\n\n`
+        + 'Файловете на диска не се пипат — могат да се прочетат пак.')) return;
+    z.k.zapiski = { chasti: [] };
+    z.k.blokove = {};
+    aktZapishi();
+    proektHod = 'Махнато. Избери записките пак и кажи коя част е всяка.';
+    proektRisuvai();
 }
 
 function proektBrojBlokove(k, z) {
@@ -416,7 +484,7 @@ function proektIzpBlokHtml(k64, b) {
         <div class="blok-izp blok-${iz.sastoyanie}">
             <div class="otkade"><strong>Изпълнено</strong> — за Акт 15, ОД, Акт 16 и ТП ·
                 ${_e(PROEKT_IZP_SASTOYANIE[iz.sastoyanie] || '')}${iz.chetec ? ' · ' + _e(iz.chetec) : ''}</div>
-            <textarea class="izp-pole" rows="${Math.min(12, Math.max(3, Math.ceil(String(iz.tekst || '').length / 90)))}"
+            <textarea class="izp-pole" rows="${Math.min(30, Math.max(3, Math.ceil(String(iz.tekst || '').length / 90)))}"
                       placeholder="(празно — блокът не влиза в документите)"
                       onchange="proektIzpPoprav('${k64}', this.value)">${_e(iz.tekst || '')}</textarea>
             ${(iz.mahnato || []).length ? `<div class="otkade">махнато: ${_e(iz.mahnato.join(' · '))}</div>` : ''}

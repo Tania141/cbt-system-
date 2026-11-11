@@ -114,9 +114,17 @@ t('нечетимата не може да се отметне', fajlove[2].quer
 t('нищо не е отметнато само', fajlove.every(x => !x.querySelector('input').checked));
 
 // ── четенето ─────────────────────────────────────────────────────────────────
+// Частта я казва операторът (11.11.2026); името само подсказва.
+t('„Zapiska_ARH.pdf“ — подсказка „Архитектура“ от името', a.w.proektChastOtImeto('Zapiska_ARH.pdf') === 'ARH'
+  && /по името на файла — провери/.test(tekst(fajlove[1].parentNode)), tekst(fajlove[1].parentNode));
 a.w.proektOtmetni(0, true);
 await a.w.proektProcheti();
+t('без казана част — не се чете', !a.w.__zaiavki.some(z => /zapiski/.test(z[0])), a.w.__zaiavki);
+a.w.proektChastNaFajl(0, 'EL');
+await a.w.proektProcheti();
 await new Promise(r => setTimeout(r, 150));
+const zZap = a.w.__zaiavki.find(z => /zapiski\/chete/.test(z[0]));
+t('казаната част отива към сървъра', zZap && zZap[1].chast_kod === 'EL', zZap && zZap[1]);
 
 const telo = tekst(a.d.getElementById('proekt-telo'));
 t('прочетената част излиза с името си', /Електро/.test(telo), telo.slice(0, 200));
@@ -199,6 +207,12 @@ a.w.proektRazminavane(encodeURIComponent('Електро'), 'belezhka', 'екз�
 const rz = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].razminavania;
 t('разминаванията на частта се пазят на строежа', rz && rz['Електро'].vid === 'ekzekutiv'
   && rz['Електро'].belezhka === 'екзекутив от 10.10.2026', rz);
+
+// „Махни всичко прочетено“ — за ново четене (11.11.2026)
+a.w.proektMahniVsichko();
+const sled = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
+t('„махни всичко прочетено“ чисти записките и блоковете на кръга',
+  (sled.zapiski.chasti || []).length === 0 && Object.keys(sled.blokove || {}).length === 0, [sled.zapiski, sled.blokove]);
 
 // ── границата ────────────────────────────────────────────────────────────────
 t('Екран 4 е свой файл',
