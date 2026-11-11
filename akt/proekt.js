@@ -323,6 +323,7 @@ function proektBlokoveHtml(k) {
         ${Object.entries(poChasti).map(([chast, spisak]) => `
             <div class="bl-chast">
                 <div class="bl-chast-ime">Част ${_e(chast)}</div>
+                ${proektIzpChastHtml(chast, spisak)}
                 ${spisak.sort((a, b) => (a[1].red || 0) - (b[1].red || 0))
                         .map(([klyuch, b]) => proektBlokHtml(klyuch, b)).join('')}
             </div>`).join('')}
@@ -343,6 +344,7 @@ function proektBlokHtml(klyuch, b) {
         <div class="blok-tekst">${_e(b.tekst || '')}</div>
         <div class="otkade">${_e(b.fajl || '')}${b.stranica ? ' · стр. ' + b.stranica : ''}${
             b.koy ? ' · ' + _e(b.koy) : ''}</div>
+        ${vliza ? proektIzpBlokHtml(k64, b) : ''}
         ${b.novo_chetene ? `
             <div class="blok-razminavane">
                 Записката вече дава друго:
@@ -360,6 +362,130 @@ function proektBlokHtml(klyuch, b) {
                 <button class="bt bt-tih" onclick="proektOtmeni('${k64}')">отмени</button>
             </div>` : ''}
     </div>`;
+}
+
+// ── „Изпълнено“ — описанието за Акт 15, ОД, Акт 16 и ТП ─────────────────────
+// Операторът, 11.11.2026: тези документи разказват какво е НАПРАВЕНО, в
+// сегашно време, към подписването на Акт 15; източникът е записката по частта;
+// описват се всички части. АИ-то предлага (обърнато време, без указанията на
+// проектанта), операторът поправя В САМОТО ПОЛЕ и потвърждава.
+//
+// И разминаванията на частта с проекта: няма · несъществени (екзекутивна
+// документация) · съществени (проект по чл. 154). Пазят се на СТРОЕЖА — те
+// са за построеното, не за кръга.
+const PROEKT_RAZMINAVANE = [
+    ['nyama', 'няма'],
+    ['ekzekutiv', 'несъществени — отразени в екзекутивна документация'],
+    ['154', 'съществени — узаконени с проект по чл. 154 ЗУТ'],
+];
+
+function proektIzpChastHtml(chast, spisak) {
+    const z = proektZhiv();
+    const vlizat = spisak.filter(([, b]) => !b.rolya || b.rolya === 'описание');
+    if (!z || !vlizat.length) return '';
+    const znaci = vlizat.reduce((s, [, b]) => s + String(b.tekst || '').length, 0);
+    const imaIzp = vlizat.filter(([, b]) => b.izpalnenie).length;
+    const r = ((z.st.razminavania || {})[chast]) || {};
+    const c64 = encodeURIComponent(chast);
+    return `
+        <div class="izp-chast">
+            <div class="redica">
+                <button class="bt" onclick="proektIzpPredlozhi('${c64}')">${imaIzp
+                    ? 'предложи „изпълнено“ пак' : 'предложи „изпълнено“'} (АИ, ${znaci} знака)</button>
+                <span class="tiho" id="izp-hod-${_e(chast)}">${imaIzp ? `${imaIzp} от ${vlizat.length} блока имат „изпълнено“` : ''}</span>
+            </div>
+            <label class="p2-pole"><span>Разминавания с проекта по част ${_e(chast)}</span>
+                <select onchange="proektRazminavane('${c64}', 'vid', this.value)">
+                    <option value="">— не е казано —</option>
+                    ${PROEKT_RAZMINAVANE.map(([v, ime]) =>
+                        `<option value="${v}" ${r.vid === v ? 'selected' : ''}>${_e(ime)}</option>`).join('')}
+                </select></label>
+            ${r.vid && r.vid !== 'nyama' ? `<label class="p2-pole"><span>${r.vid === '154'
+                ? 'Проектът по чл. 154 — кой, кога одобрен' : 'Екзекутивната документация — коя, от кога'}</span>
+                <input type="text" value="${_e(r.belezhka || '')}"
+                       onchange="proektRazminavane('${c64}', 'belezhka', this.value)"></label>` : ''}
+        </div>`;
+}
+
+const PROEKT_IZP_SASTOYANIE = { predlozheno: 'предложено — провери', potvardeno: '✓ потвърдено', popraveno: '✍ поправено' };
+
+function proektIzpBlokHtml(k64, b) {
+    const iz = b.izpalnenie;
+    if (!iz) return '';
+    return `
+        <div class="blok-izp blok-${iz.sastoyanie}">
+            <div class="otkade"><strong>Изпълнено</strong> — за Акт 15, ОД, Акт 16 и ТП ·
+                ${_e(PROEKT_IZP_SASTOYANIE[iz.sastoyanie] || '')}${iz.chetec ? ' · ' + _e(iz.chetec) : ''}</div>
+            <textarea class="izp-pole" rows="${Math.min(12, Math.max(3, Math.ceil(String(iz.tekst || '').length / 90)))}"
+                      placeholder="(празно — блокът не влиза в документите)"
+                      onchange="proektIzpPoprav('${k64}', this.value)">${_e(iz.tekst || '')}</textarea>
+            ${(iz.mahnato || []).length ? `<div class="otkade">махнато: ${_e(iz.mahnato.join(' · '))}</div>` : ''}
+            ${iz.sastoyanie === 'predlozheno' ? `<div class="blok-zhestove">
+                <button class="bt bt-glaven" onclick="proektIzpPotvardi('${k64}')">✔ потвърди</button></div>` : ''}
+        </div>`;
+}
+
+async function proektIzpPredlozhi(c64) {
+    const z = proektZhiv();
+    if (!z) return;
+    const chast = decodeURIComponent(c64);
+    const blokove = Object.entries(z.k.blokove || {})
+        .filter(([, b]) => (b.chast || 'Друга част') === chast && (!b.rolya || b.rolya === 'описание'));
+    // Потвърденото и поправеното от теб не се подменя от ново предложение.
+    const zaAI = blokove.filter(([, b]) => !b.izpalnenie || b.izpalnenie.sastoyanie === 'predlozheno');
+    const hod = document.getElementById('izp-hod-' + chast);
+    if (!zaAI.length) { if (hod) hod.textContent = 'Всичко в частта е потвърдено — няма какво да се предлага.'; return; }
+    if (hod) hod.textContent = `Преработвам ${zaAI.length} блока…`;
+    try {
+        const r = await aktApi('/api/tekst/izpalnenie', 'POST', {
+            chast, chetec: localStorage.getItem('s2_chetec') || 'auto',
+            blokove: zaAI.map(([klyuch, b]) => ({ klyuch, podzaglavie: b.podzaglavie, tekst: b.tekst })),
+        });
+        if (r.greshka) { if (hod) hod.textContent = '⚠ ' + r.greshka; return; }
+        for (const [klyuch, b] of zaAI) {
+            const x = (r.izpalnenie || {})[klyuch];
+            if (!x) continue;
+            b.izpalnenie = { tekst: x.tekst, predlozheno: x.tekst, mahnato: x.mahnato || [],
+                             sastoyanie: 'predlozheno', chetec: r.chetec || '', koga: new Date().toISOString() };
+        }
+        aktZapishi();
+        proektRisuvai();
+        const h2 = document.getElementById('izp-hod-' + chast);
+        if (h2 && (r.lipsvat || []).length) h2.textContent = `⚠ без отговор за ${r.lipsvat.length} блока — предложи пак`;
+    } catch (e) {
+        if (hod) hod.textContent = '✗ ' + e.message;
+    }
+}
+
+// Поправка В САМОТО ПОЛЕ — записва се при излизане от него (операторът,
+// 11.11.2026: „да може да се поправя в самото поле, което се вижда“).
+function proektIzpPoprav(k64, v) {
+    const x = proektBlok(k64);
+    if (!x || !x.b.izpalnenie) return;
+    const nov = String(v || '').trim();
+    if (nov === x.b.izpalnenie.tekst) return;
+    Object.assign(x.b.izpalnenie, { tekst: nov, sastoyanie: 'popraveno', koy: proektKoy(),
+                                    koga: new Date().toISOString() });
+    aktZapishi();
+    proektRisuvai();
+}
+
+function proektIzpPotvardi(k64) {
+    const x = proektBlok(k64);
+    if (!x || !x.b.izpalnenie) return;
+    Object.assign(x.b.izpalnenie, { sastoyanie: 'potvardeno', koy: proektKoy(), koga: new Date().toISOString() });
+    aktZapishi();
+    proektRisuvai();
+}
+
+function proektRazminavane(c64, pole, v) {
+    const z = proektZhiv();
+    if (!z) return;
+    const chast = decodeURIComponent(c64);
+    const r = ((z.st.razminavania = z.st.razminavania || {})[chast] = z.st.razminavania[chast] || {});
+    r[pole] = String(v || '').trim();
+    aktZapishi();
+    if (pole === 'vid') proektRisuvai();
 }
 
 function proektBlok(k64) {

@@ -2009,11 +2009,51 @@ function _a15NomerData(tekst) {
 // Операторът, измерено на Петракиев: Акт 15 носи 12 % свой текст, а този блок
 // се повтаря после в окончателния доклад, в Акт 16 и в паспорта. Пише се
 // веднъж тук.
+//
+// 11.11.2026 — „изпълнено“ живее НА БЛОКА (`b.izpalnenie`), до текста „по
+// проект“, от който е изведено; влиза само потвърденото или поправеното от
+// оператора. По части, с „Част …:“ отпред. При кръгове по чл. 154 частта се
+// взима от ПОСЛЕДНИЯ кръг, който я има — променената част идва от записката
+// на 154. Накрая — разминаванията (няма / екзекутив / по чл. 154).
+// Дотук търсеше блокове с роля „изпълнение“, каквито четецът не дава, и
+// излизаше празно.
 function _a15PoIzpalnenie(st) {
-    const blokove = Object.values(st.blokove || {})
-        .filter(b => /изпълнен/i.test(String(b.rolya || '')))
-        .filter(b => b.sastoyanie === 'potvardeno' || b.sastoyanie === 'popraveno');
-    return blokove.map(b => String(b.tekst || '').trim()).filter(Boolean).join('\n');
+    const krugove = [st, ...((st && st.krugove_dop) || [])];
+    const VLIZA = s => s === 'potvardeno' || s === 'popraveno';
+    const chasti = new Map();   // част → редове; редът на частите — по първия кръг
+    for (let i = krugove.length - 1; i >= 0; i--) {
+        const poChast = {};
+        for (const b of Object.values((krugove[i] || {}).blokove || {})) {
+            const iz = b.izpalnenie;
+            if (!iz || !VLIZA(iz.sastoyanie) || !String(iz.tekst || '').trim()) continue;
+            (poChast[b.chast || 'Друга част'] ||= []).push(b);
+        }
+        for (const [chast, bl] of Object.entries(poChast)) {
+            if (chasti.has(chast)) continue;          // по-нов кръг вече я е дал
+            chasti.set(chast, bl.sort((a, c) => (a.red || 0) - (c.red || 0))
+                .map(b => String(b.izpalnenie.tekst).trim()));
+        }
+    }
+    if (!chasti.size) return '';
+    const raz = (st && st.razminavania) || {};
+    const redove = [];
+    const red = [...chasti.keys()].sort((a, c) => {
+        const r = x => Math.min(...Object.values(st.blokove || {}).filter(b => (b.chast || 'Друга част') === x)
+            .map(b => b.red || 0).concat([9999]));
+        return r(a) - r(c);
+    });
+    for (const chast of red) {
+        redove.push(`Част ${chast}:`, ...chasti.get(chast));
+        const r = raz[chast] || {};
+        if (r.vid === 'ekzekutiv')
+            redove.push(`Несъществените отклонения от проекта по част ${chast} са отразени в екзекутивна документация${r.belezhka ? ' — ' + r.belezhka : ''}.`);
+        if (r.vid === '154')
+            redove.push(`Съществените отклонения от проекта по част ${chast} са узаконени с проект по чл. 154 ЗУТ${r.belezhka ? ' — ' + r.belezhka : ''}.`);
+    }
+    const ima154 = Object.values(raz).some(r => r && r.vid === '154');
+    if (!ima154)
+        redove.push('В процеса на строителство не са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ спрямо одобрените проекти.');
+    return redove.join('\n');
 }
 
 // Описът на приложенията — точка 4: „копия от документите съгласно описа на

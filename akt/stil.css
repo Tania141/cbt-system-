@@ -556,3 +556,9 @@ body {
 .dn-tablica tr:not(.dn-izvor) td { border-bottom: none; }
 .dn-podpisan td, .dn-podpisan + .dn-izvor td { background: var(--green-light); }
 .dn-podpisan input, .dn-podpisan textarea { background: transparent; border-color: transparent; }
+
+/* „Изпълнено“ — описанието за Акт 15, ОД, Акт 16 и ТП (11.11.2026) */
+.izp-chast { margin: 6px 0 10px; padding: 8px; border: 1px dashed var(--border-light); border-radius: 6px; }
+.blok-izp { margin-top: 8px; padding: 6px 8px; border-left: 3px solid var(--gold); background: var(--surface, transparent); }
+.blok-izp.blok-potvardeno, .blok-izp.blok-popraveno { border-left-color: var(--green); }
+.izp-pole { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; line-height: 1.45; padding: 6px; resize: vertical; }

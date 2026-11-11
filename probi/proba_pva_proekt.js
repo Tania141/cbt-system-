@@ -59,8 +59,16 @@ async function otvori(hash) {
                 apiUrl: 'http://localhost/api',
             }));
             w.localStorage.setItem('akt_token', 'proba');
-            w.fetch = async (url) => ({ ok: true, status: 200, json: async () =>
-                /zapiski/.test(String(url)) ? ZAPISKA : { grupi: [] } });
+            w.__zaiavki = [];
+            w.fetch = async (url, opt) => {
+                w.__zaiavki.push([String(url), JSON.parse((opt && opt.body) || '{}')]);
+                return { ok: true, status: 200, json: async () =>
+                    /zapiski/.test(String(url)) ? ZAPISKA
+                    : /izpalnenie/.test(String(url)) ? { chetec: 'Claude', lipsvat: [], izpalnenie: {
+                        'Електро · кабели срн 20 kv': { tekst: 'Кабелите са положени в съществуваща тръбна мрежа.',
+                                                         mahnato: ['съгласно чертежите'] } } }
+                    : { grupi: [] } };
+            };
         },
     });
     const w = dom.window;
@@ -165,6 +173,32 @@ t('и потвърдения си блок',
 a.w.proektSmeniKrug(0);
 t('връщането в първия кръг показва записките пак',
   /Електро/.test(tekst(a.d.getElementById('proekt-telo'))));
+
+// ── „изпълнено“ (11.11.2026) ────────────────────────────────────────────────
+t('частта има бутон „предложи изпълнено“, с броя знаци',
+  /предложи „изпълнено“ \(АИ, \d+ знака\)/.test(tekst(a.d.getElementById('proekt-telo'))));
+await a.w.proektIzpPredlozhi(encodeURIComponent('Електро'));
+await new Promise(r => setTimeout(r, 50));
+const zIz = a.w.__zaiavki.find(z => /izpalnenie/.test(z[0]));
+t('към АИ отиват само блоковете „описание“', zIz && zIz[1].blokove.length === 1
+  && zIz[1].blokove[0].klyuch === 'Електро · кабели срн 20 kv', zIz && zIz[1]);
+let bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv'];
+t('предложението се пази на блока, „предложено“', bl.izpalnenie && bl.izpalnenie.sastoyanie === 'predlozheno'
+  && /са положени/.test(bl.izpalnenie.tekst), bl.izpalnenie);
+const pole = a.d.querySelector('.izp-pole');
+t('„изпълнено“ е поле, което се поправя на място', pole && /са положени/.test(pole.value), pole && pole.value);
+t('казва какво е махнато', /махнато: съгласно чертежите/.test(tekst(a.d.getElementById('proekt-telo'))));
+a.w.proektIzpPoprav(encodeURIComponent('Електро · кабели срн 20 kv'), 'Кабелите са положени в нова тръбна мрежа.');
+bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv'];
+t('поправката в полето → „поправено“', bl.izpalnenie.sastoyanie === 'popraveno' && /нова тръбна/.test(bl.izpalnenie.tekst), bl.izpalnenie);
+a.w.__zaiavki.length = 0;
+await a.w.proektIzpPredlozhi(encodeURIComponent('Електро'));
+t('поправеното не се праща пак към АИ', !a.w.__zaiavki.some(z => /izpalnenie/.test(z[0])), a.w.__zaiavki);
+a.w.proektRazminavane(encodeURIComponent('Електро'), 'vid', 'ekzekutiv');
+a.w.proektRazminavane(encodeURIComponent('Електро'), 'belezhka', 'екзекутив от 10.10.2026');
+const rz = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].razminavania;
+t('разминаванията на частта се пазят на строежа', rz && rz['Електро'].vid === 'ekzekutiv'
+  && rz['Електро'].belezhka === 'екзекутив от 10.10.2026', rz);
 
 // ── границата ────────────────────────────────────────────────────────────────
 t('Екран 4 е свой файл',
