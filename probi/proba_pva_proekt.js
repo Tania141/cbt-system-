@@ -65,7 +65,7 @@ async function otvori(hash) {
                 return { ok: true, status: 200, json: async () =>
                     /zapiski/.test(String(url)) ? ZAPISKA
                     : /izpalnenie/.test(String(url)) ? { chetec: 'Claude', lipsvat: [], izpalnenie: {
-                        'Електро · кабели срн 20 kv': { tekst: 'Кабелите са положени в съществуваща тръбна мрежа.',
+                        'Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx': { tekst: 'Кабелите са положени в съществуваща тръбна мрежа.',
                                                          mahnato: ['съгласно чертежите'] } } }
                     : { grupi: [] } };
             };
@@ -150,14 +150,14 @@ t('текстът е дословен',
 t('горе брои колко чакат', /1 чакат твоето ✔|чакат твоето ✔/.test(telo), telo);
 
 // едно ✔ затваря блока
-const k64 = encodeURIComponent('Електро · кабели срн 20 kv');
+const k64 = encodeURIComponent('Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx');
 a.w.proektPotvardi(k64);
 let zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
 t('✔ записва състоянието при кръга',
-  zapis.blokove['Електро · кабели срн 20 kv'].sastoyanie === 'potvardeno',
+  zapis.blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'].sastoyanie === 'potvardeno',
   Object.keys(zapis.blokove || {}));
 t('и кой го е потвърдил, с дата',
-  !!zapis.blokove['Електро · кабели срн 20 kv'].koga);
+  !!zapis.blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'].koga);
 t('потвърденият вече няма бутон „потвърди“',
   !/✔ потвърди/.test(tekst([...a.d.querySelectorAll('.blok')][0])),
   tekst([...a.d.querySelectorAll('.blok')][0]));
@@ -176,7 +176,7 @@ zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
 t('СТАРИЯТ кръг пази записките си',
   (zapis.zapiski.chasti || []).length === 1, zapis.zapiski);
 t('и потвърдения си блок',
-  zapis.blokove['Електро · кабели срн 20 kv'].sastoyanie === 'potvardeno');
+  zapis.blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'].sastoyanie === 'potvardeno');
 
 a.w.proektSmeniKrug(0);
 t('връщането в първия кръг показва записките пак',
@@ -189,15 +189,15 @@ await a.w.proektIzpPredlozhi(encodeURIComponent('Електро'));
 await new Promise(r => setTimeout(r, 50));
 const zIz = a.w.__zaiavki.find(z => /izpalnenie/.test(z[0]));
 t('към АИ отиват само блоковете „описание“', zIz && zIz[1].blokove.length === 1
-  && zIz[1].blokove[0].klyuch === 'Електро · кабели срн 20 kv', zIz && zIz[1]);
-let bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv'];
+  && zIz[1].blokove[0].klyuch === 'Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx', zIz && zIz[1]);
+let bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'];
 t('предложението се пази на блока, „предложено“', bl.izpalnenie && bl.izpalnenie.sastoyanie === 'predlozheno'
   && /са положени/.test(bl.izpalnenie.tekst), bl.izpalnenie);
 const pole = a.d.querySelector('.izp-pole');
 t('„изпълнено“ е поле, което се поправя на място', pole && /са положени/.test(pole.value), pole && pole.value);
 t('казва какво е махнато', /махнато: съгласно чертежите/.test(tekst(a.d.getElementById('proekt-telo'))));
-a.w.proektIzpPoprav(encodeURIComponent('Електро · кабели срн 20 kv'), 'Кабелите са положени в нова тръбна мрежа.');
-bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv'];
+a.w.proektIzpPoprav(encodeURIComponent('Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'), 'Кабелите са положени в нова тръбна мрежа.');
+bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'];
 t('поправката в полето → „поправено“', bl.izpalnenie.sastoyanie === 'popraveno' && /нова тръбна/.test(bl.izpalnenie.tekst), bl.izpalnenie);
 a.w.__zaiavki.length = 0;
 await a.w.proektIzpPredlozhi(encodeURIComponent('Електро'));
@@ -213,6 +213,14 @@ a.w.proektMahniVsichko();
 const sled = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
 t('„махни всичко прочетено“ чисти записките и блоковете на кръга',
   (sled.zapiski.chasti || []).length === 0 && Object.keys(sled.blokove || {}).length === 0, [sled.zapiski, sled.blokove]);
+
+// Две записки на една част (основната и по чл. 154) — два блока, не един
+// (Радулов, 11.11.2026: втората сядаше върху първата).
+const kr = {};
+const zap = fajl => ({ blokove: [{ chast: 'Архитектура', fajl, razdeli: [{ podzaglavie: 'Описание', tekst: fajl, rolya: 'описание', red: 1 }] }] });
+a.w.proektSleejBlokove(kr, zap('NP135-A-EXPLN.docx'));
+a.w.proektSleejBlokove(kr, zap('154-Архитектура.docx'));
+t('две записки на една част — два блока', Object.keys(kr.blokove).length === 2, Object.keys(kr.blokove));
 
 // ── границата ────────────────────────────────────────────────────────────────
 t('Екран 4 е свой файл',

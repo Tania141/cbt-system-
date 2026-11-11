@@ -274,8 +274,12 @@ function proektSleejBlokove(k, r) {
     const pazeni = (k.blokove = k.blokove || {});
     for (const chast of r.blokove || []) {
         for (const razdel of chast.razdeli || []) {
+            // КЛЮЧЪТ НОСИ ФАЙЛА (11.11.2026). Всяка записка вече дава ЕДИН блок
+            // „Описание“ — по част + подзаглавие основната записка по
+            // Архитектура и тази по чл. 154 сядаха една върху друга.
             const klyuch = (chast.chast || '') + ' · '
-                + String(razdel.podzaglavie || '').trim().toLowerCase();
+                + String(razdel.podzaglavie || '').trim().toLowerCase()
+                + (chast.fajl ? ' · ' + chast.fajl : '');
             const b = pazeni[klyuch];
             if (!b) {
                 pazeni[klyuch] = {
