@@ -2012,16 +2012,20 @@ function _a15NomerData(tekst) {
 //
 // 11.11.2026 — „изпълнено“ живее НА БЛОКА (`b.izpalnenie`), до текста „по
 // проект“, от който е изведено; влиза само потвърденото или поправеното от
-// оператора. По части, с „Част …:“ отпред. При кръгове по чл. 154 частта се
-// взима от ПОСЛЕДНИЯ кръг, който я има — променената част идва от записката
-// на 154. Накрая — разминаванията (няма / екзекутив / по чл. 154).
+// оператора. По части, с „Част …:“ отпред. Накрая — разминаванията (няма /
+// екзекутив / по чл. 154).
+//
+// КРЪГОВЕТЕ СЕ СЪБИРАТ, НЕ СЕ ЗАМЕНЯТ (Радулов, 11.11.2026). Записката по
+// чл. 154 описва САМО изменението („обединяване на ап. 801 и 802“), не цялата
+// част. Първата версия взимаше частта от последния кръг и текстът от основния
+// проект изчезна. Сега: основният проект, после изменението, в реда на кръговете.
 // Дотук търсеше блокове с роля „изпълнение“, каквито четецът не дава, и
 // излизаше празно.
 function _a15PoIzpalnenie(st) {
     const krugove = [st, ...((st && st.krugove_dop) || [])];
     const VLIZA = s => s === 'potvardeno' || s === 'popraveno';
-    const chasti = new Map();   // част → редове; редът на частите — по първия кръг
-    for (let i = krugove.length - 1; i >= 0; i--) {
+    const chasti = new Map();   // част → редове от всички кръгове, по реда им
+    for (let i = 0; i < krugove.length; i++) {
         const poChast = {};
         for (const b of Object.values((krugove[i] || {}).blokove || {})) {
             const iz = b.izpalnenie;
@@ -2029,9 +2033,9 @@ function _a15PoIzpalnenie(st) {
             (poChast[b.chast || 'Друга част'] ||= []).push(b);
         }
         for (const [chast, bl] of Object.entries(poChast)) {
-            if (chasti.has(chast)) continue;          // по-нов кръг вече я е дал
-            chasti.set(chast, bl.sort((a, c) => (a.red || 0) - (c.red || 0))
-                .map(b => String(b.izpalnenie.tekst).trim()));
+            const redove = bl.sort((a, c) => (a.red || 0) - (c.red || 0))
+                .map(b => String(b.izpalnenie.tekst).trim());
+            chasti.set(chast, [...(chasti.get(chast) || []), ...redove]);
         }
     }
     if (!chasti.size) return '';
