@@ -53,14 +53,47 @@ function aktZapishi() {
         console.error('aktZapishi: данните не са прочетени — НЕ пиша, за да не изтрия.');
         return false;
     }
+    const predi = aktDanni.savedAt;
     try {
         aktDanni.savedAt = new Date().toISOString();
-        localStorage.setItem(AKT_KLYUCH, JSON.stringify(aktDanni));
+        const tekst = JSON.stringify(aktDanni);
+        localStorage.setItem(AKT_KLYUCH, tekst);
+        // Предупреждение ПРЕДИ мястото да свърши (около 5 MB за браузъра).
+        if (tekst.length > 4 * 1024 * 1024)
+            aktKazhiZapis(`Мястото в браузъра свършва: ${(tekst.length / 1048576).toFixed(1)} MB от около 5. `
+                + 'Изчисти прочетеното на завършени обекти, преди да спре да записва.', false);
         return true;
     } catch (e) {
+        // ГРЕШКАТА СЕ КАЗВА ВИСОКО (11.11.2026). Дотук само в конзолата —
+        // работата изглеждаше записана, а при следващо отваряне я нямаше.
+        aktDanni.savedAt = predi;
         console.error('aktZapishi:', e);
+        aktKazhiZapis(/quota|exceed|full/i.test(String(e && (e.name || e.message)))
+            ? 'НЕ Е ЗАПИСАНО — мястото в браузъра свърши. Не затваряй страницата; изчисти прочетеното на завършени обекти и запиши пак.'
+            : `НЕ Е ЗАПИСАНО в браузъра: ${e && e.message ? e.message : e}. Не затваряй страницата.`, true);
         return false;
     }
+}
+
+// Лента най-горе на страницата — стои, докато не се затвори. Не е бележка,
+// която да мине покрай окото.
+function aktKazhiZapis(tekst, greshka) {
+    if (typeof document === 'undefined' || !document.body) return;
+    let l = document.getElementById('akt-zapis-lenta');
+    if (!l) {
+        l = document.createElement('div');
+        l.id = 'akt-zapis-lenta';
+        l.style.cssText = 'position:sticky;top:0;z-index:999;padding:10px 14px;font-weight:600;'
+            + 'display:flex;gap:12px;align-items:center;justify-content:space-between';
+        document.body.prepend(l);
+    }
+    l.style.background = greshka ? '#b42318' : '#b7791f';
+    l.style.color = '#fff';
+    l.innerHTML = '';
+    const s = document.createElement('span'); s.textContent = '⛔ ' + tekst;
+    const b = document.createElement('button'); b.textContent = '×'; b.onclick = () => l.remove();
+    b.style.cssText = 'background:none;border:0;color:#fff;font-size:20px;cursor:pointer';
+    l.append(s, b);
 }
 
 function aktObekt(id) {

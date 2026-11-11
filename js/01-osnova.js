@@ -315,16 +315,22 @@ function loadData() {
 
     // Консултантите и историята — ПРЕДИ обектите, защото обектите се връзват
     // към консултант по id. (01.10.2026)
-    // Load projects from API (authoritative source); localStorage is the cache/fallback
+    //
+    // ОБЕКТИТЕ ОТ СЪРВЪРА САМО ДОБАВЯТ, НЕ ЗАМЕНЯТ (11.11.2026).
+    // Дотук сървърът беше „авторитетен“: при всяко отваряне на старото ПВА
+    // `appData.projects` се подменяше с копията от /api/passports. Но на
+    // сървъра стига само паспортът — досието, дневникът, блоковете, четенето
+    // от новото ПВА живеят САМО в браузъра. Операторът отвори старото ПВА и
+    // вчерашните 22 акта обр. 7 и таблицата на дневника изчезнаха, без дума.
+    // Сега: обект, който го има тук, остава какъвто е; от сървъра влизат само
+    // обектите, които ги няма в този браузър.
     if (appData.apiUrl && getToken()) {
         zarediObshtiDanni()
             .catch(e => console.warn('общи данни:', e))
             .then(() => apiCall('/api/passports'))
             .then(data => {
                 if (Array.isArray(data) && data.length > 0) {
-                    // Normalise consultant: match by id first, then by name, so the
-                    // local consultant object (with employees etc.) is used if available
-                    appData.projects = nomeraNaObekti(data).map(p => {
+                    const otSarvara = nomeraNaObekti(data).map(p => {
                         // Normalise consultant to local object (id + employees)
                         if (p.consultant && appData.consultants.length > 0) {
                             const byId   = appData.consultants.find(c => c.id == p.consultant.id);
@@ -334,9 +340,18 @@ function loadData() {
                         }
                         return p;
                     });
-                    saveData();
-                    filterPassports();
-                    updateNavBadge();
+                    const tuk = appData.projects || [];
+                    // По номер или по ПИ: обект, заведен тук, има id от часовника,
+                    // а копието му от сървъра — id по ПИ.
+                    const imaTuk = p => tuk.some(x => String(x.id) === String(p.id)
+                        || (x.pi && p.pi && String(x.pi).trim() === String(p.pi).trim()));
+                    const novi = otSarvara.filter(p => !imaTuk(p));
+                    if (novi.length) {
+                        appData.projects = [...tuk, ...novi];
+                        saveData();
+                        filterPassports();
+                        updateNavBadge();
+                    }
                 }
             })
             .catch(() => {}); // silently fall back to localStorage cache
