@@ -131,9 +131,100 @@ async function aktApi(pat, metod = 'GET', telo = null) {
             ? 'изтече ти достъпът' : 'сървърът отказа: ' + r.status);
         e.status = r.status;
         e.izteklo = r.status === 401;
+        // Изтекъл достъп — входът се отваря тук, не в старото ПВА (11.11.2026).
+        if (e.izteklo) aktVhod('Изтече ти достъпът — влез пак. Нищо не е изгубено.');
         throw e;
     }
     return r.json();
+}
+
+// ── ВХОДЪТ ───────────────────────────────────────────────────────────────────
+// Операторът, 11.11.2026: „паролата е 24 часа, тя отваря старото ПВА винаги,
+// за да се презареди“. Всяко отваряне на старото подменяше обектите със
+// сървърните копия и изтри работата от новото. Новото ПВА вече има свой вход —
+// същият сървър, същият токен (`akt_token`), който старото също чете.
+
+function aktTokenValiden() {
+    const tok = localStorage.getItem('akt_token');
+    if (!tok) return false;
+    try {
+        const chast = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const danni = JSON.parse(atob(chast + '==='.slice((chast.length + 3) % 4)));
+        // Минута резерва — да не изтече насред заявка.
+        return !danni.exp || danni.exp * 1000 > Date.now() + 60000;
+    } catch (e) {
+        return true;   // непознат вид — сървърът ще каже
+    }
+}
+
+function aktVhod(prichina) {
+    if (typeof document === 'undefined' || document.getElementById('akt-vhod')) return;
+    const potr = (() => { try { return JSON.parse(localStorage.getItem('akt_user') || '{}'); } catch (e) { return {}; } })();
+    const d = document.createElement('div');
+    d.id = 'akt-vhod';
+    d.innerHTML = `
+        <form class="vhod-karta" onsubmit="aktVlez(event)">
+            <div class="nadpis">АКТ СИСТЕМ — вход</div>
+            ${prichina ? `<p class="tiho">${_e(prichina)}</p>` : ''}
+            <label class="p2-pole"><span>Имейл</span>
+                <input type="email" id="vhod-email" autocomplete="username" value="${_e(potr.email || '')}" required></label>
+            <label class="p2-pole"><span>Парола</span>
+                <input type="password" id="vhod-parola" autocomplete="current-password" required></label>
+            <div id="vhod-greshka" class="greshka" hidden></div>
+            <button class="bt bt-glaven" id="vhod-bt" type="submit">Влез</button>
+            <p class="tiho">Достъпът трае 24 часа. Данните са в този браузър — входът не ги пипа.</p>
+        </form>`;
+    document.body.append(d);
+    const pole = document.getElementById(potr.email ? 'vhod-parola' : 'vhod-email');
+    if (pole) pole.focus();
+}
+
+async function aktVlez(ev) {
+    if (ev) ev.preventDefault();
+    const email = (document.getElementById('vhod-email') || {}).value || '';
+    const parola = (document.getElementById('vhod-parola') || {}).value || '';
+    const bt = document.getElementById('vhod-bt'), gr = document.getElementById('vhod-greshka');
+    if (bt) { bt.disabled = true; bt.textContent = 'Влизам…'; }
+    try {
+        const r = await fetch(aktApiAdres() + '/api/auth/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim(), password: parola }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.token) throw new Error(d.error || (r.status === 401 ? 'грешен имейл или парола' : 'сървърът отказа: ' + r.status));
+        localStorage.setItem('akt_token', d.token);
+        localStorage.setItem('akt_user', JSON.stringify({ email: d.email || email.trim(), role: d.role }));
+        const v = document.getElementById('akt-vhod');
+        if (v) v.remove();
+        aktShapkaVhod();
+        if (typeof aktPokazhi === 'function') aktPokazhi();
+    } catch (e) {
+        if (gr) { gr.hidden = false; gr.textContent = e.message; }
+    } finally {
+        if (bt) { bt.disabled = false; bt.textContent = 'Влез'; }
+    }
+}
+
+function aktIzlez() {
+    localStorage.removeItem('akt_token');
+    aktShapkaVhod();
+    aktVhod('Излезе от системата.');
+}
+
+// В шапката — кой е влязъл и „изход“.
+function aktShapkaVhod() {
+    const m = typeof document !== 'undefined' && document.getElementById('shapka-vhod');
+    if (!m) return;
+    const potr = (() => { try { return JSON.parse(localStorage.getItem('akt_user') || '{}'); } catch (e) { return {}; } })();
+    m.innerHTML = aktTokenValiden()
+        ? `<span class="tiho">${_e(potr.email || '')}</span> <button class="bt bt-tih" onclick="aktIzlez()">изход</button>`
+        : `<button class="bt" onclick="aktVhod()">вход</button>`;
+}
+
+// При отваряне: без валиден токен — входът, веднага.
+function aktProveriVhod() {
+    aktShapkaVhod();
+    if (!aktTokenValiden()) aktVhod('Влез, за да може системата да чете и съставя.');
 }
 
 // ИЗТЕКЪЛ ДОСТЪП НЕ Е ГРЕШКА НА ЧЕКЛИСТА.
@@ -152,9 +243,9 @@ function aktGreshkaHtml(e, kakvoNeStana) {
             _e(String((e && e.message) || e))}</div>`;
     return `
     <div class="greshka">
-        <strong>Изтече ти достъпът.</strong> Новото ПВА няма свой вход —
-        влез в старото и се върни тук. Достъпът трае 24 часа.
-        <a class="bt bt-glaven" href="../index.html">влез отново</a>
+        <strong>Изтече ти достъпът.</strong> Влез пак — тук, без старото ПВА.
+        Достъпът трае 24 часа.
+        <button class="bt bt-glaven" onclick="aktVhod()">влез отново</button>
     </div>`;
 }
 

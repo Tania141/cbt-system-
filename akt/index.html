@@ -28,6 +28,7 @@
     </div>
     <!-- На обекта: само обратният път. -->
     <a class="bt" id="shapka-nazad" href="#/plot" hidden>← плотът</a>
+    <span class="shapka-vhod" id="shapka-vhod"></span>
 </header>
 
 <main class="telo">
@@ -198,6 +199,7 @@ function aktPokazhi() {
 
 window.addEventListener('hashchange', aktPokazhi);
 aktZaredi();
+aktProveriVhod();
 plotSmeniIzgled('raboti');
 aktPokazhi();
 </script>
