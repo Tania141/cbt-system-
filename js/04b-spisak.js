@@ -142,14 +142,36 @@ function dokTetradka(p, st) {
     // Твърдение на оператора, като вписаното на ръка (10.11.2026). Всеки е свой
     // ред — не минават през `dobavi`, който би слял еднаквите имена в един.
     // Сканът бие: прочетен акт обр. 7 със същата дата вече е тук.
+    //
+    // И СЪС СЪЩИТЕ КОТИ (операторът, 11.11.2026). Предложената дата е ден преди
+    // бетона, а истинският акт често е по-рано: „вертикали от +2,61 до +5,50“ —
+    // скан 04.08.2024, дневник 07.08.2024. Един акт излизаше два пъти. Всеки
+    // скан „поглъща“ най-много един ред от дневника — два реда с едни коти
+    // (две захватки) не изчезват заради един скан.
     const dataKl = s => { const m = String(s || '').match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
         return m ? [+m[1], +m[2], m[3].length === 2 ? 2000 + +m[3] : +m[3]].join('.') : ''; };
+    const kotiKl = s => {
+        const k = [], re = /([±+\-–−])?\s*(\d+)\s*[.,]\s*(\d+)/g;
+        let m;
+        while ((m = re.exec(String(s || '')))) {
+            const v = parseFloat(m[2] + '.' + m[3]) * (m[1] && /[\-–−]/.test(m[1]) ? -1 : 1);
+            k.push(v.toFixed(2));
+        }
+        return [...new Set(k)].sort().join('|');
+    };
     const AKT7 = /акт\s*(обр\.?|образец)?\s*№?\s*7(?![\dа-я])/i;
-    const skanirani = new Set(redove
-        .filter(r => r.otkade === _DOK_PROCHETEN && (r.kod === 'AKT7' || AKT7.test([r.ime, r.vid].join(' '))))
-        .map(r => dataKl(r.data)).filter(Boolean));
+    const skanAkt7 = redove.filter(r => r.otkade === _DOK_PROCHETEN
+        && (r.kod === 'AKT7' || AKT7.test([r.ime, r.vid].join(' '))));
+    const skanirani = new Set(skanAkt7.map(r => dataKl(r.data)).filter(Boolean));
+    const poKoti = new Map();
+    for (const r of skanAkt7) {
+        const k = kotiKl(r.sadarzhanie || ((r.izvor || {}).sadarzhanie || {}).stoynost);
+        if (k) poKoti.set(k, (poKoti.get(k) || 0) + 1);
+    }
     for (const a of ((st && st.akt7_dnevnik) || {}).aktove || []) {
         if (!a.podpisan || skanirani.has(dataKl(a.data))) continue;
+        const k = kotiKl(a.smr);
+        if (k && poKoti.get(k) > 0) { poKoti.set(k, poKoti.get(k) - 1); continue; }
         redove.push(_dokRed({ ime: 'Акт обр. 7', data: a.data, kod: 'AKT7', vid: 'акт обр. 7',
                               sadarzhanie: a.smr, ot: a.ot, do: a.do, otkade: _DOK_SASTAVEN, sveren: true }));
     }
