@@ -2021,42 +2021,59 @@ function _a15NomerData(tekst) {
 // проект изчезна. Сега: основният проект, после изменението, в реда на кръговете.
 // Дотук търсеше блокове с роля „изпълнение“, каквито четецът не дава, и
 // излизаше празно.
+//
+// ИЗМЕНЕНИЯТА ПО ЧЛ. 154 — ОТДЕЛНО (операторът, 11.11.2026). Основният проект
+// по части; после „Изменения в процеса на строителство:“, изречението със
+// заповедта и текстовете от кръговете по 154, пак по части.
 function _a15PoIzpalnenie(st) {
     const krugove = [st, ...((st && st.krugove_dop) || [])];
     const VLIZA = s => s === 'potvardeno' || s === 'popraveno';
-    const chasti = new Map();   // част → редове от всички кръгове, по реда им
-    for (let i = 0; i < krugove.length; i++) {
-        const poChast = {};
-        for (const b of Object.values((krugove[i] || {}).blokove || {})) {
-            const iz = b.izpalnenie;
-            if (!iz || !VLIZA(iz.sastoyanie) || !String(iz.tekst || '').trim()) continue;
-            (poChast[b.chast || 'Друга част'] ||= []).push(b);
+    const poChasti = k => {     // кръг → Map(част → редове), по реда на блоковете
+        const m = new Map();
+        const bl = Object.values((k || {}).blokove || {}).filter(b => b.izpalnenie
+            && VLIZA(b.izpalnenie.sastoyanie) && String(b.izpalnenie.tekst || '').trim())
+            .sort((a, c) => (a.red || 0) - (c.red || 0));
+        for (const b of bl) {
+            const ch = b.chast || 'Друга част';
+            m.set(ch, [...(m.get(ch) || []), String(b.izpalnenie.tekst).trim()]);
         }
-        for (const [chast, bl] of Object.entries(poChast)) {
-            const redove = bl.sort((a, c) => (a.red || 0) - (c.red || 0))
-                .map(b => String(b.izpalnenie.tekst).trim());
-            chasti.set(chast, [...(chasti.get(chast) || []), ...redove]);
-        }
-    }
-    if (!chasti.size) return '';
+        return m;
+    };
+    const osnoven = poChasti(krugove[0]);
+    const izmeneniya = krugove.slice(1).map(k => ({ k, chasti: poChasti(k) })).filter(x => x.chasti.size);
+    if (!osnoven.size && !izmeneniya.length) return '';
     const raz = (st && st.razminavania) || {};
     const redove = [];
-    const red = [...chasti.keys()].sort((a, c) => {
-        const r = x => Math.min(...Object.values(st.blokove || {}).filter(b => (b.chast || 'Друга част') === x)
-            .map(b => b.red || 0).concat([9999]));
-        return r(a) - r(c);
-    });
-    for (const chast of red) {
-        redove.push(`Част ${chast}:`, ...chasti.get(chast));
+    for (const [chast, tekstove] of osnoven) {
+        redove.push(`Част ${chast}:`, ...tekstove);
         const r = raz[chast] || {};
         if (r.vid === 'ekzekutiv')
             redove.push(`Несъществените отклонения от проекта по част ${chast} са отразени в екзекутивна документация${r.belezhka ? ' — ' + r.belezhka : ''}.`);
-        if (r.vid === '154')
-            redove.push(`Съществените отклонения от проекта по част ${chast} са узаконени с проект по чл. 154 ЗУТ${r.belezhka ? ' — ' + r.belezhka : ''}.`);
     }
-    const ima154 = Object.values(raz).some(r => r && r.vid === '154');
-    if (!ima154)
+    const ima154 = izmeneniya.length || Object.values(raz).some(r => r && r.vid === '154');
+    if (!ima154) {
         redove.push('В процеса на строителство не са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ спрямо одобрените проекти.');
+        return redove.join('\n');
+    }
+    // Заповедта — от кръга по 154; няколко кръга → изброени; празно → точки.
+    // „№ САГ26-РА51-190/27.08.2026 г.“ — датата вече е в номера и не се повтаря.
+    const zn = x => String(x || '').replace(/[\s.г]/g, '');
+    const zapovedi = krugove.slice(1).map(k => k.zapoved || {})
+        .filter(z => String(z.nomer || '').trim() || String(z.data || '').trim())
+        .map(z => {
+            const nomer = String(z.nomer || '').trim().replace(/^№\s*/, '');
+            const imaData = z.data && zn(nomer).includes(zn(z.data));
+            return [nomer && '№ ' + nomer + (/\d$/.test(nomer) && /\d{4}$/.test(nomer) ? ' г.' : ''),
+                    z.data && !imaData && 'от ' + z.data + ' г.',
+                    z.izdatel && 'на ' + z.izdatel].filter(Boolean).join(' ')
+                + (z.v_sila ? ', влязла в сила на ' + z.v_sila + ' г.' : '');
+        });
+    redove.push('Изменения в процеса на строителство:',
+        'В процеса на строителство са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ '
+        + 'спрямо одобрените проекти и издадена Заповед ' + (zapovedi.length ? zapovedi.join('; ') : '.................................')
+        + (zapovedi.length && /г\.$/.test(zapovedi[zapovedi.length - 1]) ? '' : '.'));
+    for (const { chasti } of izmeneniya)
+        for (const [chast, tekstove] of chasti) redove.push(`Част ${chast}:`, ...tekstove);
     return redove.join('\n');
 }
 

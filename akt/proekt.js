@@ -107,7 +107,33 @@ function proektKrugoveHtml(st) {
             <button type="button" class="bt ${i === tekusht ? 'bt-glaven' : 'bt-tih'}"
                     onclick="proektSmeniKrug(${i})">${_e(aktImeKrug(st, i))}</button>`).join('')}
         <button type="button" class="bt bt-tih" onclick="proektNovKrug()">+ изменение</button>
-    </div>`;
+    </div>
+    ${tekusht > 0 ? proektZapovedHtml(spisak[tekusht]) : ''}`;
+}
+
+// Заповедта по чл. 154 — на кръга. Влиза в Акт 15: „…и издадена Заповед № …
+// от … г.“ (операторът, 11.11.2026). Празното остава на точки.
+function proektZapovedHtml(k) {
+    const z = (k && k.zapoved) || {};
+    return `
+    <div class="p2-mrezha" style="margin:6px 0 10px">
+        <label class="p2-pole"><span>Заповед по чл. 154 — №</span>
+            <input type="text" value="${_e(z.nomer || '')}" onchange="proektZapoved('nomer', this.value)"></label>
+        <label class="p2-pole"><span>от дата</span>
+            <input type="text" value="${_e(z.data || '')}" placeholder="дд.мм.гггг" onchange="proektZapoved('data', this.value)"></label>
+        <label class="p2-pole"><span>влязла в сила на</span>
+            <input type="text" value="${_e(z.v_sila || '')}" placeholder="дд.мм.гггг" onchange="proektZapoved('v_sila', this.value)"></label>
+    </div>
+    <label class="p2-pole"><span>издадена от</span>
+        <input type="text" value="${_e(z.izdatel || '')}" placeholder="главния архитект на Столична община"
+               onchange="proektZapoved('izdatel', this.value)"></label>`;
+}
+
+function proektZapoved(pole, v) {
+    const z = proektZhiv();
+    if (!z || aktIndeksKrug(z.st) === 0) return;
+    (z.k.zapoved = z.k.zapoved || {})[pole] = String(v || '').trim();
+    aktZapishi();
 }
 
 function proektSmeniKrug(i) {
