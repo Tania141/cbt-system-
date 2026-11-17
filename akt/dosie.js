@@ -418,7 +418,7 @@ function dosieFaktHtml(id, x, potv) {
     return `
     <div class="fakt ${v ? 'fakt-sveren' : ''}">
         <span class="fakt-etiket">${_e(x.etiket)}</span>
-        <span class="fakt-stoynost">${_e(pokazvana)}</span>
+        ${dosiePoleHtml(k64, pokazvana)}
         <span class="fakt-znak">${v
             ? (popravena ? '✓ поправено' : '✓ сверено') : 'чака ✔'}</span>
         ${x.obj.citat ? `<div class="fakt-citat">„${_e(x.obj.citat)}“${
@@ -428,7 +428,6 @@ function dosieFaktHtml(id, x, potv) {
             ${v
                 ? `<button class="bt bt-tih" onclick="dosieOtmeni('${k64}')">отмени</button>`
                 : `<button class="bt bt-glaven" onclick="dosiePotvardi('${k64}')">✔ вярно е</button>`}
-            <button class="bt bt-tih" onclick="dosiePopravi('${k64}')">поправи</button>
         </div>
     </div>`;
 }
@@ -443,14 +442,11 @@ function dosieNaimenovanieHtml(id, fakti, potv) {
     return `
     <div class="fakt ${v ? 'fakt-sveren' : ''}">
         <span class="fakt-etiket">наименование</span>
-        <span class="fakt-stoynost ${v ? '' : 'znaem-prazno'}">${
-            v ? _e(v.stoynost) : 'четецът не го е извадил'}</span>
+        ${dosiePoleHtml(k64, v ? v.stoynost : '', 'четецът не го е извадил — напиши го, както е в документа')}
         <span class="fakt-znak">${v ? '✓ написано' : 'пише се от теб'}</span>
         <div class="otkade">Това име влиза в описа на акта — затова се пише цяло,
            както е в документа.</div>
         <div class="fakt-zhestove">
-            <button class="bt ${v ? 'bt-tih' : 'bt-glaven'}"
-                    onclick="dosiePopravi('${k64}')">${v ? 'поправи' : 'напиши го'}</button>
             ${v ? `<button class="bt bt-tih" onclick="dosieOtmeni('${k64}')">отмени</button>` : ''}
         </div>
     </div>`;
@@ -462,6 +458,41 @@ function dosieNaimenovanieHtml(id, fakti, potv) {
 
 function dosiePotvardi(k64) {
     s2Potvardi(k64);
+    dosieSledPotvardzhdenie();
+}
+
+// ПОПРАВКА В САМОТО ПОЛЕ (операторът, 11.11.2026: „Запиши да направим
+// поправката за всички полета!“). Стойността е поле; пишеш вярното от
+// хартията и при излизане се записва като поправено — без отделен прозорец.
+// Непроменено поле не се пипа: потвърждава се с „✔ вярно е“.
+function dosiePoleHtml(k64, stoynost, placeholder) {
+    const t = String(stoynost == null ? '' : stoynost);
+    const dalag = t.length > 60 || t.includes('\n');
+    return dalag
+        ? `<textarea class="fakt-pole" rows="${Math.min(8, Math.ceil(t.length / 70) + 1)}"
+                     placeholder="${_e(placeholder || '')}" onchange="dosiePopraviPole('${k64}', this.value)">${_e(t)}</textarea>`
+        : `<input type="text" class="fakt-pole" value="${_e(t)}" placeholder="${_e(placeholder || '')}"
+                  onchange="dosiePopraviPole('${k64}', this.value)">`;
+}
+
+function dosiePopraviPole(k64, nova) {
+    const z = dosieZhiv();
+    if (!z) return;
+    const kl = decodeURIComponent(k64), i = kl.indexOf('::');
+    const d = (z.s2.dokumenti || []).find(x => _s2Id(x) === kl.slice(0, i));
+    if (!d) return;
+    const pole = kl.slice(i + 2);
+    const fakt = _s2Fakti(d).find(x => x.k === pole)
+        || (pole === 'naimenovanie' ? { k: pole, etiket: 'наименование', obj: d.naimenovanie || { stoynost: '' } } : null);
+    if (!fakt) return;
+    const prochetena = String((fakt.obj && fakt.obj.stoynost) || '');
+    const n = String(nova || '').trim();
+    const potv = (z.st.sloy2.od.potvardeni = z.st.sloy2.od.potvardeni || {});
+    if (!n) delete potv[kl];      // изчистено поле → отпада и потвърждението
+    else potv[kl] = { stoynost: n, prochetena, koy: typeof _s2Koy === 'function' ? _s2Koy() : 'оператор',
+                      koga: new Date().toISOString() };
+    if (typeof addHistory === 'function' && n && n !== prochetena)
+        addHistory('edit', z.p.pi, `Досие: поправено от хартията — ${fakt.etiket} „${prochetena}“ → „${n}“`);
     dosieSledPotvardzhdenie();
 }
 

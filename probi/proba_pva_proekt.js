@@ -197,7 +197,7 @@ t('към АИ отиват само блоковете „описание“',
 let bl = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'];
 t('предложението се пази на блока, „предложено“', bl.izpalnenie && bl.izpalnenie.sastoyanie === 'predlozheno'
   && /са положени/.test(bl.izpalnenie.tekst), bl.izpalnenie);
-const pole = a.d.querySelector('.izp-pole');
+const pole = a.d.querySelector('.blok-izp .izp-pole');
 t('„изпълнено“ е поле, което се поправя на място', pole && /са положени/.test(pole.value), pole && pole.value);
 t('казва какво е махнато', /махнато: съгласно чертежите/.test(tekst(a.d.getElementById('proekt-telo'))));
 a.w.proektIzpPoprav(encodeURIComponent('Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'), 'Кабелите са положени в нова тръбна мрежа.');
@@ -211,6 +211,13 @@ a.w.proektRazminavane(encodeURIComponent('Електро'), 'belezhka', 'екз�
 const rz = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].razminavania;
 t('разминаванията на частта се пазят на строежа', rz && rz['Електро'].vid === 'ekzekutiv'
   && rz['Електро'].belezhka === 'екзекутив от 10.10.2026', rz);
+
+// Текстът „по проект“ — поправка в самото поле (17.11.2026)
+t('текстът „по проект“ е поле, без бутон „поправи“',
+  !!a.d.querySelector('.blok textarea.izp-pole') && !/✍ поправи/.test(tekst(a.d.querySelector('.blok'))), '');
+a.w.proektPopraviPole(encodeURIComponent('Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'), 'Поправен текст по проект.');
+const bpp = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].blokove['Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx'];
+t('поправката в полето → „поправен“', bpp.tekst === 'Поправен текст по проект.' && bpp.sastoyanie === 'popraveno', bpp);
 
 // „Махни всичко прочетено“ — за ново четене (11.11.2026)
 a.w.proektMahniVsichko();

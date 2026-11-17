@@ -507,7 +507,9 @@ function proektBlokHtml(klyuch, b) {
                 ? `<span class="blok-sastoyanie">${PROEKT_SASTOYANIE[b.sastoyanie]}</span>` : ''}
             ${vliza ? '' : `<span class="otkade">${_e(b.rolya)} — не влиза в доклада</span>`}
         </div>
-        <div class="blok-tekst">${_e(b.tekst || '')}</div>
+        ${vliza ? `<textarea class="izp-pole" rows="${Math.min(30, Math.max(3, Math.ceil(String(b.tekst || '').length / 90)))}"
+                  onchange="proektPopraviPole('${k64}', this.value)">${_e(b.tekst || '')}</textarea>`
+                : `<div class="blok-tekst">${_e(b.tekst || '')}</div>`}
         <div class="otkade">${_e(b.fajl || '')}${b.stranica ? ' · стр. ' + b.stranica : ''}${
             b.koy ? ' · ' + _e(b.koy) : ''}</div>
         ${vliza ? proektIzpBlokHtml(k64, b) : ''}
@@ -521,10 +523,8 @@ function proektBlokHtml(klyuch, b) {
         ${vliza && b.sastoyanie === 'predlozheno' ? `
             <div class="blok-zhestove">
                 <button class="bt bt-glaven" onclick="proektPotvardi('${k64}')">✔ потвърди</button>
-                <button class="bt" onclick="proektPoprav('${k64}')">✍ поправи</button>
             </div>` : vliza ? `
             <div class="blok-zhestove">
-                <button class="bt bt-tih" onclick="proektPoprav('${k64}')">✍ поправи</button>
                 <button class="bt bt-tih" onclick="proektOtmeni('${k64}')">отмени</button>
             </div>` : ''}
     </div>`;
@@ -672,12 +672,13 @@ function proektPotvardi(k64) {
     proektRisuvai();
 }
 
-function proektPoprav(k64) {
+// Поправката на текста „по проект“ — В САМОТО ПОЛЕ (11.11.2026), не в прозорец.
+function proektPopraviPole(k64, v) {
     const x = proektBlok(k64);
     if (!x) return;
-    const nov = prompt(x.b.podzaglavie + ':', x.b.tekst || '');
-    if (nov === null) return;
-    x.b.tekst = nov.trim();
+    const nov = String(v || '').trim();
+    if (nov === String(x.b.tekst || '').trim()) return;
+    x.b.tekst = nov;
     x.b.sastoyanie = 'popraveno';
     x.b.koy = proektKoy();
     x.b.koga = new Date().toISOString();

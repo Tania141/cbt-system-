@@ -124,11 +124,12 @@ t('екранът казва, че чекнатото влиза в акта',
   /Чекнатото влиза в текста на акта/.test(razganato), razganato.slice(-160));
 t('и че нечекнатото не влиза нарочно',
   /Нечекнатото не влиза/.test(razganato), razganato.slice(-160));
+// ОБЪРНАТО 17.11.2026: стойността е ПОЛЕ (поправка в самото поле, не в прозорец).
 t('и казва, че се пише от теб',
-  /четецът не го е извадил/.test(tekst(fakti[0]))
+  /четецът не го е извадил/.test(fakti[0].querySelector('.fakt-pole').placeholder)
   && /пише се от теб/.test(tekst(fakti[0])), tekst(fakti[0]));
-t('с етикет и стойност',
-  /номер 1/.test(tekst(fakti[1])), tekst(fakti[1]));
+t('с етикет и стойност — стойността е поле',
+  /номер/.test(tekst(fakti[1])) && fakti[1].querySelector('.fakt-pole').value === '1', tekst(fakti[1]));
 t('с ЦИТАТА и страницата',
   /„Протокол № 1“ · стр\. 3/.test(tekst(fakti[1])), tekst(fakti[1]));
 t('казва кое е сверено', /✓ сверено/.test(tekst(fakti[1])), tekst(fakti[1]));
@@ -137,8 +138,9 @@ t('казва кое е сверено', /✓ сверено/.test(tekst(fakti[1
 // Операторът отваря досието, за да чекне — а дотук нямаше с какво.
 t('сверéният факт има „отмени“, не втори ✔',
   /отмени/.test(tekst(fakti[1])) && !/✔ вярно е/.test(tekst(fakti[1])), tekst(fakti[1]));
-t('всеки факт може да се поправи',
-  fakti.every(f => /поправи|напиши го/.test(tekst(f))), fakti.map(f => tekst(f).slice(-40)));
+t('всеки факт се поправя в самото поле',
+  fakti.every(f => !!f.querySelector('.fakt-pole')) && !fakti.some(f => /поправи/.test(tekst(f))),
+  fakti.map(f => tekst(f).slice(-40)));
 
 // d2 е сверен само наполовина — там стои несвереният факт.
 a.w.dosieRazgani(encodeURIComponent('d1'));
@@ -349,6 +351,17 @@ const sb = await otvori("#/dosie/sob/0", SOB);
 const tl = tekst(sb.d.getElementById('dosie-telo'));
 t('актовете от собствеността се виждат в досието', /От Собствеността · 2/.test(tl) && /Нотариален акт за учредено право на строеж №148/.test(tl), tl.slice(0, 300));
 t('и пълномощното — без име', /пълномощно рег\. № 8577 от 12\.03\.2024/.test(tl) && !/Делчо/.test(tl), tl.slice(0, 400));
+
+// ПОПРАВКА В САМОТО ПОЛЕ (17.11.2026)
+const pp = await otvori('#/dosie/hus/0');
+pp.w.dosieRazgani(encodeURIComponent('d2'));
+pp.w.dosiePopraviPole(encodeURIComponent('d2::nomer'), '13');
+let pz = JSON.parse(pp.w.localStorage.getItem('akt_v5')).projects[0].sloy2.od.potvardeni['d2::nomer'];
+t('поправката в полето се записва — с прочетеното до нея', pz && pz.stoynost === '13' && pz.prochetena === '12', pz);
+t('и личи като „поправено“', /✓ поправено/.test(tekst(pp.d.getElementById('dosie-telo'))), '');
+pp.w.dosiePopraviPole(encodeURIComponent('d2::nomer'), '');
+pz = JSON.parse(pp.w.localStorage.getItem('akt_v5')).projects[0].sloy2.od.potvardeni['d2::nomer'];
+t('изчистено поле — потвърждението отпада', !pz, pz);
 
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));

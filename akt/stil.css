@@ -567,3 +567,7 @@ body {
 #akt-vhod { position: fixed; inset: 0; z-index: 1000; background: rgba(20,20,20,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
 #akt-vhod .vhod-karta { background: var(--bg, #fff); color: inherit; max-width: 380px; width: 100%; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
 .shapka-vhod { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* Поправка в самото поле (17.11.2026) */
+.fakt-pole { width: 100%; box-sizing: border-box; font: inherit; padding: 4px 6px; margin: 2px 0; }
+.glava-red-otvoren { display: flex; flex-direction: column; gap: 6px; cursor: default; }

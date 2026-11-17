@@ -61,7 +61,14 @@ function obektGlavaHtml(p, st) {
     const redove = aktGlavaRedove(p, st);
     return `
     <div class="glava">
-        ${redove.map((r, i) => `
+        ${redove.map((r, i) => obektRedOtvoren === i ? `
+            <div class="glava-red glava-red-otvoren">
+                ${r.polya.map(pole => `
+                    <label class="p2-pole"><span>${_e(pole.ime)}</span>
+                        <input type="text" value="${_e(String(obektStoynost({ p, st }, pole) ?? ''))}"
+                               onchange="obektPopraviPole('${_e(pole.kade)}', '${_e(pole.pole)}', this.value)"></label>`).join('')}
+                <button class="bt bt-tih" onclick="obektPopravi(-1)">готово</button>
+            </div>` : `
             <div class="glava-red" onclick="obektPopravi(${i})" tabindex="0"
                  onkeydown="if(event.key==='Enter')obektPopravi(${i})"
                  title="Клик — поправи">
@@ -77,19 +84,18 @@ function obektGlavaHtml(p, st) {
     </div>`;
 }
 
-// Поправката е на място: едно поле, едно ✔. Без отделен екран „паспорт“.
+// Поправката е на място: клик на реда го отваря в полета; записва се при
+// излизане от полето. Без отделен прозорец (операторът, 11.11.2026: „поправката
+// за всички полета“ — в полето, което се вижда).
+let obektRedOtvoren = -1;
+
 function obektPopravi(i) {
-    const z = obektZhiv();
-    if (!z) return;
-    const red = aktGlavaRedove(z.p, z.st)[i];
-    if (!red) return;
-    for (const pole of red.polya) {
-        const sega = obektStoynost(z, pole);
-        const nov = prompt(pole.ime + ':', sega == null ? '' : String(sega));
-        if (nov === null) continue;
-        aktPopravi(obektId, pole.kade, pole.pole, nov.trim());
-    }
+    obektRedOtvoren = Number(i);
     obektRisuvai();
+}
+
+function obektPopraviPole(kade, pole, v) {
+    aktPopravi(obektId, kade, pole, String(v || '').trim());
 }
 
 function obektStoynost(z, pole) {
