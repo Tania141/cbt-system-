@@ -2110,18 +2110,36 @@ function _a15Pokazateli(st) {
 function _a15PoIzpalnenie(st) {
     const krugove = [st, ...((st && st.krugove_dop) || [])];
     const VLIZA = s => s === 'potvardeno' || s === 'popraveno';
+    // Редът на частите (операторът, 17.11.2026): Архитектура, Конструкции,
+    // Електро, ВиК, ОВК и т.н. — като списъка на частите в Проект; непозната
+    // част — накрая, по реда на прочитане. Важи и без изменение по 154.
+    const RED_CHASTI = [/архитект/i, /конструк/i, /електр/i, /вик|водоснаб|канализ/i, /овк|отопл|вентил/i,
+        /енергийна/i, /пожарн|^пб$/i, /геодез/i, /парк|озелен/i, /пбз/i, /пътна|транспорт/i, /ситуац|вертикална/i];
+    const redNa = ch => { const i = RED_CHASTI.findIndex(re => re.test(ch)); return i < 0 ? RED_CHASTI.length : i; };
+    const poRed = m => new Map([...m].map((x, i) => ({ x, i }))
+        .sort((a, b) => redNa(a.x[0]) - redNa(b.x[0]) || a.i - b.i).map(y => y.x));
     const poChasti = k => {     // кръг → Map(част → редове), по реда на блоковете
         const m = new Map();
         const bl = Object.values((k || {}).blokove || {}).filter(b => b.izpalnenie
             && VLIZA(b.izpalnenie.sastoyanie) && String(b.izpalnenie.tekst || '').trim())
             .sort((a, c) => (a.red || 0) - (c.red || 0));
+        // Първият ред на текста, ако е заглавие на част („Част Конструктивна:“,
+        // „Електротехническа част:“) — отпада: „Част …:“ го казва системата.
+        // Иначе излизаше двойно (17.11.2026).
+        const bezZaglavie = t => {
+            const red = t.split('\n');
+            while (red.length && (!red[0].trim()
+                || (red[0].trim().length < 60 && /:\s*$/.test(red[0]) && /част/i.test(red[0])))) red.shift();
+            return red.join('\n').trim();
+        };
         for (const b of bl) {
             const ch = b.chast || 'Друга част';
-            m.set(ch, [...(m.get(ch) || []), String(b.izpalnenie.tekst).trim()]);
+            const t = bezZaglavie(String(b.izpalnenie.tekst).trim());
+            if (t) m.set(ch, [...(m.get(ch) || []), t]);
         }
         return m;
     };
-    const osnoven = poChasti(krugove[0]);
+    const osnoven = poRed(poChasti(krugove[0]));
     const izmeneniya = krugove.slice(1).map(k => ({ k, chasti: poChasti(k) })).filter(x => x.chasti.size);
     if (!osnoven.size && !izmeneniya.length) return '';
     const raz = (st && st.razminavania) || {};
@@ -2164,12 +2182,6 @@ function _a15PoIzpalnenie(st) {
     for (const { chasti } of izmeneniya)
         for (const [chast, tekstove] of chasti) po154.set(chast, [...(po154.get(chast) || []), ...tekstove]);
     const imaPokazateli = _a15Pokazateli(st).length > 0;
-    // Редът на частите (операторът, 17.11.2026): Архитектура, Конструкции,
-    // Електро, ВиК, ОВК и т.н. — като списъка на частите в Проект; непозната
-    // част — накрая, по реда на прочитане.
-    const RED_CHASTI = [/архитект/i, /конструк/i, /електр/i, /вик|водоснаб|канализ/i, /овк|отопл|вентил/i,
-        /енергийна/i, /пожарн|^пб$/i, /геодез/i, /парк|озелен/i, /пбз/i, /пътна|транспорт/i, /ситуац|вертикална/i];
-    const redNa = ch => { const i = RED_CHASTI.findIndex(re => re.test(ch)); return i < 0 ? RED_CHASTI.length : i; };
     const chasti = [...osnoven.keys(), ...[...po154.keys()].filter(ch => !osnoven.has(ch))]
         .map((ch, i) => ({ ch, i })).sort((a, b) => redNa(a.ch) - redNa(b.ch) || a.i - b.i).map(x => x.ch);
     const redove = [];
