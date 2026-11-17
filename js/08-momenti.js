@@ -2125,15 +2125,15 @@ function _a15PoIzpalnenie(st) {
     const izmeneniya = krugove.slice(1).map(k => ({ k, chasti: poChasti(k) })).filter(x => x.chasti.size);
     if (!osnoven.size && !izmeneniya.length) return '';
     const raz = (st && st.razminavania) || {};
-    const redove = [];
-    for (const [chast, tekstove] of osnoven) {
-        redove.push(`Част ${chast}:`, ...tekstove);
-        const r = raz[chast] || {};
-        if (r.vid === 'ekzekutiv')
-            redove.push(`Несъществените отклонения от проекта по част ${chast} са отразени в екзекутивна документация${r.belezhka ? ' — ' + r.belezhka : ''}.`);
-    }
     const ima154 = izmeneniya.length || Object.values(raz).some(r => r && r.vid === '154');
     if (!ima154) {
+        const redove = [];
+        for (const [chast, tekstove] of osnoven) {
+            redove.push(`Част ${chast}:`, ...tekstove);
+            const r = raz[chast] || {};
+            if (r.vid === 'ekzekutiv')
+                redove.push(`Несъществените отклонения от проекта по част ${chast} са отразени в екзекутивна документация${r.belezhka ? ' — ' + r.belezhka : ''}.`);
+        }
         redove.push('В процеса на строителство не са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ спрямо одобрените проекти.');
         return redove.join('\n');
     }
@@ -2150,37 +2150,58 @@ function _a15PoIzpalnenie(st) {
                     z.izdatel && 'на ' + z.izdatel].filter(Boolean).join(' ')
                 + (z.v_sila ? ', влязла в сила на ' + z.v_sila + ' г.' : '');
         });
-    redove.push('Изменения в процеса на строителство:',
-        'В процеса на строителство са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ '
+    const izrechenie = 'В процеса на строителство са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ '
         + 'спрямо одобрените проекти и издадена Заповед ' + (zapovedi.length ? zapovedi.join('; ') : '.................................')
-        + (zapovedi.length && /г\.$/.test(zapovedi[zapovedi.length - 1]) ? '' : '.'));
+        + (zapovedi.length && /г\.$/.test(zapovedi[zapovedi.length - 1]) ? '' : '.');
+
+    // ИЗМЕНЕНИЕТО ВЪТРЕ В ЧАСТТА (операторът, 17.11.2026): „измененията по
+    // 154 се описват в част Архитектура, а таблицата с показателите е част от
+    // текста по част Архитектура“. Значи всяка част: основният текст →
+    // „Изменения в процеса на строителство:“ + заповедта + текстът по 154 →
+    // при Архитектура таблицата. Изречението със заповедта — веднъж, при
+    // първата изменена част. Дотук изменението беше отделен раздел накрая.
+    const po154 = new Map();
     for (const { chasti } of izmeneniya)
-        for (const [chast, tekstove] of chasti) redove.push(`Част ${chast}:`, ...tekstove);
-    // Показателите — таблица накрая; редовете с „ | “ от текстовете отпадат,
-    // за да не се повтарят.
-    // Реже се по РЕДОВЕ, не по текстове: текстът на частта е един елемент с
-    // таблицата вътре и изчезваше цял (Радулов, 17.11.2026 — „Част
-    // Архитектура:“ остана празна и в основния проект, и в изменението).
-    if (_a15Pokazateli(st).length) {
-        // Заглавието над таблицата („Градоустройствени характеристики“) отпада с нея.
-        const bez = redove.flatMap(r => String(r).split('\n'))
-            .filter(r => !r.includes(' | ') && !/^\s*градоустройствени\s+характеристики\s*:?\s*$/i.test(r));
-        // Таблицата — в края на ОСНОВНАТА „Част Архитектура“, преди следващата
-        // част (операторът, 17.11.2026). Няма ли я — накрая, както досега.
-        const nach = bez.indexOf('Част Архитектура:');
-        let kraj = -1;
-        if (nach >= 0) {
-            kraj = bez.findIndex((r, i) => i > nach && (/^Част .+:$/.test(r) || r === 'Изменения в процеса на строителство:'
-                || /^Несъществените отклонения/.test(r) || /^В процеса на строителство/.test(r)));
-            if (kraj < 0) kraj = bez.length;
-            // Редът за екзекутива на архитектурата остава с нея, таблицата — след него.
-            while (kraj < bez.length && /^Несъществените отклонения от проекта по част Архитектура/.test(bez[kraj])) kraj++;
+        for (const [chast, tekstove] of chasti) po154.set(chast, [...(po154.get(chast) || []), ...tekstove]);
+    const imaPokazateli = _a15Pokazateli(st).length > 0;
+    // Редът на частите (операторът, 17.11.2026): Архитектура, Конструкции,
+    // Електро, ВиК, ОВК и т.н. — като списъка на частите в Проект; непозната
+    // част — накрая, по реда на прочитане.
+    const RED_CHASTI = [/архитект/i, /конструк/i, /електр/i, /вик|водоснаб|канализ/i, /овк|отопл|вентил/i,
+        /енергийна/i, /пожарн|^пб$/i, /геодез/i, /парк|озелен/i, /пбз/i, /пътна|транспорт/i, /ситуац|вертикална/i];
+    const redNa = ch => { const i = RED_CHASTI.findIndex(re => re.test(ch)); return i < 0 ? RED_CHASTI.length : i; };
+    const chasti = [...osnoven.keys(), ...[...po154.keys()].filter(ch => !osnoven.has(ch))]
+        .map((ch, i) => ({ ch, i })).sort((a, b) => redNa(a.ch) - redNa(b.ch) || a.i - b.i).map(x => x.ch);
+    const redove = [];
+    let kazanaZapoved = false;
+    let slozhenaTablica = false;
+    for (const chast of chasti) {
+        redove.push(`Част ${chast}:`, ...(osnoven.get(chast) || []));
+        const r = raz[chast] || {};
+        if (r.vid === 'ekzekutiv')
+            redove.push(`Несъществените отклонения от проекта по част ${chast} са отразени в екзекутивна документация${r.belezhka ? ' — ' + r.belezhka : ''}.`);
+        if (po154.has(chast)) {
+            redove.push('Изменения в процеса на строителство:');
+            if (!kazanaZapoved) { redove.push(izrechenie); kazanaZapoved = true; }
+            redove.push(...po154.get(chast));
         }
-        if (kraj < 0) kraj = bez.length;
-        bez.splice(kraj, 0, 'Показатели:', _A15_POKAZATELI_MARKER);
-        return bez.join('\n');
+        if (imaPokazateli && chast === 'Архитектура') {
+            redove.push('Показатели:', _A15_POKAZATELI_MARKER);
+            slozhenaTablica = true;
+        }
     }
-    return redove.join('\n');
+    // Изменение без текст по части (само отбелязано „по 154“) — изречението
+    // пак се казва, накрая.
+    if (!kazanaZapoved) redove.push('Изменения в процеса на строителство:', izrechenie);
+    if (imaPokazateli && !slozhenaTablica) redove.push('Показатели:', _A15_POKAZATELI_MARKER);
+    if (!imaPokazateli) return redove.join('\n');
+    // Редовете на таблицата от текстовете отпадат — тя е отделно. Реже се по
+    // РЕДОВЕ, не по текстове: текстът на частта е един елемент с таблицата
+    // вътре и изчезваше цял (Радулов, 17.11.2026). Заглавието над таблицата
+    // („Градоустройствени характеристики“) отпада с нея.
+    return redove.flatMap(r => String(r).split('\n'))
+        .filter(r => !r.includes(' | ') && !/^\s*градоустройствени\s+характеристики\s*:?\s*$/i.test(r))
+        .join('\n');
 }
 
 // Описът на приложенията — точка 4: „копия от документите съгласно описа на
