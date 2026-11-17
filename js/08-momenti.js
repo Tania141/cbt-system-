@@ -1895,7 +1895,20 @@ function renderSignersChecklist(containerId, project) {
         return;
     }
     const upalnom = (project.upalnomoshten_predstavitel || '').trim();
-    el.innerHTML = clients.map((c, idx) => {
+    // „Избери един“ (операторът, 17.11.2026): при 100 апартамента и един-двама
+    // представители отмятането едно по едно е излишно кликане.
+    const izbor = clients.length > 1 ? `
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+            <select class="form-input" style="max-width:340px"
+                    onchange="podpisvaSamo('${containerId}', this.value)">
+                <option value="">— подписва само… —</option>
+                ${clients.map((c, idx) => `<option value="${idx + 1}">${String(c.name || '—').replace(/[&<>"']/g, ch => '&#' + ch.charCodeAt(0) + ';')}</option>`).join('')}
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="podpisvaSamo('${containerId}', 'vsichki')">всички</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="podpisvaSamo('${containerId}', 'nikoy')">никой</button>
+            <span style="font-size:12px;color:var(--muted)" data-signer-broj></span>
+        </div>` : '';
+    el.innerHTML = izbor + clients.map((c, idx) => {
         const podp = [c.podpisvaTitle, c.podpisva].filter(Boolean).join(' ').trim();
         return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;cursor:pointer">
             <input type="checkbox" data-signer="${idx + 1}" checked style="width:16px;height:16px;flex-shrink:0">
@@ -1906,6 +1919,18 @@ function renderSignersChecklist(containerId, project) {
         : `<p style="font-size:11px;color:var(--muted);margin-top:8px">
              Горе в документа винаги се изписват всички възложители. Тук избираш само кой подписва.
              ${v.otkade === 'registar' ? ' Списъкът е от регистъра на собствеността.' : ''}</p>`);
+}
+
+// „Подписва само …“ / всички / никой — после отделни отметки се добавят на ръка.
+function podpisvaSamo(containerId, kak) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const boxes = [...el.querySelectorAll('input[data-signer]')];
+    for (const b of boxes)
+        b.checked = kak === 'vsichki' ? true : kak === 'nikoy' ? false : b.dataset.signer === String(kak);
+    const n = boxes.filter(b => b.checked).length;
+    const br = el.querySelector('[data-signer-broj]');
+    if (br) br.textContent = `подписват ${n} от ${boxes.length}`;
 }
 
 function readSigners(containerId) {
