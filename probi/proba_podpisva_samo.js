@@ -33,6 +33,28 @@ t('„всички“', w.readSigners('sp').length === 100, '');
 w.renderSignersChecklist('sp', { clients: [{ name: 'Само един' }] });
 t('при един възложител — без избор', !d.querySelector('#sp select'), '');
 
+// ── старото поле „Упълномощен представител“ (17.11.2026) ────────────────────
+// Живее само в паспорта на старото ПВА и тихо биеше избора. Вече не влиза в
+// документа; записано ли е — екранът го казва и предлага да се махне.
+w.eval(grab(s, 'mahniStariyaPredstavitel') + '\nwindow.mahniStariyaPredstavitel = mahniStariyaPredstavitel;'
+    + '\nvar zapisano = []; window._s2ZapishiTiho = (p, k) => zapisano.push(k);');
+const star = { id: 'ob1', clients: [{ name: 'А' }, { name: 'Б' }], upalnomoshten_predstavitel: 'Иван Старов' };
+w.appData = { projects: [star] };
+w.renderSignersChecklist('sp', star);
+const bel = d.querySelector('[data-star-predstavitel]');
+t('старият представител се казва', !!bel && /Иван Старов/.test(bel.textContent), bel && bel.textContent);
+t('и казва, че вече не влиза', !!bel && /не влиза в документа/.test(bel.textContent), '');
+t('изборът кой подписва си работи', w.readSigners('sp').length === 2, w.readSigners('sp'));
+// jsdom тук не пуска onclick от HTML-а — проверява се, че бутонът вика
+// функцията с правилния обект, и тя се вика пряко.
+t('бутонът сочи този обект', /mahniStariyaPredstavitel\('sp', 'ob1'\)/.test(bel.innerHTML), bel.innerHTML);
+w.mahniStariyaPredstavitel('sp', 'ob1');
+t('„махни го“ трие полето', !('upalnomoshten_predstavitel' in star), star);
+t('и записва', w.eval('zapisano.length') === 1, w.eval('zapisano'));
+t('бележката изчезва', !d.querySelector('[data-star-predstavitel]'), '');
+t('към сървъра полето отива празно',
+  /add\('Възложител_Упълномощен_Представител', ''\)/.test(s), '');
+
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
 console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — един избор вместо сто отметки`);

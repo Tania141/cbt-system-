@@ -1914,11 +1914,27 @@ function renderSignersChecklist(containerId, project) {
             <input type="checkbox" data-signer="${idx + 1}" checked style="width:16px;height:16px;flex-shrink:0">
             <span><strong>${c.name || '—'}</strong>${podp ? ` — подписва: ${podp}` : ' <span style="color:var(--muted)">(няма посочено лице)</span>'}</span>
         </label>`;
-    }).join('') + (upalnom
-        ? `<p style="font-size:11px;color:var(--gold);margin-top:8px">⚠ В паспорта е зададен упълномощен представител (<strong>${upalnom}</strong>) — той подписва вместо всички и изборът по-горе се пренебрегва.</p>`
-        : `<p style="font-size:11px;color:var(--muted);margin-top:8px">
+    }).join('') + `<p style="font-size:11px;color:var(--muted);margin-top:8px">
              Горе в документа винаги се изписват всички възложители. Тук избираш само кой подписва.
-             ${v.otkade === 'registar' ? ' Списъкът е от регистъра на собствеността.' : ''}</p>`);
+             ${v.otkade === 'registar' ? ' Списъкът е от регистъра на собствеността.' : ''}</p>`
+      // Старото поле „Упълномощен представител“ от паспорта на старото ПВА
+      // вече НЕ подменя подписващите (17.11.2026): в новото ПВА не се вижда,
+      // а биеше избора тихо. Представителят се вписва при лицето в
+      // Собственост. Записано ли е — казва се и се маха с един бутон.
+      + (upalnom ? `<p style="font-size:11px;color:var(--gold);margin-top:6px" data-star-predstavitel>
+             ⚠ В паспорта от старото ПВА е записан упълномощен представител
+             (<strong>${upalnom.replace(/[&<>"']/g, ch => '&#' + ch.charCodeAt(0) + ';')}</strong>).
+             Той вече не влиза в документа — подписва избраният горе; представителят се вписва при лицето в Собственост.
+             <button type="button" class="btn btn-ghost btn-sm"
+                     onclick="mahniStariyaPredstavitel('${containerId}', '${String(project.id || '').replace(/['"\\<>&]/g, '')}')">махни го</button></p>` : '');
+}
+
+function mahniStariyaPredstavitel(containerId, id) {
+    const p = ((typeof appData !== 'undefined' && appData.projects) || []).find(x => String(x.id) === String(id));
+    if (!p) return;
+    delete p.upalnomoshten_predstavitel;
+    if (typeof _s2ZapishiTiho === 'function') _s2ZapishiTiho(p, 'махнат старият упълномощен представител');
+    renderSignersChecklist(containerId, p);
 }
 
 // „Подписва само …“ / всички / никой — после отделни отметки се добавят на ръка.
@@ -2659,7 +2675,9 @@ function buildPassportRows(project, consultant, extra) {
             add(`Възложител_${i}_Подписва_Да`, extra.signers.includes(i) ? '1' : '0');
         }
     });
-    add('Възложител_Упълномощен_Представител', project.upalnomoshten_predstavitel || '');
+    // Празно нарочно (17.11.2026): старото поле от паспорта биеше избора кой
+    // подписва, а в новото ПВА не се вижда. Сървърът при празно следва избора.
+    add('Възложител_Упълномощен_Представител', '');
 
     // Правното основание: с кой акт възложителите държат правата си. Досега в
     // ОСИП стояха точки, а актът го имаше в регистъра. Непопълнен регистър
