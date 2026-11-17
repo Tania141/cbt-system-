@@ -193,10 +193,21 @@ const yadro = fs.readFileSync(path.join(PAPKA, 'yadro.js'), 'utf8');
 
 // Какво определя самата кухня — то не ѝ трябва отвън.
 const svoi = new Set([...kuhnya.matchAll(/^(?:async )?function ([\w$]+)/gm)].map(m => m[1])
-    .concat([...kuhnya.matchAll(/^const ([\w$]+)\s*=/gm)].map(m => m[1])));
-// Какво дават другите включени файлове.
+    .concat([...kuhnya.matchAll(/^\s*const ([\w$]+)\s*=/gm)].map(m => m[1]))
+    // параметрите на функциите — `priZapis(st)` вика подадената функция (17.11.2026)
+    .concat([...kuhnya.matchAll(/function [\w$]+\(([^)]*)\)/g)]
+        .flatMap(m => m[1].split(',').map(x => x.trim().split(/[\s=]/)[0]).filter(Boolean)))
+    // локални стрелки: `const d = …, dv = n => …`
+    .concat([...kuhnya.matchAll(/([\w$]+)\s*=\s*(?:\([^)]*\)|[\w$]+)\s*=>/g)].map(m => m[1])));
+// Какво дават другите включени файлове — ВСИЧКИ, които akt/index.html зарежда.
+// Дотук се гледаха само три; старото рязане на низове криеше, че кухнята
+// вика и `_s2esc` (04) и `renderZapiskiKarta` (08). (17.11.2026)
+const zaredeni = [...fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8')
+    .matchAll(/<script src="([^"]+)"/g)].map(m => path.join(PAPKA, m[1]))
+    .filter(f => !/07-sobstvenost/.test(f) && fs.existsSync(f))
+    .map(f => fs.readFileSync(f, 'utf8'));
 const dadeni = new Set();
-for (const izvor of [most, osnova, yadro])
+for (const izvor of [most, osnova, yadro, ...zaredeni])
     for (const m of izvor.matchAll(/^(?:async )?function ([\w$]+)|^const ([\w$]+)\s*=|^let ([\w$]+)/gm))
         dadeni.add(m[1] || m[2] || m[3]);
 
@@ -207,8 +218,54 @@ const VGRADENI = new Set(['String', 'Number', 'Object', 'Array', 'Math', 'JSON',
 
 // Имената ВЪТРЕ в текстове не се броят: кухнята носи цял HTML в шаблонни
 // низове, с onclick към стари екрани. Те не се изпълняват тук — не ги викаме.
-const bezTekstove = kuhnya
-    .replace(/`[^`]*`/g, '``').replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""');
+// Токенизатор, не регулярен израз: вложените шаблонни низове (`${a.map(x => `…`)}`)
+// объркваха простото рязане и изваждаха текст като код (17.11.2026). Кодът в
+// `${…}` се пази — той се изпълнява.
+const NOV_RED = String.fromCharCode(10), NAKLON = String.fromCharCode(92);
+function bezNizove(src) {
+    let out = '', i = 0;
+    const stek = [];          // 'code' | 'tpl' — къде сме
+    let dalb = [];            // дълбочина на {} в текущото ${…}
+    const vKod = () => !stek.length || stek[stek.length - 1] === 'code';
+    while (i < src.length) {
+        const c = src[i];
+        if (vKod()) {
+            if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== NOV_RED) i++; continue; }
+            if (c === '/' && src[i + 1] === '*') { const k = src.indexOf('*/', i + 2); i = k < 0 ? src.length : k + 2; continue; }
+            // регулярен израз: `/` след оператор или отваряща скоба — `/[&<>"']/g`
+            // носи кавички, които не са низ
+            if (c === '/' && /[(,=:[!&|?{};+]$|^$|return$/.test(out.trimEnd().slice(-6))) {
+                i++; let klas = false;
+                while (i < src.length && (src[i] !== '/' || klas)) {
+                    if (src[i] === NAKLON) i++;
+                    else if (src[i] === '[') klas = true;
+                    else if (src[i] === ']') klas = false;
+                    i++;
+                }
+                i++; out += '/r/'; continue;
+            }
+            if (c === "'" || c === '"') {
+                i++; while (i < src.length && src[i] !== c) { if (src[i] === NAKLON) i++; i++; }
+                i++; out += c + c; continue;
+            }
+            if (c === '`') { stek.push('tpl'); out += '`'; i++; continue; }
+            if (stek.length && c === '{') { dalb[dalb.length - 1]++; }
+            if (stek.length && c === '}') {
+                // `;` — за да не слепи `${i}` с текста след него в „i (“
+                if (dalb[dalb.length - 1] === 0) { stek.pop(); dalb.pop(); out += ';'; i++; continue; }
+                dalb[dalb.length - 1]--;
+            }
+            out += c; i++;
+        } else {
+            if (c === NAKLON) { i += 2; continue; }
+            if (c === '`') { stek.pop(); out += '`'; i++; continue; }
+            if (c === '$' && src[i + 1] === '{') { stek.push('code'); dalb.push(0); out += ' '; i += 2; continue; }
+            i++;
+        }
+    }
+    return out;
+}
+const bezTekstove = bezNizove(kuhnya);
 // Само ГОЛИ извиквания: `foo(`, но не `x.foo(`.
 const vikani = new Set([...bezTekstove.matchAll(/(^|[^.\w$])([_a-zA-Z][\w$]*)\s*\(/g)]
     .map(m => m[2]));

@@ -74,13 +74,26 @@ async function pusni() {
     // ── 2. вписването на акт на ръка остава вписано ───────────────────────
     w.sbZapochni();
     await new Promise(r => setTimeout(r, 100));
-    const otgovori = ['1', 'покупко-продажба', 'Павел Валериев Христов 1/1', 'Мария Иванова',
-                      '15.03.2021', 'нотариален акт № 77, том I, рег. № 1200, нотариус Петя Колева'];
-    let i = 0;
-    w.prompt = () => (i < otgovori.length ? otgovori[i++] : null);
+    // Въвеждането е ФОРМУЛЯР, не верига от prompt-ове (17.11.2026): старата
+    // проба броеше въпросите; сега се попълват полетата и се натиска „Запиши“.
+    const popalni = (st) => {
+        const f = w.document.querySelector('#sb-formular form');
+        if (!f) return false;
+        f.querySelectorAll('[data-i]').forEach((el, i) => { if (st[i] !== undefined) el.value = st[i]; });
+        f.dispatchEvent(new w.Event('submit', { cancelable: true }));
+        return true;
+    };
+    w.prompt = () => { throw new Error('prompt не трябва да се вика'); };
     w.sbDobaviSabitie();
+    t('отваря се формуляр', !!w.document.getElementById('sb-formular'));
+    // грешен ред — формулярът остава, с обяснение, нищо не се записва
+    popalni({ 2: 'Павел Христов наполовина' });
+    t('грешният ред задържа формуляра', !!w.document.getElementById('sb-formular'));
+    t('казва кой ред не разбира', /Не разбирам реда/.test((w.document.querySelector('#sb-formular [data-greshka]') || {}).textContent || ''));
+    popalni({ 2: 'Павел Валериев Христов 1/1', 3: 'Мария Иванова', 4: '15.03.2021',
+              5: 'нотариален акт № 77, том I, рег. № 1200, нотариус Петя Колева' });
     await new Promise(r => setTimeout(r, 200));
-    t('всички въпроси са зададени', i === otgovori.length, 'отговорени ' + i + ' от ' + otgovori.length);
+    t('формулярът се затваря след запис', !w.document.getElementById('sb-formular'));
     t('актът се вижда в регистъра', /№ 77/.test(tekst()), tekst().slice(0, 400));
     t('придобиващият се вижда', /Христов/.test(tekst()), tekst().slice(0, 400));
     t('нотариусът се вижда', /Петя Колева/.test(tekst()), tekst().slice(0, 400));

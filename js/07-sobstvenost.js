@@ -1668,6 +1668,61 @@ function sbZapochni() {
     _sbZapishi(p, 'земята е първият обект');
 }
 
+// ── ФОРМУЛЯР ВМЕСТО ПОРЕДИЦА ОТ ПРОЗОРЦИ (17.11.2026) ───────────────────────
+// Операторът, 11.11.2026: „Запиши да направим поправката за всички полета!“ —
+// въвеждането в Собствеността минаваше през 5–7 прозореца един след друг, без
+// да се вижда кое е попълнено. Сега всичко е в едно, на екрана, с подсказките.
+// Работи и в двете ПВА — стиловете са вътре.
+function sbFormular(zaglavie, poleta, priZapis) {
+    const stara = document.getElementById('sb-formular');
+    if (stara) stara.remove();
+    const esc = x => String(x == null ? '' : x).replace(/[&<>"']/g, ch => '&#' + ch.charCodeAt(0) + ';');
+    const d = document.createElement('div');
+    d.id = 'sb-formular';
+    d.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(20,20,20,.5);display:flex;'
+        + 'align-items:center;justify-content:center;padding:16px';
+    d.innerHTML = `
+        <form style="background:var(--bg,#fff);color:inherit;max-width:560px;width:100%;max-height:90vh;overflow:auto;
+                     padding:18px;border-radius:10px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 40px rgba(0,0,0,.3)">
+            <strong style="font-size:15px">${esc(zaglavie)}</strong>
+            ${poleta.map((f, i) => `
+                <label style="display:flex;flex-direction:column;gap:3px;font-size:13px">
+                    <span>${esc(f.ime)}</span>
+                    ${f.tip === 'select'
+                        ? `<select data-i="${i}" style="font:inherit;padding:5px">${(f.opcii || []).map(o =>
+                            `<option value="${esc(o.v)}" ${String(o.v) === String(f.stoynost ?? '') ? 'selected' : ''}>${esc(o.t)}</option>`).join('')}</select>`
+                        : f.tip === 'textarea'
+                        ? `<textarea data-i="${i}" rows="${f.redove || 4}" placeholder="${esc(f.podskazka || '')}"
+                                     style="font:inherit;padding:5px">${esc(f.stoynost)}</textarea>`
+                        : `<input type="text" data-i="${i}" value="${esc(f.stoynost)}" placeholder="${esc(f.podskazka || '')}"
+                                  style="font:inherit;padding:5px">`}
+                    ${f.belezhka ? `<span style="font-size:11px;color:var(--muted,#777)">${esc(f.belezhka)}</span>` : ''}
+                </label>`).join('')}
+            <div data-greshka style="color:#b42318;font-size:13px" hidden></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" data-otkazhi style="font:inherit;padding:6px 12px">Откажи</button>
+                <button type="submit" style="font:inherit;padding:6px 14px;font-weight:600">Запиши</button>
+            </div>
+        </form>`;
+    document.body.append(d);
+    const forma = d.querySelector('form');
+    d.querySelector('[data-otkazhi]').onclick = () => d.remove();
+    forma.onsubmit = ev => {
+        ev.preventDefault();
+        const st = {};
+        poleta.forEach((f, i) => { st[f.kl] = String(forma.querySelector(`[data-i="${i}"]`).value || '').trim(); });
+        const greshka = priZapis(st);
+        if (greshka) {
+            const g = d.querySelector('[data-greshka]');
+            g.hidden = false; g.textContent = greshka;
+            return;
+        }
+        d.remove();
+    };
+    const parvo = forma.querySelector('[data-i]');
+    if (parvo) parvo.focus();
+}
+
 // ПЪЛНОМОЩНОТО Е СВОЙСТВО НА ЛИЦЕТО.
 // Операторът, 21.10.2026: „може да го сложим в собствеността, така ще имаме
 // възложител и неговия упълномощен представител“. И: „Акт 15 може да подпише
@@ -1680,21 +1735,22 @@ function sbPredstavitelNa(lice) {
     const s = _sbDanni(p);
     const l = _sbLice(s, lice); if (!l) return;
     const sega = l.predstavitel || {};
-    const ime = (prompt(`Кой представлява ${l.ime}?` + String.fromCharCode(10, 10)
-        + 'Трите имена; празно = махни представителя', sega.ime || '') || '').trim();
-    if (!ime) { delete l.predstavitel; _sbZapishi(p, `${l.ime} — махнат представител`); return; }
-    const nomer = (prompt('Пълномощно — рег. № на нотариалната заверка:', sega.nomer || '') || '').trim();
-    const data = (prompt('Дата на заверката (дд.мм.гггг):', sega.data || '') || '').trim();
-    // Номерът на нотариуса в Нотариалната камара — актът го цитира („на
-    // нотариус №263 в НК“), а дотук пълномощното го нямаше. (22.10.2026)
-    const notarius = (prompt('Пред кой нотариус е заверено?' + String.fromCharCode(10, 10)
-        + 'Номерът му в Нотариалната камара, напр. 263', sega.notarius || '') || '').trim();
-    const obhvat = (prompt('За какво е пълномощното?' + String.fromCharCode(10, 10)
-        + 'напр. „общо“ или „да подписва актове и протоколи“',
-        sega.obhvat || 'общо') || '').trim();
-    const do_ = (prompt('До кога важи (дд.мм.гггг)? Празно = без срок:', sega.do || '') || '').trim();
-    l.predstavitel = { ime, nomer, data, notarius, obhvat, do: do_ };
-    _sbZapishi(p, `${l.ime} — представител ${ime}`);
+    sbFormular(`Кой представлява ${l.ime}?`, [
+        { kl: 'ime', ime: 'Трите имена на пълномощника', stoynost: sega.ime, belezhka: 'Празно = махни представителя.' },
+        { kl: 'nomer', ime: 'Пълномощно — рег. № на нотариалната заверка', stoynost: sega.nomer },
+        { kl: 'data', ime: 'Дата на заверката', stoynost: sega.data, podskazka: 'дд.мм.гггг' },
+        // Номерът на нотариуса в Нотариалната камара — актът го цитира („на
+        // нотариус №263 в НК“). (22.10.2026)
+        { kl: 'notarius', ime: 'Нотариус — номерът му в Нотариалната камара', stoynost: sega.notarius, podskazka: 'напр. 263' },
+        { kl: 'obhvat', ime: 'За какво е пълномощното', stoynost: sega.obhvat || 'общо',
+          belezhka: 'напр. „общо“ или „да подписва актове и протоколи“' },
+        { kl: 'do', ime: 'До кога важи', stoynost: sega.do, podskazka: 'дд.мм.гггг — празно = без срок' },
+    ], v => {
+        if (!v.ime) { delete l.predstavitel; _sbZapishi(p, `${l.ime} — махнат представител`); return; }
+        l.predstavitel = { ...sega, ime: v.ime, nomer: v.nomer, data: v.data, notarius: v.notarius,
+                           obhvat: v.obhvat, do: v.do };
+        _sbZapishi(p, `${l.ime} — представител ${v.ime}`);
+    });
 }
 
 function sbMahniPredstavitel(lice) {
@@ -1728,83 +1784,72 @@ function _sbPodpisi(p, data) {
 
 function sbDobaviLice() {
     const p = _zhivObekt(); if (!p) return;
-    const ime = (prompt('Име на лицето (или фирма):') || '').trim();
-    if (!ime) return;
-    const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(ime);
-    // За физическо лице не се пита ЕГН: лицето се разпознава по име и по
-    // нотариалния акт, а той е и по-силното доказателство. (15.10.2026)
-    const egn = yur ? (prompt('ЕИК (по избор):') || '').trim() : '';
-    _sbDanni(p).lica.push({ id: _sbNovId(), ime, vid: yur ? 'юридическо' : 'физическо', egn });
-    _sbZapishi(p, `лице „${ime}“`);
+    sbFormular('Ново лице', [
+        { kl: 'ime', ime: 'Име на лицето или фирмата', podskazka: 'както е в акта' },
+        // За физическо лице не се пита ЕГН (15.10.2026) — само ЕИК на фирма.
+        { kl: 'eik', ime: 'ЕИК (само за фирма, по избор)' },
+    ], v => {
+        if (!v.ime) return 'Напиши името.';
+        const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(v.ime);
+        _sbDanni(p).lica.push({ id: _sbNovId(), ime: v.ime, vid: yur ? 'юридическо' : 'физическо',
+                                egn: yur ? v.eik : '' });
+        _sbZapishi(p, `лице „${v.ime}“`);
+    });
 }
 
 function sbDobaviObekt() {
     const p = _zhivObekt(); if (!p) return;
-    const vid = (prompt('Вид: земя · сграда · самостоятелен обект · право на строеж', 'самостоятелен обект') || '').trim();
-    if (!vid) return;
-    const ident = (prompt('Идентификатор по КККР (вписва се на ръка):') || '').trim();
-    const opis = (prompt('Описание — апартамент 15, гараж 3…:') || '').trim();
-    if (!ident && !opis) return;
-    _sbDanni(p).obekti.push({ id: _sbNovId(), vid, identifikator: ident, opisanie: opis });
-    _sbZapishi(p, `обект „${ident || opis}“`);
+    sbFormular('Нов обект', [
+        { kl: 'vid', ime: 'Вид', tip: 'select', stoynost: 'самостоятелен обект',
+          opcii: ['земя', 'сграда', 'самостоятелен обект', 'право на строеж'].map(x => ({ v: x, t: x })) },
+        { kl: 'ident', ime: 'Идентификатор по КККР', belezhka: 'Вписва се на ръка — сбъркана цифра сочи чужд имот.' },
+        { kl: 'opis', ime: 'Описание', podskazka: 'апартамент 15, гараж 3…' },
+    ], v => {
+        if (!v.ident && !v.opis) return 'Напиши идентификатор или описание.';
+        _sbDanni(p).obekti.push({ id: _sbNovId(), vid: v.vid, identifikator: v.ident, opisanie: v.opis });
+        _sbZapishi(p, `обект „${v.ident || v.opis}“`);
+    });
 }
 
 function sbDobaviSabitie() {
     const p = _zhivObekt(); if (!p) return;
     const s = _sbDanni(p);
     if (!s.obekti.length) return alert('Първо добави обект.');
-
-    const izbor = (spisak, podkana) => {
-        const red = spisak.map((x, i) => `${i + 1}. ${x.tekst}`).join(String.fromCharCode(10));
-        const o = prompt(podkana + String.fromCharCode(10, 10) + red);
-        if (o === null) return undefined;
-        const i = parseInt(o, 10) - 1;
-        return spisak[i] ? spisak[i].id : null;
-    };
-
-    const obekt = izbor(s.obekti.map(o => ({ id: o.id, tekst: _sbImeObekt(s, o.id) })), 'За кой обект?');
-    if (!obekt) return;
-
-    const vid = (prompt('Какъв е документът?' + String.fromCharCode(10, 10) + _SB_VID.join(', '),
-                        'покупко-продажба') || '').trim();
-    if (!vid) return;
-
-    // Придобиващите: по един на ред, с дяла след името.
-    // „Иван Петров 1/2“ — така се пише цял акт наведнъж.
-    const redove = (prompt(
-        'Кой придобива и с какъв дял?' + String.fromCharCode(10, 10)
-        + 'По един на ред, дялът след името:' + String.fromCharCode(10)
-        + 'Даниела Валентинова Занева 1/2' + String.fromCharCode(10)
-        + 'Павел Валериев Христов 1/2') || '').split(String.fromCharCode(10))
-        .map(x => x.trim()).filter(Boolean);
-    if (!redove.length) return;
-
-    const pridobivashti = [];
-    for (const red of redove) {
-        const m = red.match(/^(.+?)\s+([0-9]+\s*\/\s*[0-9]+|[0-9]+(?:[.,][0-9]+)?\s*%|1)$/);
-        if (!m) return alert(`Не разбирам реда „${red}“.\n\nПиши име и дял: Иван Петров 1/2`);
-        const ime = m[1].trim(), dyal = m[2].trim();
-        if (!_dr(dyal)) return alert(`Дялът „${dyal}“ не се чете. Пиши дроб (1/2) или процент (8,38%).`);
-        let l = s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(ime));
-        if (!l) {
-            const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(ime);
-            l = { id: _sbNovId(), ime, vid: yur ? 'юридическо' : 'физическо', egn: '' };
-            s.lica.push(l);
+    sbFormular('Ново събитие — прехвърляне', [
+        { kl: 'obekt', ime: 'За кой обект', tip: 'select', stoynost: s.obekti[0].id,
+          opcii: s.obekti.map(o => ({ v: o.id, t: _sbImeObekt(s, o.id) })) },
+        { kl: 'vid', ime: 'Какъв е документът', tip: 'select', stoynost: 'покупко-продажба',
+          opcii: _SB_VID.map(x => ({ v: x, t: x })) },
+        // Придобиващите: по един на ред, дялът след името — цял акт наведнъж.
+        { kl: 'redove', ime: 'Кой придобива и с какъв дял — по един на ред', tip: 'textarea', redove: 4,
+          podskazka: 'Даниела Валентинова Занева 1/2\nПавел Валериев Христов 1/2' },
+        // Прехвърлителят е ОПИСАНИЕ, докато не докажем и неговото придобиване.
+        { kl: 'ot', ime: 'От кого', belezhka: 'Имената, както са в акта; празно = не се сочи.' },
+        { kl: 'data', ime: 'Дата', podskazka: 'дд.мм.гггг' },
+        { kl: 'dokument', ime: 'Документът', podskazka: 'НА № …, том, рег. №, дело, нотариус' },
+    ], v => {
+        const redove = v.redove.split(String.fromCharCode(10)).map(x => x.trim()).filter(Boolean);
+        if (!redove.length) return 'Напиши поне един придобиващ с дяла му.';
+        const pridobivashti = [], novi = [];
+        for (const red of redove) {
+            const m = red.match(/^(.+?)\s+([0-9]+\s*\/\s*[0-9]+|[0-9]+(?:[.,][0-9]+)?\s*%|1)$/);
+            if (!m) return `Не разбирам реда „${red}“ — пиши име и дял: Иван Петров 1/2`;
+            const ime = m[1].trim(), dyal = m[2].trim();
+            if (!_dr(dyal)) return `Дялът „${dyal}“ не се чете — пиши дроб (1/2) или процент (8,38%).`;
+            let l = s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(ime)) || novi.find(x => _sbZnIme(x.ime) === _sbZnIme(ime));
+            if (!l) {
+                const yur = /(ООД|ЕООД|АД|ЕАД|СД|КД|ЕТ)\b/.test(ime);
+                l = { id: _sbNovId(), ime, vid: yur ? 'юридическо' : 'физическо', egn: '' };
+                novi.push(l);
+            }
+            pridobivashti.push({ lice: l.id, dyal });
         }
-        pridobivashti.push({ lice: l.id, dyal });
-    }
-
-    // Прехвърлителят е ОПИСАНИЕ, докато не докажем и неговото придобиване.
-    const otTekst = (prompt('От кого? (имената, както са в акта; празно = не се сочи)') || '').trim();
-    const otLice = otTekst
-        ? (s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(otTekst)) || {}).id || null : null;
-
-    const data = (prompt('Дата (дд.мм.гггг):') || '').trim();
-    const dokument = (prompt('Документът — НА № …, том, рег. №, дело, нотариус:') || '').trim();
-
-    s.sabitia.push({ id: _sbNovId(), obekt, vid, data, dokument,
-                     ot: otLice, ot_opisanie: otTekst, pridobivashti });
-    _sbZapishi(p, `${vid}${data ? ' от ' + data : ''} — ${pridobivashti.length} придобиващи`);
+        s.lica.push(...novi);   // новите лица — едва когато целият формуляр е наред
+        const otLice = v.ot ? (s.lica.find(x => _sbZnIme(x.ime) === _sbZnIme(v.ot)) || {}).id || null : null;
+        s.sabitia.push({ id: _sbNovId(), obekt: v.obekt, vid: v.vid, data: v.data, dokument: v.dokument,
+                         ot: otLice, ot_opisanie: v.ot, pridobivashti });
+        _sbZapishi(p, `${v.vid}${v.data ? ' от ' + v.data : ''} — ${pridobivashti.length} придобиващи`);
+    });
 }
 
 // Лице или обект, който участва в събития, не се маха мълчаливо: събитията му
