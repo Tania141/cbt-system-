@@ -2047,6 +2047,47 @@ function _a15NomerData(tekst) {
 // Дотук търсеше блокове с роля „изпълнение“, каквито четецът не дава, и
 // излизаше празно.
 //
+// ПОКАЗАТЕЛИТЕ — ТАБЛИЦА (операторът, 17.11.2026): „по виза“ · „по основен
+// проект“ · „по промяна чл. 154“. Редовете идват от таблиците
+// „Показатели | Допустими | Постигнати“ в записките (основната и по 154);
+// „по виза“ е колоната „Допустими“ — проектантът я преписва от визата.
+const _A15_POKAZATELI_MARKER = '§ПОКАЗАТЕЛИ§';
+
+function _a15RedoveNaTablica(tekst) {
+    // Само редовете на таблицата с показателите — след заглавния ѝ ред.
+    const out = [];
+    let vutre = false;
+    for (const red of String(tekst || '').split('\n')) {
+        if (!red.includes(' | ')) { if (vutre && red.trim()) vutre = false; continue; }
+        const kl = red.split(' | ').map(x => x.trim());
+        if (/^показател/i.test(kl[0])) { vutre = true; continue; }
+        if (!vutre) continue;
+        out.push({ ime: kl[0], dop: kl.length > 2 ? kl[1] : kl[1], post: kl.length > 2 ? kl[2] : kl[1] });
+    }
+    return out;
+}
+
+function _a15Pokazateli(st) {
+    const krugove = [st, ...((st && st.krugove_dop) || [])];
+    const otKrug = k => Object.values((k || {}).blokove || {})
+        .sort((a, c) => (a.red || 0) - (c.red || 0))
+        .flatMap(b => _a15RedoveNaTablica(b.tekst));
+    const osn = otKrug(krugove[0]);
+    const izm = krugove.slice(1).map(otKrug).filter(x => x.length).pop() || [];
+    if (!osn.length || !izm.length) return [];
+    // Ключ: името и поредното му срещане („Плътност на застр.“ е два реда — % и м²).
+    const sKlyuch = spisak => { const n = {}; return spisak.map(r => {
+        const k = r.ime.toLowerCase().replace(/[\s.]+/g, ' ').trim();
+        n[k] = (n[k] || 0) + 1; return { ...r, k: k + '#' + n[k] }; }); };
+    const o = sKlyuch(osn), z = sKlyuch(izm);
+    const zPo = new Map(z.map(r => [r.k, r]));
+    const redove = o.map(r => ({ ime: r.ime, viza: r.dop, osn: r.post, izm: (zPo.get(r.k) || {}).post || '' }));
+    for (const r of z) if (!o.some(x => x.k === r.k)) redove.push({ ime: r.ime, viza: r.dop, osn: '', izm: r.post });
+    const zn = v => String(v || '').replace(/\s+/g, '').replace(',', '.').toLowerCase();
+    return redove.map(r => ({ ...r, razlika: !!(r.izm && zn(r.izm) !== zn(r.osn)) }));
+}
+
+//
 // ИЗМЕНЕНИЯТА ПО ЧЛ. 154 — ОТДЕЛНО (операторът, 11.11.2026). Основният проект
 // по части; после „Изменения в процеса на строителство:“, изречението със
 // заповедта и текстовете от кръговете по 154, пак по части.
@@ -2099,6 +2140,13 @@ function _a15PoIzpalnenie(st) {
         + (zapovedi.length && /г\.$/.test(zapovedi[zapovedi.length - 1]) ? '' : '.'));
     for (const { chasti } of izmeneniya)
         for (const [chast, tekstove] of chasti) redove.push(`Част ${chast}:`, ...tekstove);
+    // Показателите — таблица накрая; редовете с „ | “ от текстовете отпадат,
+    // за да не се повтарят.
+    if (_a15Pokazateli(st).length) {
+        const bez = redove.filter(r => !String(r).includes(' | '));
+        bez.push('Показатели:', _A15_POKAZATELI_MARKER);
+        return bez.join('\n');
+    }
     return redove.join('\n');
 }
 
@@ -2469,6 +2517,7 @@ function _a15Redove(project, st) {
         ['Собственост_Актове', _a15Sobstvenost(project, st).join('\n')],
         ['Актове_Протоколи', _a15AktoveProtokoli(project, st).join('\n')],
         ['Акт7_Таблица', (() => { const t = _a15Akt7Tablica(project, st); return t.length ? JSON.stringify(t) : ''; })()],
+        ['Показатели_Таблица', (() => { const t = _a15Pokazateli(st); return t.length ? JSON.stringify(t) : ''; })()],
         ['Съответствие_Скици', _a15Skici(project, st).join('\n')],
         ['Договори_Мрежи', _a15DogovoriMrezhi(project, st).join('\n')],
         ['Строеж_Представлява', st.stroej],

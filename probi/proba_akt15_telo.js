@@ -28,7 +28,7 @@ const f = new Function(
      'const _DOK_PROCHETEN = "прочетен", _DOK_VPISAN = "вписан", _DOK_OTMETNAT = "отметнат", _DOK_SASTAVEN = "съставен тук, потвърден от оператора";',
      'const _a15DataNa = r => String(r.data || "").trim();',
      grab(s, '_a15Vpisan'), grab(s, '_a15NomerData'), grab(s, '_a15DataNaDokument'),
-     grab(s, '_a15PoIzpalnenie'),
+     (s.match(/^const _A15_POKAZATELI_MARKER = .+$/m) || [''])[0], grab(s, '_a15RedoveNaTablica'), grab(s, '_a15Pokazateli'), grab(s, '_a15PoIzpalnenie'),
      grab(s, '_a15VidoveNaRed'), grab(s, '_a15OtTetradka'), grab(s, '_a15Niva'), grab(s, '_a15ChastiProekt'), grab(s, '_a15TekstNa'), grab(s, '_a15Prilozhenia'), grab(s, '_a15Ostatak'), grab(s, '_a15Redove')].join('\n')
     + '\nreturn {_a15Redove,_a15NomerData,_a15PoIzpalnenie,_a15Prilozhenia,_a15Vpisan};')();
 
@@ -123,6 +123,26 @@ t('чл. 154: изречението със заповедта — без пов
   r154.includes('В процеса на строителство са настъпили съществени отклонения по смисъла на чл. 154, ал. 2 ЗУТ спрямо одобрените проекти и издадена Заповед № САГ26-РА51-190/27.08.2026 г. на главния архитект на Столична община, влязла в сила на 19.09.2026 г.')
   && !/от 27\.08\.2026/.test(r154), r154);
 t('чл. 154: без „не са настъпили“', !/не са настъпили/.test(r154), r154);
+// Показателите — таблица „по виза / по основен / по промяна чл. 154“ (17.11.2026)
+const TABL = r => ['Градоустройствени характеристики', 'Показатели | Допустими съгл. ОУП /Жг/ | Постигнати съгл. проект',
+    'Плътност на застр. | 60% | 58,91%', 'Плътност на застр. | 641,40м2 | 629,77м2', 'Кинт | 3,5 | 3,499',
+    'РЗП – подземно | - | ' + r, 'Кота корниз | 24'].join('\n');
+const sPk = { ...s154, blokove: { ...STROEZH.blokove,
+        arh: { chast: 'Архитектура', red: 9, rolya: 'описание', tekst: 'Описание.\n' + TABL('939,87м2'),
+               izpalnenie: { sastoyanie: 'potvardeno', tekst: 'Изпълнено.\n' + TABL('939,87м2') } } },
+    krugove_dop: [{ ...s154.krugove_dop[0], blokove: { y: { chast: 'Архитектура', red: 1, rolya: 'описание',
+        tekst: 'Изменение.\n' + TABL('936,20 м2'),
+        izpalnenie: { sastoyanie: 'potvardeno', tekst: 'Обединени са 801 и 802.\n' + TABL('936,20 м2') } } } }] };
+const rPk = karta(f._a15Redove(OBEKT, sPk));
+const pk = JSON.parse(rPk['Показатели_Таблица'] || '[]');
+t('показатели: редовете от двете таблици', pk.length === 5, pk);
+t('показатели: „по виза“ е колоната „Допустими“', pk.find(r => r.ime === 'Кинт').viza === '3,5', pk);
+t('показатели: двата реда „Плътност“ не се сливат', pk.filter(r => /Плътност/.test(r.ime)).length === 2, pk);
+t('показатели: разликата е отбелязана', pk.find(r => /РЗП/.test(r.ime)).razlika === true
+  && pk.find(r => r.ime === 'Кинт').razlika === false, pk);
+t('показатели: в текста — маркер, без редовете с „|“',
+  /Показатели:\n§ПОКАЗАТЕЛИ§$/.test(rPk['По_Изпълнение']) && !/ \| /.test(rPk['По_Изпълнение']), rPk['По_Изпълнение']);
+t('без кръг по 154 — без таблица на показателите', !karta(f._a15Redove(OBEKT, STROEZH))['Показатели_Таблица'], '');
 const bezZap = karta(f._a15Redove(OBEKT, { ...s154, krugove_dop: [{ blokove: s154.krugove_dop[0].blokove }] }))['По_Изпълнение'];
 t('чл. 154 без вписана заповед — точки', /издадена Заповед \.{10,}\./.test(bezZap), bezZap);
 
