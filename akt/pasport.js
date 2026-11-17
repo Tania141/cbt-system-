@@ -123,6 +123,8 @@ const _PAS_RS_POLETA = [
     ['fp-permit-num', 'nomer', 'номерът'],
     ['fp-permit-date', 'data', 'датата'],
     ['fp-permit-issuer', 'izdatel', 'издателят'],
+    // Заверката „влязло в сила“ — четецът вече я търси (17.11.2026).
+    ['fp-permit-effective', 'v_sila', 'влизането в сила'],
 ];
 
 async function pasportChetiRS() {
@@ -193,8 +195,8 @@ function pasportRSNapalni(dok, imeFajl) {
             ${_e(razlichni.join('; '))}. Поправи на ръка, ако документът е прав.</p>` : ''}
         ${lipsvat.length ? `<p class="tiho">Документът не казва: ${_e(lipsvat.join(', '))}
             — впиши ги на ръка.</p>` : ''}
-        <p class="tiho">Датата на влизане в сила е заверка ВЪРХУ разрешението и
-            се преписва на ръка.</p>`;
+        <p class="tiho">Влизането в сила е заверка ВЪРХУ разрешението, често на ръка —
+            провери го особено внимателно.</p>`;
 }
 
 function pasportZapazi() {

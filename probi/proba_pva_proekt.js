@@ -67,6 +67,10 @@ async function otvori(hash) {
                     : /izpalnenie/.test(String(url)) ? { chetec: 'Claude', lipsvat: [], izpalnenie: {
                         'Електро · кабели срн 20 kv · 02_Zapiska_kabeli.docx': { tekst: 'Кабелите са положени в съществуваща тръбна мрежа.',
                                                          mahnato: ['съгласно чертежите'] } } }
+                    : /sloy2\/chete/.test(String(url)) ? { dokument: { id: 'zap.pdf', fajl: 'zap.pdf', vid: 'Заповед',
+                        nomer: { stoynost: '№ САГ26-РА51-190/27.08.2026' }, data: { stoynost: '27.08.2026' },
+                        izdatel: { stoynost: 'Главен архитект на Столична община' },
+                        zabelezhki: 'горе на ръка: ВЛЯЗЛА В СИЛА НА 19.09.2026 г.' } }
                     : { grupi: [] } };
             };
         },
@@ -213,6 +217,28 @@ a.w.proektMahniVsichko();
 const sled = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
 t('„махни всичко прочетено“ чисти записките и блоковете на кръга',
   (sled.zapiski.chasti || []).length === 0 && Object.keys(sled.blokove || {}).length === 0, [sled.zapiski, sled.blokove]);
+
+// Заповедта по чл. 154 — чете се в кръга по 154 (17.11.2026)
+a.w.proektSmeniKrug(1);
+t('в кръга по 154 — полета и качване за заповедта', !!a.d.getElementById('proekt-zapoved-fajl'), '');
+const zf = a.d.getElementById('proekt-zapoved-fajl');
+Object.defineProperty(zf, 'files', { value: [new a.w.File(['%PDF'], 'zap.pdf', { type: 'application/pdf' })] });
+await a.w.proektChetiZapoved();
+let sz = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
+const zp = (sz.krugove_dop[0] || {}).zapoved || {};
+t('заповедта: номер, дата, издател и влизане в сила — попълнени', zp.nomer === 'САГ26-РА51-190/27.08.2026'
+  && zp.data === '27.08.2026' && /Главен архитект/.test(zp.izdatel) && zp.v_sila === '19.09.2026', zp);
+t('прочетената заповед влиза и в досието',
+  ((sz.sloy2 || {}).od || {}).dokumenti?.some(d => d.fajl === 'zap.pdf'), sz.sloy2);
+a.w.proektZapoved('nomer', '№ 999');
+Object.defineProperty(a.d.getElementById('proekt-zapoved-fajl'), 'files',
+    { value: [new a.w.File(['%PDF'], 'zap.pdf', { type: 'application/pdf' })] });
+await a.w.proektChetiZapoved();
+sz = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
+t('написаното от теб не се презаписва — разликата се казва', sz.krugove_dop[0].zapoved.nomer === '№ 999'
+  && /в заповедта пише/.test(a.d.getElementById('proekt-zapoved-hod').textContent), sz.krugove_dop[0].zapoved);
+a.w.proektSmeniKrug(0);
+t('в основния кръг полета за заповед няма', !a.d.getElementById('proekt-zapoved-fajl'), '');
 
 // Две записки на една част (основната и по чл. 154) — два блока, не един
 // (Радулов, 11.11.2026: втората сядаше върху първата).

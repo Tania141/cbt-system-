@@ -116,6 +116,12 @@ function proektKrugoveHtml(st) {
 function proektZapovedHtml(k) {
     const z = (k && k.zapoved) || {};
     return `
+    <div class="redica" style="margin:6px 0 0">
+        <input type="file" id="proekt-zapoved-fajl" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.docx"
+               onchange="proektChetiZapoved()">
+        <span class="tiho">качи заповедта по чл. 154 — четецът попълва празните полета, ти проверяваш</span>
+    </div>
+    <div id="proekt-zapoved-hod"></div>
     <div class="p2-mrezha" style="margin:6px 0 10px">
         <label class="p2-pole"><span>Заповед по чл. 154 — №</span>
             <input type="text" value="${_e(z.nomer || '')}" onchange="proektZapoved('nomer', this.value)"></label>
@@ -127,6 +133,68 @@ function proektZapovedHtml(k) {
     <label class="p2-pole"><span>издадена от</span>
         <input type="text" value="${_e(z.izdatel || '')}" placeholder="главния архитект на Столична община"
                onchange="proektZapoved('izdatel', this.value)"></label>`;
+}
+
+// ЧЕТЕНЕ НА ЗАПОВЕДТА (операторът, 17.11.2026: „да се чете“). Същият жест
+// като при разрешението в паспорта: четецът попълва само ПРАЗНИТЕ полета;
+// различното от написаното се казва, не се презаписва. Влизането в сила е
+// заверка ВЪРХУ заповедта (често на ръка) — дописва се, ако го няма.
+// Прочетеното влиза и в досието.
+async function proektChetiZapoved() {
+    const z = proektZhiv();
+    const vhod = document.getElementById('proekt-zapoved-fajl');
+    const hod = document.getElementById('proekt-zapoved-hod');
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!z || !f || aktIndeksKrug(z.st) === 0) return;
+    hod.innerHTML = `<p class="tiho">Чета „${_e(f.name)}“…</p>`;
+    try {
+        const r = await aktApi('/api/sloy2/chete', 'POST', {
+            agenda: 'od', edin: true, pi: z.p.pi,
+            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+        });
+        if (r.greshka) { hod.innerHTML = `<p class="greshka">⚠ ${_e(r.greshka)}</p>`; return; }
+        const dok = r.dokument || (r.dokumenti || [])[0] || {};
+        hod.innerHTML = proektZapovedNapalni(z, dok, f.name);
+        proektRisuvai();
+        const h2 = document.getElementById('proekt-zapoved-hod');
+        if (h2) h2.innerHTML = hod.innerHTML;
+    } catch (e) {
+        hod.innerHTML = e.izteklo ? aktGreshkaHtml(e) : `<p class="greshka">✗ ${_e(e.message)}</p>`;
+    }
+}
+
+function proektZapovedNapalni(z, dok, imeFajl) {
+    const t = v => String((v && typeof v === 'object' ? v.stoynost : v) || '').trim();
+    const vid = [t(dok.vid), t(dok.naimenovanie)].join(' ');
+    if (!/заповед/i.test(vid))
+        return `<p class="tiho">„${_e(imeFajl)}“ не изглежда като заповед${vid.trim() ? ` — четецът го чете като „${_e(t(dok.vid))}“` : ''}.</p>`;
+    // Влизането в сила — сред позоваванията или в бележките на четеца, ако го е видял.
+    const vSila = t(dok.v_sila) || (() => {
+        const m = JSON.stringify(dok).match(/влязл[аo]\s+в\s+сила[^0-9]{0,30}(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i);
+        return m ? m[1] : '';
+    })();
+    const prochet = { nomer: t(dok.nomer).replace(/^№\s*/, ''), data: t(dok.data), izdatel: t(dok.izdatel), v_sila: vSila };
+    const IME = { nomer: 'номерът', data: 'датата', izdatel: 'издателят', v_sila: 'влизането в сила' };
+    const zap = (z.k.zapoved = z.k.zapoved || {});
+    const vzeti = [], razlichni = [], lipsvat = [];
+    for (const [pole, ime] of Object.entries(IME)) {
+        const v = prochet[pole];
+        if (!v) { lipsvat.push(ime); continue; }
+        if (String(zap[pole] || '').trim()) {
+            if (String(zap[pole]).trim() !== v) razlichni.push(`${ime}: в заповедта пише „${v}“`);
+            continue;
+        }
+        zap[pole] = v;
+        vzeti.push(ime);
+    }
+    aktVDosieto(z.st, [{ ...dok, fajl: dok.fajl || imeFajl, id: dok.id || imeFajl }], imeFajl);
+    aktZapishi();
+    return `
+        ${vzeti.length ? `<p class="gotov">✔ От „${_e(imeFajl)}“ попълнени: ${_e(vzeti.join(', '))}. <strong>Провери ги.</strong></p>` : ''}
+        ${razlichni.length ? `<p class="tiho">⚠ Различава се от написаното — ${_e(razlichni.join('; '))}. Поправи, ако заповедта е права.</p>` : ''}
+        ${lipsvat.length ? `<p class="tiho">Четецът не намери: ${_e(lipsvat.join(', '))} — впиши на ръка.</p>` : ''}
+        <p class="tiho">Прочетеното влезе и в Досието.</p>`;
 }
 
 function proektZapoved(pole, v) {
