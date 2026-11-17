@@ -25,6 +25,14 @@
         <button class="bt" data-izgled="raboti" onclick="plotSmeniIzgled('raboti')">в работа</button>
         <button class="bt" data-izgled="arhiv" onclick="plotSmeniIzgled('arhiv')">архив</button>
         <button class="bt bt-glaven" onclick="plotNovObekt()">+ нов обект</button>
+        <!-- Стаите на фирмата, преместени от старото ПВА (17.11.2026) -->
+        <nav class="shapka-stai">
+            <a href="#/konsultanti">консултанти</a>
+            <a href="#/zk">заповедни книги</a>
+            <a href="#/normativna">нормативна уредба</a>
+            <a href="#/istoria">история</a>
+            <a href="#/danni">данните</a>
+        </nav>
     </div>
     <!-- На обекта: само обратният път. -->
     <a class="bt" id="shapka-nazad" href="#/plot" hidden>← плотът</a>
@@ -83,6 +91,264 @@
         <h1 class="moment-ime" id="moment-zaglavie"></h1>
         <div id="moment-telo"></div>
     </section>
+    <!-- Консултантите — фирми и служители. Преместено от старото ПВА (17.11.2026): HTML-ът е
+         старият, рисува го старата кухня. -->
+    <section id="ekran-konsultanti" hidden>
+        <div class="stara-staya">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Консултанти</h1>
+                    <p class="page-subtitle">Управление на консултантски фирми и служители</p>
+                </div>
+            </div>
+
+            <div class="dve-koloni">
+                <div>
+                    <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--slate);text-transform:uppercase;letter-spacing:0.5px">Добавени консултанти</h3>
+                    <div id="consultants-list"></div>
+                </div>
+                <div>
+                    <div class="card" id="consultant-form-card">
+                        <div class="card-header">
+                            <div class="card-title" id="consultant-form-title">Добави консултант</div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label required">Фирма</label>
+                            <input type="text" id="consultant-name" class="form-input" placeholder="СиБиТи Консулт ООД">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">ЕИК</label>
+                            <input type="text" id="consultant-eik" class="form-input" placeholder="123456789">
+                        </div>
+                        <datalist id="titles-list">
+                            <option value="инж."></option>
+                            <option value="арх."></option>
+                        </datalist>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">Управител</label>
+                            <div style="display:flex;gap:8px">
+                                <input type="text" id="consultant-manager-title" class="form-input" list="titles-list"
+                                       placeholder="титла" style="flex:0 0 90px">
+                                <input type="text" id="consultant-manager" class="form-input" placeholder="Таня Иванова Петрова" style="flex:1">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">Адрес</label>
+                            <input type="text" id="consultant-address" class="form-input" placeholder="гр. София, ул. ...">
+                        </div>
+                        <div class="form-group" style="margin-bottom:16px">
+                            <label class="form-label">Удостоверение №</label>
+                            <input type="text" id="consultant-cert" class="form-input" placeholder="РК-12-345">
+                        </div>
+
+                        <div class="section-sep">Служители</div>
+                        <div id="employees-container"></div>
+                        <button class="btn btn-ghost btn-sm" onclick="addEmployeeRow()" style="margin-bottom:16px">
+                            ➕ Добави служител
+                        </button>
+
+                        <div style="display:flex;gap:10px">
+                            <button class="btn btn-primary" onclick="saveConsultant()" id="consultant-save-btn">
+                                💾 Запази
+                            </button>
+                            <button class="btn btn-ghost" onclick="cancelConsultantEdit()" id="consultant-cancel-btn" style="display:none">
+                                Отказ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Регистърът на заповедните книги и генерирането на книгата. Преместено от старото ПВА (17.11.2026): HTML-ът е
+         старият, рисува го старата кухня. -->
+    <section id="ekran-zk" hidden>
+        <div class="stara-staya">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Регистър на заповедните книги</h1>
+                    <p class="page-subtitle">
+                        Кой номер на кой обект е даден — за да не се дублира и да не се губи
+                    </p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="renderZK()">↻ Обнови</button>
+            </div>
+
+            <!-- Генериране на книга — само оттук (операторът, 11.09.2026) -->
+            <div class="card" id="zk-gen-kutiya"></div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:8px">🔢 Номерация</div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                    Регистърът не почва от нулата, а оттам, докъдето сте стигнали на хартия.
+                    Задайте началния номер веднъж — оттам нататък системата предлага следващия.
+                </p>
+                <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">Начален номер</label>
+                        <input type="text" id="zk-nachalen" class="form-input" style="width:140px" placeholder="4568">
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="zapishiNachalen()">Запиши</button>
+                    <div id="zk-sledvasht-kutiya" style="margin-left:auto;text-align:right"></div>
+                </div>
+                <div id="zk-prazniny" style="margin-top:12px"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:8px">➕ Вписване</div>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+                    Обектът не е задължителен: тук се вписват и стари книги отпреди системата,
+                    номер, даден преди да е заведен паспорт, и анулирани книги.
+                    Вписване със същия номер презаписва реда.
+                </p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Номер</label>
+                        <input type="text" id="zk-nomer" class="form-input" placeholder="4568">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Дата</label>
+                        <input type="text" id="zk-data" class="form-input" placeholder="дд.мм.гггг"
+                               oninput="formatDateInput(this)">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label class="form-label">Обект</label>
+                        <input type="text" id="zk-obekt" class="form-input"
+                               placeholder="Строеж и местонахождение, или „стара книга“ / „анулирана“">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ПИ (ако е заведен)</label>
+                        <input type="text" id="zk-pi" class="form-input" placeholder="напр. 2024-017">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Статус</label>
+                        <select id="zk-status" class="form-select">
+                            <option value="издадена">издадена</option>
+                            <option value="заменена">заменена от следваща</option>
+                            <option value="анулирана">анулирана</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Следваща ЗК №</label>
+                        <input type="text" id="zk-sledvashta" class="form-input" placeholder="напр. 4712">
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1">
+                        <label class="form-label">Бележка</label>
+                        <input type="text" id="zk-belejka" class="form-input"
+                               placeholder="Свети червено при съставяне на документи за този обект">
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="zapishiZK()">
+                    💾 Впиши
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="card-title" style="margin-bottom:12px">📓 Регистър</div>
+                <div id="zk-spisak"></div>
+            </div>
+        </div>
+    </section>
+    <!-- ОСИП — оценката на съответствието (на обекта). Преместено от старото ПВА (17.11.2026): HTML-ът е
+         старият, рисува го старата кухня. -->
+    <section id="ekran-osip" hidden>
+        <div class="stara-staya">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Оценка на съответствието</h1>
+                    <p class="page-subtitle">Данни за комплексния доклад по чл. 142 ЗУТ</p>
+                </div>
+            </div>
+            <div id="osip-content" style="max-width:900px"></div>
+        </div>
+    </section>
+    <!-- Проверките — сглобеното от записките (на обекта). Преместено от старото ПВА (17.11.2026): HTML-ът е
+         старият, рисува го старата кухня. -->
+    <section id="ekran-proverki" hidden>
+        <div class="stara-staya">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Проверки</h1>
+                    <p class="page-subtitle">Прочетеното от проекта и от документите. Нищо не влиза в документ, преди ти да го потвърдиш.</p>
+                </div>
+            </div>
+            <div id="kakav-content" style="max-width:1100px"></div>
+        </div>
+    </section>
+    <!-- Нормативната уредба — заключените източници. Преместено от старото ПВА (17.11.2026): HTML-ът е
+         старият, рисува го старата кухня. -->
+    <section id="ekran-normativna" hidden>
+        <div class="stara-staya">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Нормативна уредба</h1>
+                    <p class="page-subtitle">Заключени източници, върху които стъпва оценката</p>
+                </div>
+            </div>
+
+            <div style="max-width:760px">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">📖 Заключени източници</div>
+                            <div class="card-subtitle">Какво вижда сървърът, не тази машина</div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="proveriIzvori()">Провери</button>
+                    </div>
+                    <div id="izvori-rezultat" style="font-size:13px;color:var(--muted)">
+                        Ако някой документ казва „не може да се прецени“ или
+                        „наредбата не е намерена“, отговорът е тук.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Историята. Преместено от старото ПВА (17.11.2026): HTML-ът е
+         старият, рисува го старата кухня. -->
+    <section id="ekran-istoria" hidden>
+        <div class="stara-staya">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">История на промените</h1>
+                    <p class="page-subtitle">Пълен одит на всички действия в системата</p>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="izchistiIstoria()">
+                    🗑️ Изчисти история
+                </button>
+            </div>
+
+            <div class="card">
+                <div id="history-filters" style="display:flex;gap:10px;margin-bottom:16px">
+                    <select class="form-select" style="width:auto" id="history-filter-type" onchange="renderHistory()">
+                        <option value="">Всички действия</option>
+                        <option value="create">Създаване</option>
+                        <option value="edit">Редакция</option>
+                        <option value="export">Експорт</option>
+                        <option value="generate">Генериране</option>
+                        <option value="delete">Изтриване</option>
+                    </select>
+                    <input type="text" class="form-input" style="width:220px" id="history-filter-pi" placeholder="Филтър по ПИ..." oninput="renderHistory()">
+                </div>
+                <div id="history-timeline" class="timeline"></div>
+            </div>
+        </div>
+    </section>
+    <!-- Данните — резервното копие. От „Настройки“ в старото ПВА остава само
+         това: данните живеят само в този браузър. Адресът на сървъра отпада. -->
+    <section id="ekran-danni" hidden>
+        <div class="stara-staya">
+            <h1 class="moment-ime">Данните</h1>
+            <div class="card">
+                <div class="card-title">Резервно копие</div>
+                <p class="card-subtitle">Всичко, което си въвела, живее само в този браузър.
+                    Свали копие от време на време — изтрие ли се браузърът, то е единственото.</p>
+                <button class="btn btn-primary" onclick="exportAllData()">Свали копие (.json)</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('stai-vnos').click()">Върни от копие…</button>
+                <input type="file" id="stai-vnos" accept=".json,application/json" hidden onchange="staiVnos(event)">
+                <div id="stai-vnos-hod" class="card-subtitle"></div>
+            </div>
+        </div>
+    </section>
 </main>
 
 <!-- Кое липсва: всяко число се отваря тук (правило 2) -->
@@ -126,6 +392,10 @@
 <script src="../js/12b-kandidati.js"></script>
 <!-- „Не се отнася“ като урок за типа строеж, не само за обекта. -->
 <script src="../js/12c-naucheno.js"></script>
+<!-- Преместените стаи (17.11.2026): регистърът на ЗК и консултантите/историята.
+     Кухня — викат се. `14-kraj.js` НЕ: той пуска старото приложение. -->
+<script src="../js/02-zapovedni-knigi.js"></script>
+<script src="../js/12-konsultanti.js"></script>
 
 <!-- Повърхност -->
 <script src="yadro.js"></script>
@@ -139,6 +409,7 @@
 <script src="znaem.js"></script>
 <script src="dokumenti.js"></script>
 <script src="pasport.js"></script>
+<script src="stai.js"></script>
 
 <script>
 // Къде сме:
@@ -158,9 +429,12 @@ function aktKade() {
              moment: chasti[3] || '', chislo: chislo ? chislo[1] : '' };
 }
 
+//   #/konsultanti · #/zk · #/istoria · #/normativna · #/danni   ← стаите на фирмата
+//   #/osip/<id>/<строеж> · #/proverki/<id>/<строеж> · #/zk/<id>/<строеж>
 function aktPokazhi() {
     const k = aktKade();
-    const ekran = !k.id ? 'plot'
+    const ekran = staiEStaya(k.ekran, k.id) ? k.ekran
+        : !k.id ? 'plot'
         : k.ekran === 'moment' && k.moment ? 'moment'
         : k.ekran === 'proekt' ? 'proekt'
         : k.ekran === 'sobstvenost' ? 'sobstvenost'
@@ -169,19 +443,22 @@ function aktPokazhi() {
         : k.ekran === 'dokumenti' && k.moment ? 'dokumenti'
         : k.ekran === 'pasport' ? 'pasport'
         : k.ekran === 'obekt' ? 'obekt' : 'plot';
-    for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost', 'dosie', 'znaem', 'dokumenti', 'pasport'])
+    for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost', 'dosie', 'znaem', 'dokumenti', 'pasport',
+                     'konsultanti', 'zk', 'osip', 'proverki', 'normativna', 'istoria', 'danni'])
         document.getElementById('ekran-' + x).hidden = x !== ekran;
     document.getElementById('shapka-plot').hidden = ekran !== 'plot';
     document.getElementById('shapka-nazad').hidden = ekran === 'plot';
-    // От момента се връщаш в обекта, не чак на плота.
-    // От момента и от проекта се връщаш в обекта, не чак на плота.
-    const vObekta = ekran === 'moment' || ekran === 'proekt' || ekran === 'sobstvenost'
-        || ekran === 'dosie' || ekran === 'znaem' || ekran === 'dokumenti' || ekran === 'pasport';
+    // От момента и от проекта се връщаш в обекта, не чак на плота. От стая на
+    // обекта — пак в обекта; от стая на фирмата — на плота.
+    const vObekta = !!k.id && (ekran === 'moment' || ekran === 'proekt' || ekran === 'sobstvenost'
+        || ekran === 'dosie' || ekran === 'znaem' || ekran === 'dokumenti' || ekran === 'pasport'
+        || STAI_NA_OBEKTA.includes(ekran));
     document.getElementById('shapka-nazad').href = vObekta
         ? `#/obekt/${encodeURIComponent(k.id)}/${k.i}` : '#/plot';
     document.getElementById('shapka-nazad').textContent = vObekta
         ? '← обектът' : '← плотът';
-    if (ekran === 'plot') plotRisuvai();
+    if (staiEStaya(ekran, k.id)) staiOtvori(ekran, k.id, k.i);
+    else if (ekran === 'plot') plotRisuvai();
     else if (ekran === 'obekt') obektOtvori(k.id, k.i, k.chislo);
     else if (ekran === 'proekt') proektOtvori(k.id, k.i);
     else if (ekran === 'sobstvenost') sobstvenostOtvori(k.id, k.i);

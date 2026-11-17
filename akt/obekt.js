@@ -374,5 +374,11 @@ function obektVrazkiHtml(p) {
             Досието<span>всичко прочетено, с цитатите</span></a>
         <a class="vrazka" href="#/znaem/${encodeURIComponent(obektId)}/${obektIndeks}">
             Какво знаем<span>огледалото — с откъде и от кого</span></a>
+        <a class="vrazka" href="#/osip/${encodeURIComponent(obektId)}/${obektIndeks}">
+            ОСИП<span>оценката на съответствието, документите до РС</span></a>
+        <a class="vrazka" href="#/zk/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Заповедна книга<span>номерът от регистъра и генерирането</span></a>
+        <a class="vrazka" href="#/proverki/${encodeURIComponent(obektId)}/${obektIndeks}">
+            Проверки<span>сглобеното от записките</span></a>
     </div>`;
 }

@@ -491,40 +491,40 @@ body {
    не се преправя“. Но тя носи своите класове, а този лист не ги познаваше и
    полетата излизаха голи. Тук им се дава видът на новата повърхност; HTML-ът
    остава непипнат.                                                        */
-:is(#pasport-telo, #sobstvenost-telo) .card {
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .card {
     background: var(--hartiya, #fff); border: 1px solid var(--ramka, #e5e5e5);
     border-radius: 6px; padding: 14px 16px; margin: 0 0 12px;
 }
-:is(#pasport-telo, #sobstvenost-telo) .card-title {
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .card-title {
     font-size: 12px; font-weight: 700; color: var(--muted);
     text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
 }
-:is(#pasport-telo, #sobstvenost-telo) .card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-:is(#pasport-telo, #sobstvenost-telo) .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-:is(#pasport-telo, #sobstvenost-telo) .form-grid-full { grid-column: 1 / -1; }
-:is(#pasport-telo, #sobstvenost-telo) .form-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
-:is(#pasport-telo, #sobstvenost-telo) .form-label { font-size: 12px; color: var(--muted); }
-:is(#pasport-telo, #sobstvenost-telo) .form-label.required::after { content: ' *'; color: var(--red); }
-:is(#pasport-telo, #sobstvenost-telo) .form-input,
-:is(#pasport-telo, #sobstvenost-telo) select,
-:is(#pasport-telo, #sobstvenost-telo) input[type="text"],
-:is(#pasport-telo, #sobstvenost-telo) input[type="date"],
-:is(#pasport-telo, #sobstvenost-telo) textarea {
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-grid-full { grid-column: 1 / -1; }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-group { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-label { font-size: 12px; color: var(--muted); }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-label.required::after { content: ' *'; color: var(--red); }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-input,
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) select,
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) input[type="text"],
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) input[type="date"],
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) textarea {
     width: 100%; padding: 6px 9px; font: inherit; font-size: 13.5px;
     border: 1px solid var(--ramka, #ccc); border-radius: 4px;
     background: var(--hartiya, #fff); color: inherit;
 }
-:is(#pasport-telo, #sobstvenost-telo) .form-input:focus, :is(#pasport-telo, #sobstvenost-telo) select:focus { outline: 2px solid var(--blue); }
-:is(#pasport-telo, #sobstvenost-telo) .btn {
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .form-input:focus, :is(#pasport-telo, #sobstvenost-telo, .stara-staya) select:focus { outline: 2px solid var(--blue); }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .btn {
     font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
     border: 1px solid var(--mastilo, #333); border-radius: 4px;
     background: transparent; color: inherit;
 }
-:is(#pasport-telo, #sobstvenost-telo) .btn-primary { background: var(--mastilo, #333); color: var(--hartiya, #fff); }
-:is(#pasport-telo, #sobstvenost-telo) .btn-secondary { border-color: var(--ramka, #ccc); color: var(--muted); }
-:is(#pasport-telo, #sobstvenost-telo) .btn-sm { font-size: 12px; padding: 3px 8px; }
-:is(#pasport-telo, #sobstvenost-telo) .faza-btn { flex: 1; }
-:is(#pasport-telo, #sobstvenost-telo) .empty-state { text-align: center; padding: 20px; color: var(--muted); }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .btn-primary { background: var(--mastilo, #333); color: var(--hartiya, #fff); }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .btn-secondary { border-color: var(--ramka, #ccc); color: var(--muted); }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .btn-sm { font-size: 12px; padding: 3px 8px; }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .faza-btn { flex: 1; }
+:is(#pasport-telo, #sobstvenost-telo, .stara-staya) .empty-state { text-align: center; padding: 20px; color: var(--muted); }
 @media (max-width: 600px) { #pasport-telo .form-grid { grid-template-columns: 1fr; } }
 
 /* ── Регистърът на собствеността, преместен цял (04.11.2026) ───────────────
@@ -571,3 +571,40 @@ body {
 /* Поправка в самото поле (17.11.2026) */
 .fakt-pole { width: 100%; box-sizing: border-box; font: inherit; padding: 4px 6px; margin: 2px 0; }
 .glava-red-otvoren { display: flex; flex-direction: column; gap: 6px; cursor: default; }
+
+/* ── Преместените стаи от старото ПВА (17.11.2026) ─────────────────────────
+   Консултанти, Регистър на ЗК, ОСИП, Проверки, Нормативна уредба, История,
+   Данните. HTML-ът им е старият, непипнат; тук само видът.                 */
+.stara-staya { max-width: 1000px; }
+.stara-staya .page-subtitle, .stara-staya .card-subtitle { font-size: 12.5px; color: var(--muted); margin: 2px 0 10px; }
+.stara-staya .btn-ghost { border-color: transparent; color: var(--muted); }
+.stara-staya .btn-danger { border-color: var(--red); color: var(--red); }
+.stara-staya .alert { border-radius: 6px; padding: 10px 12px; font-size: 13px; margin: 8px 0; }
+.stara-staya .alert-warning { background: var(--zhalto-light); color: var(--zhalto); }
+.stara-staya .alert-success { background: var(--green-light); color: var(--green); }
+.stara-staya .alert-error { background: #fbe9e9; color: var(--red); }
+.stara-staya .alert-info { background: var(--blue-light); color: var(--blue); }
+.stara-staya .empty-text { color: var(--muted); font-size: 13px; padding: 8px 0; }
+.stara-staya .section-sep { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+                            letter-spacing: 1px; margin: 14px 0 8px; border-top: 1px solid var(--border-light); padding-top: 10px; }
+.stara-staya .dynamic-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.stara-staya .dve-koloni { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.stara-staya .consultant-card { border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; background: var(--white); }
+.stara-staya .consultant-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.stara-staya .consultant-card-name { font-weight: 700; }
+.stara-staya .consultant-card-eik { font-size: 12px; color: var(--muted); }
+.stara-staya .emp-chip { display: inline-block; font-size: 12px; background: var(--surface-2); border-radius: 10px; padding: 2px 8px; margin: 3px 4px 0 0; }
+.stara-staya .emp-chip .spec { color: var(--muted); }
+.stara-staya .timeline-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-light); }
+.stara-staya .timeline-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--slate); margin-top: 5px; flex-shrink: 0; }
+.stara-staya .timeline-dot.generate { background: var(--green); }
+.stara-staya .timeline-dot.delete { background: var(--red); }
+.stara-staya .timeline-action { font-size: 13.5px; }
+.stara-staya .timeline-date, .stara-staya .timeline-detail { font-size: 12px; color: var(--muted); }
+.stara-staya table { width: 100%; border-collapse: collapse; }
+.shapka-stai { display: flex; gap: 4px; flex-wrap: wrap; }
+.shapka-stai a { font-size: 12.5px; color: var(--slate); text-decoration: none; padding: 4px 8px; border-radius: 6px; }
+.shapka-stai a:hover { background: var(--surface-2); }
+@media (max-width: 700px) {
+    .stara-staya .dve-koloni, .stara-staya .form-grid { grid-template-columns: 1fr; }
+}

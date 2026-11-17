@@ -250,7 +250,8 @@ t('отвореният обект се помни като текущ — ст�
 // четирите връзки
 const vrazki = [...b.d.querySelectorAll('.vrazka')].map(x => tekst(x));
 // Паспортът се нареди пръв на 04.11.2026: данните идват преди документа.
-t('долу има точно пет връзки', vrazki.length === 5, vrazki);
+// Осем от 17.11.2026: ОСИП, Заповедна книга и Проверки дойдоха от старото ПВА.
+t('долу има осем връзки', vrazki.length === 8, vrazki);
 t('връзките са Паспортът · Проектът · Собственост · Досието · Какво знаем',
   /Паспортът/.test(vrazki[0]) && /Проектът/.test(vrazki[1]) && /Собственост/.test(vrazki[2])
   && /Досието/.test(vrazki[3]) && /Какво знаем/.test(vrazki[4]), vrazki);
@@ -385,14 +386,16 @@ t('и четирите връзки вече са вътре в новото',
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti|pasport)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti|pasport|stai)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
      '../js/04b-spisak.js', '../js/04c-sabitia.js',
      '../js/03-obshti.js', '../js/10-obekti.js', '../js/08-momenti.js',
      '../js/09-akt15.js',
      '../js/11-dokumenti.js',
      '../js/11b-generirane.js',
      '../js/07-sobstvenost.js', '../js/12b-kandidati.js',
-     '../js/12c-naucheno.js'].includes(s)),
+     '../js/12c-naucheno.js',
+     // 17.11.2026 — кухнята на преместените стаи (регистър на ЗК, консултанти, история)
+     '../js/02-zapovedni-knigi.js', '../js/12-konsultanti.js'].includes(s)),
   vklyucheni);
 t('всеки включен файл съществува',
   vklyucheni.every(s => fs.existsSync(path.resolve(PAPKA, s))), vklyucheni);

@@ -215,7 +215,9 @@ t('празният повод го казва честно',
 const o = await otvori('#/obekt/hus/0');
 const vrazki = [...o.d.querySelectorAll('.vrazka')];
 // Пет от 04.11.2026 — паспортът се нареди пръв.
-t('Екран 2 вече има ПЕТ връзки', vrazki.length === 5, vrazki.map(x => tekst(x)));
+// Осем от 17.11.2026 (ОСИП, Заповедна книга, Проверки — от старото ПВА);
+// огледалото остава пето.
+t('Екран 2 вече има ОСЕМ връзки', vrazki.length === 8, vrazki.map(x => tekst(x)));
 t('последната е огледалото',
   vrazki[4].getAttribute('href') === '#/znaem/hus/0', vrazki[4].getAttribute('href'));
 t('и не отпраща към старото ПВА',
