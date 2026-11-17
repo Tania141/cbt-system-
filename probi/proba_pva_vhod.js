@@ -76,6 +76,54 @@ t('401 от сървъра — входът се отваря тук, не в с
 t('грешката за изтекъл достъп вече не праща към старото ПВА',
   !/index\.html/.test(d.w.aktGreshkaHtml({ izteklo: true })), d.w.aktGreshkaHtml({ izteklo: true }));
 
+// 5. Демо по имейл (17.11.2026): връзка с покана → регистрация → вход → демото само
+{
+    const greshki = [], zaiavki = [];
+    const vc = new VirtualConsole();
+    vc.on('jsdomError', e => greshki.push(String(e.message || e)));
+    const DEMO = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'demo', 'demo-obekt.json'), 'utf8'));
+    const dom = new JSDOM(stranica(), {
+        runScripts: 'dangerously', url: 'http://localhost/akt/?pokana=KOD123', pretendToBeVisual: true, virtualConsole: vc,
+        beforeParse(w) {
+            w.fetch = async (url, opt) => {
+                zaiavki.push([String(url), JSON.parse((opt && opt.body) || '{}')]);
+                if (/auth\/register/.test(url)) return { ok: true, status: 201, json: async () => ({ status: 'ok' }) };
+                if (/auth\/login/.test(url)) return { ok: true, status: 200,
+                    json: async () => ({ token: jwt(Date.now() / 1000 + 86400), email: 'kolega@example.com', role: 'operator' }) };
+                if (/demo-obekt\.json/.test(url)) return { ok: true, status: 200, json: async () => DEMO };
+                return { ok: false, status: 401, json: async () => ({}) };
+            };
+        },
+    });
+    const w = dom.window;
+    await new Promise(r => w.addEventListener('load', r, { once: true }));
+    await new Promise(r => setTimeout(r, 150));
+    const d = w.document;
+    t('връзка с покана → регистрацията е отворена', !!d.getElementById('reg-kod') && d.getElementById('reg-kod').value === 'KOD123', '');
+    d.getElementById('reg-email').value = 'kolega@example.com';
+    d.getElementById('reg-parola').value = 'парола123';
+    d.getElementById('reg-parola2').value = 'друга123';
+    await w.aktRegistriraj();
+    t('различни пароли — казва се, нищо не се праща', /различават/.test(d.getElementById('vhod-greshka').textContent)
+      && !zaiavki.some(z => /register/.test(z[0])), '');
+    d.getElementById('reg-parola2').value = 'парола123';
+    await w.aktRegistriraj();
+    const reg = zaiavki.find(z => /register/.test(z[0]));
+    t('регистрацията носи поканата и паролата на колегата', reg && reg[1].invite_code === 'KOD123'
+      && reg[1].password === 'парола123', reg && reg[1]);
+    t('после влиза сам', /^x\./.test(w.localStorage.getItem('akt_token') || ''), '');
+    const sp = JSON.parse(w.localStorage.getItem('akt_v5') || '{}').projects || [];
+    t('демо обектът е зареден сам — и нищо друго', sp.length === 1 && sp[0].id === 'demo-obekt', sp.map(p => p.id));
+    t('поканата изчезва от адреса', !/pokana/.test(w.location.search), w.location.href);
+    t('колегата не вижда „покани за демо“ (не е администратор)', !/покани за демо/.test(d.getElementById('shapka-vhod').textContent), '');
+}
+
+// 6. Администраторът вижда „покани за демо“
+const e6 = await otvori(jwt(Date.now() / 1000 + 86400), null);
+e6.w.localStorage.setItem('akt_user', JSON.stringify({ email: 'tania@example.com', role: 'admin' }));
+e6.w.aktShapkaVhod();
+t('администраторът вижда „покани за демо“', /покани за демо/.test(e6.d.getElementById('shapka-vhod').textContent), '');
+
 dobri.forEach(x => console.log('  ok  ' + x));
 loshi.forEach(x => console.log('  ЛО  ' + x));
 console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — новото ПВА влиза само`);

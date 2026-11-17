@@ -127,8 +127,10 @@ async function aktApi(pat, metod = 'GET', telo = null) {
         method: metod, headers: glava, body: telo ? JSON.stringify(telo) : undefined,
     });
     if (!r.ok) {
+        // Сървърът често казва защо (напр. изчерпан таван на демото) — казва се.
+        const tyalo = r.status === 401 ? {} : await r.json().catch(() => ({}));
         const e = new Error(r.status === 401
-            ? 'изтече ти достъпът' : 'сървърът отказа: ' + r.status);
+            ? 'изтече ти достъпът' : (tyalo.greshka || tyalo.error || 'сървърът отказа: ' + r.status));
         e.status = r.status;
         e.izteklo = r.status === 401;
         // Изтекъл достъп — входът се отваря тук, не в старото ПВА (11.11.2026).
@@ -211,20 +213,150 @@ function aktIzlez() {
     aktVhod('Излезе от системата.');
 }
 
-// В шапката — кой е влязъл и „изход“.
+// В шапката — кой е влязъл и „изход“; за администратора — „покани за демо“.
 function aktShapkaVhod() {
     const m = typeof document !== 'undefined' && document.getElementById('shapka-vhod');
     if (!m) return;
     const potr = (() => { try { return JSON.parse(localStorage.getItem('akt_user') || '{}'); } catch (e) { return {}; } })();
     m.innerHTML = aktTokenValiden()
-        ? `<span class="tiho">${_e(potr.email || '')}</span> <button class="bt bt-tih" onclick="aktIzlez()">изход</button>`
+        ? `${potr.role === 'admin' ? '<button class="bt bt-tih" onclick="aktDemoPokana()">покани за демо</button>' : ''}
+           <span class="tiho">${_e(potr.email || '')}</span> <button class="bt bt-tih" onclick="aktIzlez()">изход</button>`
         : `<button class="bt" onclick="aktVhod()">вход</button>`;
 }
 
-// При отваряне: без валиден токен — входът, веднага.
+// При отваряне: покана във връзката → регистрация; без валиден токен → вход.
 function aktProveriVhod() {
     aktShapkaVhod();
+    const pokana = (typeof location !== 'undefined')
+        && new URLSearchParams(location.search).get('pokana');
+    if (pokana) return aktRegistraciya(pokana);
     if (!aktTokenValiden()) aktVhod('Влез, за да може системата да чете и съставя.');
+}
+
+// ── ДЕМО ПО ИМЕЙЛ (17.11.2026) ───────────────────────────────────────────────
+// Операторът: „демото трябва да мога да го изпратя по имейл с отделен акаунт“.
+// Администраторът натиска „покани за демо“ → сървърът прави отделна фирма с
+// таван на четенията с АИ и покана → връзка за имейла. Колегата отваря
+// връзката, слага СВОЙ имейл и парола и влиза; демо обектът се зарежда сам.
+// В отделната фирма и в неговия браузър няма нищо от данните на поканилия.
+
+async function aktDemoPokana() {
+    const ime = prompt('Покана за демо.\n\nНа кого е (по избор, само за твоя справка):', '');
+    if (ime === null) return;
+    let r;
+    try {
+        r = await aktApi('/api/admin/demo-pokana', 'POST', { ime: ime.trim(), tavan: 20, dni: 7 });
+    } catch (e) {
+        alert('Поканата не стана: ' + e.message);
+        return;
+    }
+    const vrazka = `${location.origin}${location.pathname}?pokana=${encodeURIComponent(r.kod)}`;
+    const pismo = `Здравей,\n\nИзпращам ти демо на АКТ СИСТЕМ — системата, с която съставям документите по строителния надзор.\n\n`
+        + `Отвори връзката, въведи своя имейл и измисли парола:\n${vrazka}\n\n`
+        + `Вътре има демонстрационен обект с измислени данни. Може да разглеждаш и да съставяш документи; `
+        + `четенето на документи с изкуствен интелект е до ${r.tavan} пъти.\nВръзката важи 7 дни и е за една регистрация.\n`;
+    const d = document.createElement('div');
+    d.id = 'akt-vhod';
+    d.innerHTML = `
+        <div class="vhod-karta">
+            <div class="nadpis">Поканата е готова</div>
+            <p class="tiho">Отделна демо фирма — колегата не вижда нищо твое. Таван: ${r.tavan} четения с АИ.
+               Връзката важи 7 дни, за една регистрация.</p>
+            <label class="p2-pole"><span>Текст за имейла</span>
+                <textarea id="pokana-pismo" rows="10" style="width:100%;font:inherit">${_e(pismo)}</textarea></label>
+            <div class="redica">
+                <button class="bt bt-glaven" onclick="aktKopiraj('pokana-pismo')">копирай текста</button>
+                <button class="bt bt-tih" onclick="document.getElementById('akt-vhod').remove()">затвори</button>
+            </div>
+            <p class="tiho" id="pokana-kopirano"></p>
+        </div>`;
+    document.body.append(d);
+}
+
+function aktKopiraj(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.select();
+    const kaza = t => { const k = document.getElementById('pokana-kopirano'); if (k) k.textContent = t; };
+    (navigator.clipboard ? navigator.clipboard.writeText(el.value) : Promise.reject())
+        .then(() => kaza('Копирано — постави го в имейла.'))
+        .catch(() => { try { document.execCommand('copy'); kaza('Копирано.'); } catch (e) { kaza('Маркирано — копирай с Ctrl+C.'); } });
+}
+
+function aktRegistraciya(kod) {
+    if (typeof document === 'undefined' || document.getElementById('akt-vhod')) return;
+    const d = document.createElement('div');
+    d.id = 'akt-vhod';
+    d.innerHTML = `
+        <form class="vhod-karta" onsubmit="aktRegistriraj(event)">
+            <div class="nadpis">АКТ СИСТЕМ — демо</div>
+            <p class="tiho">Поканен си да разгледаш системата с демонстрационен обект. Въведи своя имейл
+               и измисли парола — с тях ще влизаш.</p>
+            <input type="hidden" id="reg-kod" value="${_e(kod)}">
+            <label class="p2-pole"><span>Имейл</span>
+                <input type="email" id="reg-email" autocomplete="username" required></label>
+            <label class="p2-pole"><span>Парола (поне 8 знака)</span>
+                <input type="password" id="reg-parola" autocomplete="new-password" minlength="8" required></label>
+            <label class="p2-pole"><span>Паролата още веднъж</span>
+                <input type="password" id="reg-parola2" autocomplete="new-password" minlength="8" required></label>
+            <div id="vhod-greshka" class="greshka" hidden></div>
+            <button class="bt bt-glaven" id="vhod-bt" type="submit">Влез в демото</button>
+            <p class="tiho">Имаш вече акаунт? <a href="#" onclick="document.getElementById('akt-vhod').remove();aktVhod();return false">Вход</a></p>
+        </form>`;
+    document.body.append(d);
+}
+
+async function aktRegistriraj(ev) {
+    if (ev) ev.preventDefault();
+    const v = id => ((document.getElementById(id) || {}).value || '');
+    const gr = document.getElementById('vhod-greshka'), bt = document.getElementById('vhod-bt');
+    const kazhi = t => { if (gr) { gr.hidden = false; gr.textContent = t; } };
+    if (v('reg-parola') !== v('reg-parola2')) return kazhi('Двете пароли се различават.');
+    if (bt) { bt.disabled = true; bt.textContent = 'Регистрирам…'; }
+    try {
+        const r = await fetch(aktApiAdres() + '/api/auth/register', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: v('reg-email').trim(), password: v('reg-parola'), invite_code: v('reg-kod') }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || 'сървърът отказа: ' + r.status);
+        // Веднага и вход — със същите имейл и парола.
+        const r2 = await fetch(aktApiAdres() + '/api/auth/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: v('reg-email').trim(), password: v('reg-parola') }),
+        });
+        const d2 = await r2.json().catch(() => ({}));
+        if (!r2.ok || !d2.token) throw new Error(d2.error || 'регистриран си, но входът не стана — влез ръчно');
+        localStorage.setItem('akt_token', d2.token);
+        localStorage.setItem('akt_user', JSON.stringify({ email: d2.email || v('reg-email').trim(), role: d2.role }));
+        await aktZarediDemo();
+        history.replaceState(null, '', location.pathname + '#/plot');
+        const o = document.getElementById('akt-vhod');
+        if (o) o.remove();
+        aktShapkaVhod();
+        if (typeof aktPokazhi === 'function') aktPokazhi();
+    } catch (e) {
+        kazhi(e.message);
+    } finally {
+        if (bt) { bt.disabled = false; bt.textContent = 'Влез в демото'; }
+    }
+}
+
+// Демо обектът — от `demo/demo-obekt.json`, ДОБАВЯ се, нищо не презаписва.
+async function aktZarediDemo() {
+    try {
+        const r = await fetch('../demo/demo-obekt.json', { cache: 'no-store' });
+        if (!r.ok) return false;
+        const demo = await r.json();
+        aktDanni.projects = (aktDanni.projects || []).filter(p => p.id !== demo.obekt.id);
+        aktDanni.consultants = (aktDanni.consultants || []).filter(c => c.id !== demo.konsultant.id);
+        aktDanni.projects.push(demo.obekt);
+        aktDanni.consultants.push(demo.konsultant);
+        aktZapishi();
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 // ИЗТЕКЪЛ ДОСТЪП НЕ Е ГРЕШКА НА ЧЕКЛИСТА.
