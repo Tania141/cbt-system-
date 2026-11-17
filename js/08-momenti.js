@@ -2165,7 +2165,19 @@ function _a15PoIzpalnenie(st) {
         // Заглавието над таблицата („Градоустройствени характеристики“) отпада с нея.
         const bez = redove.flatMap(r => String(r).split('\n'))
             .filter(r => !r.includes(' | ') && !/^\s*градоустройствени\s+характеристики\s*:?\s*$/i.test(r));
-        bez.push('Показатели:', _A15_POKAZATELI_MARKER);
+        // Таблицата — в края на ОСНОВНАТА „Част Архитектура“, преди следващата
+        // част (операторът, 17.11.2026). Няма ли я — накрая, както досега.
+        const nach = bez.indexOf('Част Архитектура:');
+        let kraj = -1;
+        if (nach >= 0) {
+            kraj = bez.findIndex((r, i) => i > nach && (/^Част .+:$/.test(r) || r === 'Изменения в процеса на строителство:'
+                || /^Несъществените отклонения/.test(r) || /^В процеса на строителство/.test(r)));
+            if (kraj < 0) kraj = bez.length;
+            // Редът за екзекутива на архитектурата остава с нея, таблицата — след него.
+            while (kraj < bez.length && /^Несъществените отклонения от проекта по част Архитектура/.test(bez[kraj])) kraj++;
+        }
+        if (kraj < 0) kraj = bez.length;
+        bez.splice(kraj, 0, 'Показатели:', _A15_POKAZATELI_MARKER);
         return bez.join('\n');
     }
     return redove.join('\n');
