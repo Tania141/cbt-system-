@@ -2158,8 +2158,13 @@ function _a15PoIzpalnenie(st) {
         for (const [chast, tekstove] of chasti) redove.push(`Част ${chast}:`, ...tekstove);
     // Показателите — таблица накрая; редовете с „ | “ от текстовете отпадат,
     // за да не се повтарят.
+    // Реже се по РЕДОВЕ, не по текстове: текстът на частта е един елемент с
+    // таблицата вътре и изчезваше цял (Радулов, 17.11.2026 — „Част
+    // Архитектура:“ остана празна и в основния проект, и в изменението).
     if (_a15Pokazateli(st).length) {
-        const bez = redove.filter(r => !String(r).includes(' | '));
+        // Заглавието над таблицата („Градоустройствени характеристики“) отпада с нея.
+        const bez = redove.flatMap(r => String(r).split('\n'))
+            .filter(r => !r.includes(' | ') && !/^\s*градоустройствени\s+характеристики\s*:?\s*$/i.test(r));
         bez.push('Показатели:', _A15_POKAZATELI_MARKER);
         return bez.join('\n');
     }
