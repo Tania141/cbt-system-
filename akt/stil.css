@@ -831,3 +831,12 @@ body {
 .dyasna .krug-7 .vezna-post { position: absolute; top: 34px; left: 0; right: 0; font-size: 16px; font-weight: 700; }
 .dyasna .krug-7 .vezna-ime { font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
 .dyasna .krug-7 .vezna-ot { font-size: 11px; color: #3c5254; }
+
+/* Котите от фасадата (18.11.2026): избраната — зелено, подсказката — златисто. */
+.koti-fasada { margin: 10px 0; }
+.koti-izbor { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
+.koti-izbor td { padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border-light); }
+.koti-k { font-weight: 600; white-space: nowrap; }
+.koti-izbor .bt { font-size: 11.5px; padding: 2px 8px; margin-right: 3px; }
+.koti-izbrana { background: var(--green-light); color: var(--green); border-color: var(--green); }
+.koti-podskazka { background: var(--zhalto-light); color: var(--zhalto); border-color: var(--gold); }

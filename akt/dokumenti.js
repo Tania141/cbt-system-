@@ -135,6 +135,7 @@ function dokumentiP2Html() {
             ${pole('p2-reper-kota', 'Кота на репера')}
         </div>
         <div id="dok-koti-belejka"></div>
+        ${dokumentiKotiOtFasadaHtml(z)}
         ${pole('p2-opisanie-ploshtadka', 'Описание на площадката')}
         <label class="p2-chek"><input type="checkbox" id="p2-darv-ima"
             onchange="dokumentiRisuvaiZapazi()"> Има дървесност за изкореняване</label>
@@ -155,6 +156,68 @@ function dokumentiP2Kota(kl, v) {
     if (!z) return;
     (z.st.p2_koti = z.st.p2_koti || {})[kl] = String(v || '').trim();
     aktZapishi();
+}
+
+// КОТИТЕ ОТ ФАСАДАТА ИЛИ РАЗРЕЗА (18.11.2026, Митко Ситекс: „Не чете коти от
+// проект“). Листът се чете — текстов PDF с код, скан или снимка с АИ — и котите
+// излизат като ИЗБОР: до всяка четири бутона. Подсказката е оцветена, но не
+// попълва нищо сама: коя е корниз и коя било, казва операторът. Прочетеното
+// се пази при строежа, за да не се чете пак.
+const DOK_KOTI_ROLI = [['cokul', 'цокъл'], ['korniz', 'корниз'], ['bilo', 'било'], ['izkop', 'изкоп']];
+let dokKotiHod = '';
+
+function dokumentiKotiOtFasadaHtml(z) {
+    const ch = (z && z.st.p2_koti_chetene) || null;
+    const koti = (z && z.st.p2_koti) || {};
+    const podsk = (ch && ch.podskazki) || {};
+    return `
+    <div class="koti-fasada">
+        <label class="bt">прочети котите от фасада или разрез
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden onchange="dokumentiChetiKoti(this)"></label>
+        ${dokKotiHod ? `<span class="tiho">${dokKotiHod}</span>` : ''}
+        ${ch ? `
+        <p class="tiho">От „${_e(ch.fajl)}“ · ${_e(ch.chetec || '')} — посочи коя е коя. Оцветеното е подсказка.</p>
+        <table class="koti-izbor">
+            ${(ch.koti || []).map(r => `
+            <tr>
+                <td class="koti-k">${_e(r.kota)}</td>
+                <td class="tiho">${r.absolyutna ? '= ' + _e(r.absolyutna) : ''}${r.nadpis ? ' · ' + _e(r.nadpis) : ''}</td>
+                <td>${DOK_KOTI_ROLI.map(([kl, ime]) => `<button class="bt bt-tih ${koti[kl] === r.kota ? 'koti-izbrana' : podsk[kl] === r.kota ? 'koti-podskazka' : ''}"
+                        onclick="dokumentiIzberiKota('${kl}', this.dataset.k)" data-k="${_e(r.kota)}">${ime}</button>`).join('')}</td>
+            </tr>`).join('')}
+        </table>
+        ${(ch.absolyutni || []).length ? `<p class="tiho">Абсолютни коти на листа, сами:
+            ${_e(ch.absolyutni.join(' · '))} — коя е ±0,00, се вижда на чертежа.</p>` : ''}
+        <p class="tiho">Котата на изкопа обикновено е в конструкцията, не на фасадата.</p>` : ''}
+    </div>`;
+}
+
+async function dokumentiChetiKoti(vhod) {
+    const z = dokumentiZhiv();
+    const f = vhod && vhod.files && vhod.files[0];
+    if (!z || !f) return;
+    dokKotiHod = `Чета „${_e(f.name)}“…`;
+    dokumentiRisuvaiZapazi();
+    try {
+        const r = await aktApi('/api/koti/chete', 'POST', {
+            chetec: localStorage.getItem('s2_chetec') || 'auto',
+            fajl: { ime: f.name, media_type: f.type, data: await fileToBase64(f) },
+        });
+        if (r.greshka) { dokKotiHod = '⚠ ' + _e(r.greshka); dokumentiRisuvaiZapazi(); return; }
+        z.st.p2_koti_chetene = { ...(r.koti || {}), koga: new Date().toISOString() };
+        dokKotiHod = '';
+        aktZapishi();
+    } catch (e) {
+        dokKotiHod = '✗ ' + _e(e.message);
+    }
+    dokumentiRisuvaiZapazi();
+}
+
+function dokumentiIzberiKota(kl, kota) {
+    dokumentiP2Kota(kl, kota);
+    const el = document.getElementById('p2-kota-' + kl);
+    if (el) el.value = kota;
+    dokumentiRisuvaiZapazi();
 }
 
 function dokumentiRisuvaiZapazi() {
