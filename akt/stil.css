@@ -1,36 +1,49 @@
 /* АКТ СИСТЕМ · новото ПВА · stil.css
-   Цветовете и мерките са от „prototip-navigacia.html“, за да не се разминават
-   двете повърхности. Нищо в index.html не се пипа. */
+   ОБЛЕКЛОТО — одобрено от оператора на 18.11.2026 (раздел 0 на
+   ЗАДАНИЕ-ДОСИЕТО.md): основа RAL 6004 синьо-зелено и RAL 1004 златисто жълто;
+   цветът носи само значение — зелено готово · златисто чака теб · червено
+   липсва · сиво не му е времето · синьо води нататък. Имената на променливите
+   са старите, за да не се пипа нищо друго; стойностите са новите. */
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-    --ink: #0f1923;
-    --ink-2: #1e2d3d;
-    --slate: #4a6785;
-    --muted: #7b93ab;
-    --border: #d0dbe6;
-    --border-light: #e8f0f7;
-    --surface: #f4f8fb;
-    --surface-2: #eaf1f8;
+    --ral6004: #1f4447;        /* синьо-зелено — фирмата, лентата горе */
+    --ral6004-tamno: #183538;
+    --ral1004: #e0a21c;        /* златисто жълто — „чака теб“, котата в логото */
+    --krem: #faf1dd;           /* бяло + 15 % RAL 1004 — средата, работата */
+    --obekt: #bcc7c8;          /* бяло + 30 % RAL 6004 — дясната колона, обектът */
+    --ink: #0f1d1f;
+    --ink-2: #26393b;
+    --slate: #3f5f62;
+    --muted: #627a7c;
+    --border: #d3dfdf;
+    --border-light: #e7eeee;
+    --surface: #f2f6f5;
+    --surface-2: #e7eeee;
     --white: #ffffff;
-    --gold: #c9952a;
-    --green: #2d7d52;
-    --green-light: #e6f4ec;
+    --gold: #e0a21c;
+    --green: #3b7f45;
+    --green-light: #e8f3e7;
     --red: #b33030;
+    --red-light: #fbeaea;
     --blue: #1f6bb5;
     --blue-light: #e5f0fa;
-    --zhalto: #8a6522;
-    --zhalto-light: #fbf3e2;
+    --zhalto: #7d5a0e;
+    --zhalto-light: #f7e3ad;
+    --sivo: #9aa9aa;
+    --f-ui: 'Golos Text', 'Segoe UI', system-ui, sans-serif;
+    --f-doc: 'PT Serif', Georgia, 'Times New Roman', serif;
+    --f-id: 'IBM Plex Mono', Consolas, monospace;
     --r: 12px;
     --r-sm: 8px;
-    --shadow: 0 2px 12px rgba(15, 25, 35, .08);
+    --shadow: 0 1px 2px rgba(15, 29, 31, .05), 0 4px 14px rgba(15, 29, 31, .06);
     --prehod: .18s cubic-bezier(.4, 0, .2, 1);
 }
 
 body {
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--surface);
+    font-family: var(--f-ui);   /* DM Sans нямаше кирилица — браузърът тихо слагаше друг */
+    background: var(--krem);
     color: var(--ink);
     font-size: 14px;
     line-height: 1.5;
@@ -41,11 +54,22 @@ body {
 
 .shapka {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    padding: 14px 24px; background: var(--white);
-    border-bottom: 1px solid var(--border-light);
+    padding: 12px 24px; background: var(--ral6004); color: #d5e3e2;
+    border-bottom: 1px solid var(--ral6004-tamno);
     position: sticky; top: 0; z-index: 10;
 }
-.shapka-ime { font-size: 15px; font-weight: 700; letter-spacing: .4px; }
+.shapka-ime { flex: none; }
+.shapka-ime a { display: flex; align-items: center; gap: 10px; color: #fff; }
+.shapka-ime .logo { width: 30px; height: 30px; display: block; }
+.shapka-ime .akt { font-family: var(--f-doc); font-weight: 700; font-size: 18px; letter-spacing: .06em; line-height: 1; }
+.shapka-ime .sis { font-weight: 500; font-size: 9.5px; letter-spacing: .42em; color: #8eaaab; line-height: 1; }
+.shapka .bt { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); color: #fff; }
+.shapka .bt:hover { border-color: rgba(255,255,255,.4); }
+.shapka .bt.izbran { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.3); }
+.shapka .bt-glaven { background: var(--ral1004); border-color: var(--ral1004); color: #2b1f04; }
+.shapka .bt-tih { background: transparent; border-color: transparent; color: #8eaaab; }
+.shapka .bt-tih:hover { background: rgba(255,255,255,.08); color: #fff; }
+.shapka .brojach, .shapka .tiho { color: #8eaaab; }
 .shapka-plot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1; }
 .shapka-plot[hidden], #shapka-nazad[hidden] { display: none; }
 #shapka-nazad { text-decoration: none; }
@@ -56,6 +80,8 @@ body {
     background: var(--surface); color: var(--ink);
 }
 .tarsene:focus { outline: none; border-color: var(--blue); background: var(--white); }
+.shapka .tarsene { background: rgba(255,255,255,.95); border-color: transparent; }
+.shapka .tarsene:focus { background: var(--white); box-shadow: 0 0 0 3px rgba(224,162,28,.45); }
 .brojach { font-size: 12px; color: var(--muted); }
 
 .telo { max-width: 1040px; margin: 0 auto; padding: 20px 16px 64px; }
@@ -206,7 +232,7 @@ body {
 
 /* ── Екран 3 · моментът ────────────────────────────────────────────────── */
 
-.moment-ime { font-size: 22px; font-weight: 700; margin-bottom: 14px; }
+.moment-ime { font-family: var(--f-doc); font-size: 24px; font-weight: 700; margin-bottom: 14px; }
 
 .vezni { display: flex; gap: 12px; flex-wrap: wrap; }
 .vezna {
@@ -582,7 +608,7 @@ body {
 .stara-staya .alert { border-radius: 6px; padding: 10px 12px; font-size: 13px; margin: 8px 0; }
 .stara-staya .alert-warning { background: var(--zhalto-light); color: var(--zhalto); }
 .stara-staya .alert-success { background: var(--green-light); color: var(--green); }
-.stara-staya .alert-error { background: #fbe9e9; color: var(--red); }
+.stara-staya .alert-error { background: var(--red-light); color: var(--red); }
 .stara-staya .alert-info { background: var(--blue-light); color: var(--blue); }
 .stara-staya .empty-text { color: var(--muted); font-size: 13px; padding: 8px 0; }
 .stara-staya .section-sep { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
@@ -603,8 +629,8 @@ body {
 .stara-staya .timeline-date, .stara-staya .timeline-detail { font-size: 12px; color: var(--muted); }
 .stara-staya table { width: 100%; border-collapse: collapse; }
 .shapka-stai { display: flex; gap: 4px; flex-wrap: wrap; }
-.shapka-stai a { font-size: 12.5px; color: var(--slate); text-decoration: none; padding: 4px 8px; border-radius: 6px; }
-.shapka-stai a:hover { background: var(--surface-2); }
+.shapka-stai a { font-size: 12.5px; color: #d5e3e2; text-decoration: none; padding: 4px 8px; border-radius: 6px; }
+.shapka-stai a:hover { background: rgba(255,255,255,.08); color: #fff; }
 @media (max-width: 700px) {
     .stara-staya .dve-koloni, .stara-staya .form-grid { grid-template-columns: 1fr; }
 }
