@@ -31,11 +31,16 @@ const OBEKT = {
     permit: { number: '58', date: '2025-03-14' }, builder: { name: '„Калнистрой“ ООД' },
     consultant: { name: '„Наблюдател Консулт“ ЕООД' }, tekusht_moment: 'Акт 15',
 };
-const NADZOR = { red: ['Акт 7', 'Акт 15', 'Акт 16'], grupi: [
+const NADZOR = { red: ['Акт 7', 'Акт 14', 'Акт 15', 'Акт 16'], grupi: [
+    { moment: 'Акт 14', dokumenti: [] },
     { moment: 'Акт 7', dokumenti: [{ dokument: 'Бетонов дневник', sastoyanie: 'налично', etap: 'начало' }] },
     { moment: 'Акт 15', dokumenti: [
         { dokument: 'Разрешение за строеж', sastoyanie: 'налично', etap: 'начало' },
         { dokument: 'Скица от СГКК', sastoyanie: 'очаква се', etap: 'подпис' },
+        { dokument: 'Акт обр. 14', sastoyanie: 'очаква се', etap: 'подпис' },
+        { dokument: 'Нотариално заверено пълномощно на представителя на възложителите', sastoyanie: 'очаква се', etap: 'подпис' },
+        { dokument: 'Заповедна книга на строежа', sastoyanie: 'очаква се', etap: 'подпис' },
+        { dokument: 'Технически паспорт на строежа', sastoyanie: 'очаква се', etap: 'подпис' },
     ] },
     { moment: 'Акт 16', dokumenti: [{ dokument: 'Акт обр. 15', sastoyanie: 'очаква се', etap: 'начало' }] },
 ] };
@@ -88,11 +93,25 @@ async function otvori(moment, history) {
     t('вдясно нищо не се поправя', !dyasna.querySelector('input, textarea, select'));
     const krugove = [...dyasna.querySelectorAll('button.vezna.krug')];
     t('долу вдясно — двата кръга', krugove.length === 2 && !!dyasna.querySelector('.d-dolu .vezni'), krugove.length);
-    t('кръговете казват процента и „имам N от M“', /100 %/.test(tekst(krugove[0])) && /50 %/.test(tekst(krugove[1])) && /имам 1 от 2/.test(tekst(krugove[1])),
+    t('кръговете казват процента и „имам N от M“', /100 %/.test(tekst(krugove[0])) && /17 %/.test(tekst(krugove[1])) && /имам 1 от 6/.test(tekst(krugove[1])),
       krugove.map(tekst));
     a.w.momentKoeLipsva('podpis');
     t('зад кръга е „Какво знаем“ — кои са редовете',
       /Кои са/.test(tekst(d.getElementById('moment-kutiya-telo'))) && /Скица от СГКК/.test(tekst(d.getElementById('moment-kutiya-telo'))));
+    // „Липсва ми“ праща, не чете
+    const red = ime => [...d.querySelectorAll('#moment-telo .lipsva-red')].find(x => x.dataset.dokument === ime);
+    const kam = ime => { const r = red(ime); const a = r && r.querySelector('a.kam'); return a ? [tekst(a), a.getAttribute('href')] : null; };
+    t('Акт обр. 14 праща към своя момент', JSON.stringify(kam('Акт обр. 14'))
+      === JSON.stringify(['към Акт 14 →', '#/moment/bryag/0/' + encodeURIComponent('Акт 14')]), kam('Акт обр. 14'));
+    t('пълномощното праща към Собственост', JSON.stringify(kam('Нотариално заверено пълномощно на представителя на възложителите'))
+      === JSON.stringify(['към Собственост →', '#/sobstvenost/bryag/0']), kam('Нотариално заверено пълномощно на представителя на възложителите'));
+    t('заповедната книга праща към регистъра на ЗК', JSON.stringify(kam('Заповедна книга на строежа'))
+      === JSON.stringify(['към Заповедната книга →', '#/zk/bryag/0']), kam('Заповедна книга на строежа'));
+    t('редът, който праща, НЕ иска пак — няма качи · впиши', !red('Акт обр. 14').querySelector('button'));
+    t('момент, който чеклистът няма за строежа, не се измисля — Техническият паспорт остава с трите жеста',
+      !kam('Технически паспорт на строежа') && red('Технически паспорт на строежа').querySelectorAll('.lipsva-zhestove .bt').length === 3);
+    t('документ без момент и извор — качи · впиши · не се отнася',
+      !kam('Скица от СГКК') && red('Скица от СГКК').querySelectorAll('.lipsva-zhestove .bt').length === 3);
     t('документът — от историята, с дата', /генериран на 12\.11\.2026/.test(tekst(dyasna)), tekst(dyasna));
 
     const b = await otvori('Акт 15');

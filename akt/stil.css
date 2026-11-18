@@ -791,3 +791,10 @@ body {
 /* тесен екран: лентата се пренася, не разпъва страницата */
 .izvori-vrazki { flex-wrap: wrap; }
 @media (max-width: 1099px) { .izvori:not(.izvori-vrazki) { overflow-x: auto; } .izvor { min-width: 140px; } }
+
+/* „Липсва ми“ праща (18.11.2026): редът с свое място има само връзка — синя,
+   защото води нататък; трите жеста са за документ без момент и извор. */
+.lipsva-prashta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lipsva-prashta .kam { color: var(--blue); font-weight: 600; font-size: 13px; text-decoration: none;
+                       white-space: nowrap; padding: 6px 10px; border-radius: 7px; }
+.lipsva-prashta .kam:hover { background: var(--blue-light); }

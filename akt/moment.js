@@ -32,6 +32,8 @@ let momentHod = {};          // какво става с ред, който се
 let momentSaobshtenie = '';
 // Файловете от последното четене — за „раздели по 1 страница“ без ново качване.
 let momentFajlove = {};
+// Имената на моментите, които чеклистът казва за този строеж — за „към … →“.
+let momentImena = [];
 
 function momentOtvori(id, i, ime) {
     momentId = id;
@@ -66,6 +68,7 @@ async function momentZaredi() {
         if (r.greshka) throw new Error(r.greshka);
         momentGrupa = (r.grupi || []).find(g => g.moment === momentIme)
                    || { moment: momentIme, dokumenti: [] };
+        momentImena = (r.red && r.red.length ? r.red : (r.grupi || []).map(g => g.moment)).filter(Boolean);
     } catch (e) {
         momentGrupa = { greshka: e.message };
     }
@@ -405,9 +408,60 @@ function momentLipsvaHtml(dve) {
     </div>`;
 }
 
+// „ЛИПСВА МИ“ ПРАЩА, НЕ ЧЕТЕ (кройката от 17.11.2026). Фактът се ражда на едно
+// място; редът, чийто документ има свое място, праща там — „към Собственост →“,
+// „към Акт 14 →“ — вместо да го иска пак тук. (Операторът, 17.11: „чете НА в
+// Собственост, после пак си търси НА в Протокол 2“.) „Качи · впиши · не се
+// отнася“ остава само за документ без свой момент и без свой извор.
+//
+// Складовете — редовете са дословно от чеклиста, същите, които
+// `nalichniOtSkladove` (js/08) брои, когато ги ИМА; тук е обратната посока:
+// къде се ражда, докато го НЯМА. Само сигурните.
+const MOMENT_IZVOR_NA_RED = {
+    'Документ за собственост на имота': 'sobstvenost',
+    'Документ за собственост или документ за учредено право на строеж': 'sobstvenost',
+    'Нотариален акт за учредено право на строеж': 'sobstvenost',
+    'Съгласие на съсобствениците': 'sobstvenost',
+    'Пълномощно на представителя на възложителя': 'sobstvenost',
+    'Нотариално заверено пълномощно на представителя на възложителите': 'sobstvenost',
+    'Разрешение за строеж': 'pasport',
+    'Документи за участниците в строителството': 'pasport',
+    'Инвестиционен проект по всички части': 'proekt',
+    'Одобрени инвестиционни проекти': 'proekt',
+    'Заповедна книга на строежа': 'zk',
+};
+const MOMENT_IZVOR_IME = { sobstvenost: 'Собственост', pasport: 'Паспорта', proekt: 'Проекта', zk: 'Заповедната книга' };
+
+// Къде се ражда редът: { ime, href } или null (тогава — качи · впиши · не се отнася).
+// Към МОМЕНТ се праща само ако чеклистът наистина има такъв момент за строежа.
+function momentKadeSeRazhda(dokument) {
+    const id = encodeURIComponent(momentId), i = momentIndeks;
+    const ime = String(dokument || '').trim();
+    const ima = m => m && m !== momentIme && momentImena.includes(m);
+    // Документ, който се съставя или получава в свой момент: „Акт обр. 14“,
+    // „Акт 7 и обр. 12…“, „Технически паспорт на строежа“.
+    const kandidati = [];
+    const n = ime.match(/^(Акт|Протокол)\s+(?:обр\.?\s*)?(\d+)/i);
+    if (n) kandidati.push(`${n[1][0].toUpperCase()}${n[1].slice(1).toLowerCase()} ${n[2]}`);
+    if (ime === 'Разрешение за строеж') kandidati.push('РС', 'Разрешение за строеж');
+    if (/^Технически паспорт/.test(ime)) kandidati.push('Технически паспорт');
+    const m = kandidati.find(ima);
+    if (m) return { ime: m, href: `#/moment/${id}/${i}/${encodeURIComponent(m)}` };
+    const izv = MOMENT_IZVOR_NA_RED[ime];
+    if (izv === 'zk') return { ime: MOMENT_IZVOR_IME.zk, href: `#/zk/${id}/${i}` };
+    if (izv) return { ime: MOMENT_IZVOR_IME[izv], href: `#/${izv}/${id}/${i}` };
+    return null;
+}
+
 function momentLipsvashtRed(r) {
     const k = encodeURIComponent(r.dokument);
     const hod = momentHod[r.dokument];
+    const kade = momentKadeSeRazhda(r.dokument);
+    if (kade) return `
+    <div class="lipsva-red lipsva-prashta" data-dokument="${_e(r.dokument)}">
+        <div class="lipsva-ime">${_e(r.dokument)}</div>
+        <a class="kam" href="${kade.href}">към ${_e(kade.ime)} →</a>
+    </div>`;
     return `
     <div class="lipsva-red" data-dokument="${_e(r.dokument)}">
         <div class="lipsva-ime">${_e(r.dokument)}
