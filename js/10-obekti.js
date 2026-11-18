@@ -509,15 +509,34 @@ async function chetiDogovorStroitel() {
         hod.innerHTML = _dogovorNapalni(r.dokument || {}, f.name);
         // Новото ПВА: прочетеният договор влиза и в досието (09.11.2026).
         const dok = r.dokument || {};
-        const imaStroitel = (dok.uchastnici || []).some(u => _dogovorTekst(u.rolya) === 'строител' || u.rolya === 'строител');
-        if (imaStroitel && typeof pasportVDosietoHtml === 'function') hod.innerHTML += pasportVDosietoHtml([dok], f.name);
+        const { uch } = _dogovorIzpalnitel(dok);
+        const imaStroitel = uch.some(u => _dogovorTekst(u.rolya) === 'строител' || u.rolya === 'строител');
+        if (imaStroitel && typeof pasportVDosietoHtml === 'function')
+            hod.innerHTML += pasportVDosietoHtml([{ ...dok, uchastnici: uch }], f.name);
     } catch (e) {
         hod.innerHTML = `<span style="color:var(--red)">❌ ${_s2esc(e.message)}</span>`;
     }
 }
 
-function _dogovorNapalni(dok, imeFajl) {
+// „ИЗПЪЛНИТЕЛ“ в договор за СМР е строителят. Четецът е научен на това
+// (18.11.2026), но ако пак върне „друг“: при договор за строителство
+// единствената страна, която не е възложител и има ЕИК, е строителят — и
+// това се КАЗВА, не се прави тихо. (Митко Ситекс: „Дстроител.PDF“.)
+function _dogovorIzpalnitel(dok) {
     const uch = dok.uchastnici || [];
+    const rolya = u => _dogovorTekst(u.rolya) || u.rolya || '';
+    if (uch.some(u => rolya(u) === 'строител')) return { uch, vzet: null };
+    if (!/^DOGOVOR_STROITEL/.test(String(dok.vid_kod || ''))) return { uch, vzet: null };
+    const drugi = uch.filter(u => rolya(u) !== 'възложител' && String(_dogovorTekst(u.eik)).trim());
+    if (drugi.length !== 1) return { uch, vzet: null };
+    return { uch: uch.map(u => u === drugi[0] ? { ...u, rolya: 'строител' } : u),
+             vzet: String(_dogovorTekst(drugi[0].ime)).trim() };
+}
+
+function _dogovorNapalni(dok, imeFajl) {
+    const { uch, vzet } = _dogovorIzpalnitel(dok);
+    const belezhka = vzet ? `<div style="color:#8a6400;margin-top:3px">„${_s2esc(vzet)}“ е страната
+        ИЗПЪЛНИТЕЛ в договора — взета за строител. Провери.</div>` : '';
     const vzeti = [], lipsvat = [], zaeti = [];
     for (const [id, rolya, pole, kakvo] of _DOGOVOR_POLETA) {
         const el = document.getElementById(id);
@@ -537,6 +556,7 @@ function _dogovorNapalni(dok, imeFajl) {
     const nomer = [_dogovorTekst(dok.nomer) && '№ ' + _dogovorTekst(dok.nomer),
                    _dogovorTekst(dok.data)].filter(Boolean).join(' от ');
     return `
+        ${belezhka}
         ${vzeti.length ? `<div style="color:#2e6b32">✓ От „${_s2esc(imeFajl)}“${nomer ? ' (' + _s2esc(nomer) + ')' : ''}:
             попълнени ${vzeti.map(_s2esc).join(', ')}. <strong>Провери ги</strong> преди да запишеш.</div>` : ''}
         ${zaeti.length ? `<div style="color:#8a6400;margin-top:3px">⚠️ Различава се от написаното —

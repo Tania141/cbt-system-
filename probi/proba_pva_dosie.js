@@ -345,7 +345,8 @@ e.w.pasportVDosieto([{ id: 'rs2', fajl: 'rs.pdf', vid: 'Разрешение з�
 t('същият файл пак — заменя, не дублира',
   e.w.aktObekt('sob').sloy2.od.dokumenti.filter(d => d.fajl === 'rs.pdf').length === 1, e.w.aktObekt('sob').sloy2.od.dokumenti);
 const ps = fs.readFileSync(path.join(KOREN, 'js', '10-obekti.js'), 'utf8');
-t('договорът от паспорта също влиза', /pasportVDosietoHtml\(\[dok\], f\.name\)/.test(ps), '');
+// 18.11.2026: влиза с поправената роля — ИЗПЪЛНИТЕЛЯТ в договор за СМР е строителят.
+t('договорът от паспорта също влиза', /pasportVDosietoHtml\(\[\{ \.\.\.dok, uchastnici: uch \}\], f\.name\)/.test(ps), '');
 
 const sb = await otvori("#/dosie/sob/0", SOB);
 const tl = tekst(sb.d.getElementById('dosie-telo'));
