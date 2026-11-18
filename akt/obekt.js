@@ -90,10 +90,13 @@ function aktIzvoriHtml(p, st, i, rezhim) {
 // Паспортът: седемте основни полета — същите, които показва дясната колона.
 function aktIzvorPasport(p, st) {
     st = st || {};
-    const rs = st.permit || p.permit || {};
-    const vazl = (p.clients && p.clients.length) || (p.client && p.client.name);
-    const polya = [p.pi, st.stroej, st.kategoria, vazl, rs.number,
-                   (st.builder || p.builder || {}).name, st.consultant && st.consultant.name];
+    // През ВРАТАТА (`aktStoynost`, 18.11.2026): възложителите от регистъра,
+    // строителят като `builder.company`, консултантът по номера си. Дотук
+    // трите се търсеха с грешни ключове и паспортът „светеше“ 3 непопълнени
+    // полета, а всичко беше вписано (операторът, Митко Ситекс).
+    const s = k => (typeof aktStoynost === 'function' ? aktStoynost(p, st, k).stoynost : '');
+    const vazl = s('sobstvenik') || (p.clients && p.clients.length) || (p.client && p.client.name);
+    const polya = [p.pi, st.stroej, st.kategoria, vazl, s('rs'), s('stroitel'), s('konsultant')];
     const nyama = polya.filter(x => !x).length;
     return nyama
         ? { cvyat: 'lipsva', sastoyanie: `${nyama} ${nyama === 1 ? 'поле не е вписано' : 'полета не са вписани'}` }

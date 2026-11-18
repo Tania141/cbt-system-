@@ -28,9 +28,14 @@ function stranica() {
 const PARVI = {
     id: 'bryag', pi: '10135.2518.417', nik: 'Бряг',
     stroej: 'Многофамилна жилищна сграда с подземен гараж', kategoria: 'II',
-    clients: [{ name: '„Бряг Девелопмънт“ ЕООД' }],
+    // 18.11.2026: възложителят е в РЕГИСТЪРА (`sobstvenost`), не в старото поле
+    // `clients` на паспорта; строителят е `company` — както го пише паспортът.
+    sobstvenost: { lica: [{ id: 'l1', ime: '„Бряг Девелопмънт“ ЕООД', vid: 'юридическо' }],
+                   obekti: [{ id: 'o1', vid: 'земя', identifikator: '10135.2518.417' }],
+                   sabitia: [{ id: 'e1', obekt: 'o1', vid: 'покупко-продажба', data: '01.01.2020',
+                               dokument: 'НА № 1', pridobivashti: [{ lice: 'l1', dyal: '1/1' }] }], koren: 'o1' },
     permit: { number: '58', date: '2025-03-14' },
-    builder: { name: '„Калнистрой“ ООД' },
+    builder: { company: '„Калнистрой“ ООД' },
     consultant: { name: '„Наблюдател Консулт“ ЕООД' },
     tekusht_moment: 'Акт 15', updatedAt: '2026-11-18T08:00:00Z',
     dve_chisla: { moment: 'Акт 15', nachalo: 100, podpis: 73 },

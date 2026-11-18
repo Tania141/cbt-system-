@@ -135,9 +135,14 @@ function plotDyasno(o) {
 function aktDyasnoHtml(p, st, i) {
     st = st || {};
     const rs = st.permit || p.permit || {};
-    const vazl = (p.clients && p.clients.length ? p.clients : [p.client].filter(Boolean))
+    // През ВРАТАТА (18.11.2026) — възложителите от регистъра, строителят и
+    // консултантът с верните ключове; „откъде“ е това, което вратата казва.
+    const d = k => (typeof aktStoynost === 'function' ? aktStoynost(p, st, k) : { stoynost: '', otkade: '' });
+    const reg = d('sobstvenik');
+    const rachni = (p.clients && p.clients.length ? p.clients : [p.client].filter(Boolean))
         .map(c => c && c.name).filter(Boolean);
-    const stroitel = (st.builder || p.builder || {}).name;
+    const vazl = reg.stoynost ? [reg.stoynost] : rachni;
+    const stroitel = d('stroitel').stoynost;
     const red = (e, s, ot) => s ? `
         <div class="dan"><div class="dan-e">${e}</div><div class="dan-s">${_e(s)}</div><div class="dan-o">${ot}</div></div>` : `
         <div class="dan"><div class="dan-e">${e}</div><div class="dan-s dan-nyama">не е вписано</div></div>`;
@@ -149,10 +154,11 @@ function aktDyasnoHtml(p, st, i) {
         </div>
         <div class="d-danni">
             ${red('Категория', st.kategoria ? st.kategoria + ' категория' : '', 'паспорт')}
-            ${red('Възложители', vazl.join(', '), p.clients && p.clients.length ? 'собственост' : 'паспорт')}
-            ${red('Разрешение за строеж', rs.number ? `№ ${rs.number}${rs.date ? ' от ' + aktData(rs.date) : ''}` : '', 'паспорт')}
-            ${red('Строител', stroitel, 'паспорт')}
-            ${red('Консултант', st.consultant && st.consultant.name, 'паспорт')}
+            ${red('Възложители', vazl.join(', '), reg.stoynost ? 'собственост' : 'паспорт')}
+            ${red('Разрешение за строеж', rs.number ? `№ ${rs.number}${rs.date ? ' от ' + aktData(rs.date) : ''}` : d('rs').stoynost,
+                  rs.number ? 'паспорт' : String(d('rs').otkade || '').toLowerCase())}
+            ${red('Строител', stroitel, String(d('stroitel').otkade || 'паспорт').toLowerCase())}
+            ${red('Консултант', d('konsultant').stoynost, 'паспорт')}
         </div>`;
 }
 

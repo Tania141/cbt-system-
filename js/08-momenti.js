@@ -322,7 +322,12 @@ function stoynostOtSkladove(p, st, k) {
         return t(pas.company) ? r(t(pas.company), 'Паспорт')
             : r(t((dosie.builder || {}).company), 'Досието · договорът за СМР');
     }
-    if (k === 'konsultant') return r(t(((s.consultant || imot.consultant) || {}).name), 'Паспорт');
+    if (k === 'konsultant') {
+        // На обекта стои само номерът от списъка с консултанти — името е там.
+        const c = (s.consultant || imot.consultant) || {};
+        const spisak = (typeof appData !== 'undefined' && appData.consultants) || [];
+        return r(t(c.name) || t((spisak.find(x => x.id == c.id) || {}).name), 'Паспорт');
+    }
     if (k === 'zk_nomer') {
         const zk = (s.zk && s.zk.number ? s.zk : imot.zk) || {};
         return r(t(zk.number) && ('№ ' + t(zk.number) + (t(zk.date) ? ' от ' + t(zk.date) : '')), 'Регистър на ЗК');

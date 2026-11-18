@@ -455,7 +455,10 @@ function aktImeKrug(st, i) {
 
 function aktGlavaRedove(p, st) {
     const rs = (st && st.permit) || {};
-    const vazl = (p.clients && p.clients.length ? p.clients : [p.client].filter(Boolean))
+    // Възложителите — от регистъра на собствеността (вратата), иначе писаните
+    // на ръка в стария паспорт (18.11.2026).
+    const reg = typeof aktStoynost === 'function' ? aktStoynost(p, st || p, 'sobstvenik').stoynost : '';
+    const vazl = reg ? [reg] : (p.clients && p.clients.length ? p.clients : [p.client].filter(Boolean))
         .map(c => c && c.name).filter(Boolean);
     return [
         {

@@ -100,6 +100,15 @@ async function otvori(hash) {
     t('сверен признак е пръв', s('kategoria').stoynost === 'четвърта', s('kategoria'));
     t('и разминаването със склада не е тихо', s('kategoria').razminava && s('kategoria').razminava.stoynost === 'трета', s('kategoria'));
 
+    // ── паспортът не „свети“ попълненото (Митко Ситекс, 18.11.2026) ─────────
+    t('паспортът: всичко попълнено → „попълнен“', a.w.aktIzvorPasport(p, p).sastoyanie === 'попълнен',
+      a.w.aktIzvorPasport(p, p));
+    a.w.eval('aktDanni.consultants = [{ id: 7, name: "Консулт по номер ЕООД" }]');
+    const sNomer = a.w.eval('({ ...aktDanni.projects[0], consultant: { id: 7 } })');
+    t('консултант, записан само с номер — намира се по списъка',
+      a.w.aktStoynost(sNomer, sNomer, 'konsultant').stoynost === 'Консулт по номер ЕООД',
+      a.w.aktStoynost(sNomer, sNomer, 'konsultant'));
+
     // ── „Какво знаем“ ───────────────────────────────────────────────────────
     const z = await otvori('#/znaem/ob1/0/dokumenti');
     const dok = tekst(z.d.getElementById('znaem-dokumenti'));
