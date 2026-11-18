@@ -761,10 +761,16 @@ function aktOstatak(moment) {
 // Същите четири неща, които старият екран „Надзор“ подава. Полетата са на
 // строежа и се четат; нищо не се изчислява наново тук.
 
-function aktNalichni(st) {
+// Наличното — през ВРАТАТА на кухнята (`nalichniOtSkladove`, 18.11.2026):
+// освен отметнатото и прочетеното в досието и регистърът на собствеността,
+// разрешението в паспорта и книгата от регистъра на ЗК. Едно място решава
+// „имам ли го“ — и за двата кръга, и за „Липсва ми“, и за ОСИП.
+function aktNalichni(st, p) {
     const otChetene = ((st.sloy2 && st.sloy2.od && st.sloy2.od.dokumenti) || [])
         .map(d => (d.cheklist_red || '').trim()).filter(Boolean);
-    return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene])];
+    const otSkladove = typeof nalichniOtSkladove === 'function'
+        ? nalichniOtSkladove(p, st).map(x => x.red) : [];
+    return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene, ...otSkladove])];
 }
 
 // Същото стои и в `_nadzorPriznaci` (`js/08-momenti.js`) — онзи модул не се
@@ -790,7 +796,7 @@ function aktPriznaci(p, st) {
 async function aktNadzor(p, st) {
     return aktApi('/api/nadzor', 'POST', {
         pi: p.pi, faza: 'nadzor',
-        nalichni: aktNalichni(st),
+        nalichni: aktNalichni(st, p),
         tekusht: st.tekusht_moment || '',
         priznaci: aktPriznaci(p, st),
         izklyucheni: st.izklyucheni_momenti || [],

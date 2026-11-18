@@ -183,7 +183,7 @@ async function renderNadzorPage() {
     try {
         const r = await apiCall('/api/nadzor', 'POST', {
             pi: obekt.pi, faza: 'nadzor',
-            nalichni: _nadzorNalichni(st),
+            nalichni: _nadzorNalichni(st, obekt),
             tekusht: st.tekusht_moment || '',
             priznaci: _nadzorPriznaci(obekt, st),
             izklyucheni: st.izklyucheni_momenti || [],
@@ -238,10 +238,119 @@ function _nadzorPriznaci(obekt, st) {
 }
 
 // Какво вече е събрано: от прочетените документи и от отметнатото на ръка.
-function _nadzorNalichni(st) {
+// ВРАТАТА КЪМ НАЛИЧНОТО (18.11.2026). „Имам ли го“ се питаше само в
+// отметнатото и в досието — нотариалният акт и пълномощното от регистъра,
+// разрешението от паспорта и книгата от регистъра на ЗК не се броеха, и
+// чеклистът на Протокол 2 и Акт 15 ги искаше пак, макар Акт 15 да ги пише.
+// (Операторът, 17.11: „чете НА в Собственост, после пак си търси НА в
+// Протокол 2“.) Сега всеки склад казва кои редове доказва и ОТКЪДЕ.
+//
+// Редовете са дословно от чеклиста (`чеклист документи.md`). Само сигурните:
+// съставеното в системата НЕ се брои — съставен не е подписан; актовете обр. 7
+// от дневника — също не, защото в чеклиста на Акт 15 няма точен ред за тях.
+function nalichniOtSkladove(p, st) {
+    const out = [];
+    const dobavi = (redove, otkade) => { for (const red of redove) out.push({ red, otkade }); };
+    const imot = p || st || {};
+    const s = imot.sobstvenost || {};
+    const aktove = (s.sabitia || []).filter(e => e && (String(e.dokument || '').trim() || (e.pridobivashti || []).length));
+    if (aktove.length) {
+        dobavi(['Документ за собственост на имота',
+                'Документ за собственост или документ за учредено право на строеж'],
+               `Собственост · ${aktove.length} ${aktove.length === 1 ? 'акт' : 'акта'}`);
+        const uchr = aktove.find(e => /учредяване\s+право\s+на\s+строеж/i.test(String(e.vid || '')));
+        if (uchr) dobavi(['Нотариален акт за учредено право на строеж'],
+                         'Собственост · учредяване' + (uchr.data ? ' от ' + uchr.data : ''));
+    }
+    const palnom = (s.lica || []).map(l => l && l.predstavitel)
+        .find(pr => pr && String(pr.ime || '').trim() && (String(pr.nomer || '').trim() || String(pr.data || '').trim()));
+    if (palnom) dobavi(['Пълномощно на представителя на възложителя',
+                        'Нотариално заверено пълномощно на представителя на възложителите'],
+                       'Собственост · пълномощно' + (palnom.nomer ? ' № ' + palnom.nomer : '')
+                       + (palnom.data ? ' от ' + palnom.data : ''));
+    const rs = (st && st.permit) || (imot.permit) || {};
+    if (String(rs.number || '').trim())
+        dobavi(['Разрешение за строеж'], 'Паспорт · РС № ' + String(rs.number).trim());
+    const zk = (st && st.zk && st.zk.number ? st.zk : imot.zk) || {};
+    if (String(zk.number || '').trim())
+        dobavi(['Заповедна книга на строежа'], 'Регистър на ЗК · № ' + String(zk.number).trim());
+    return out;
+}
+
+// ВРАТАТА КЪМ СТОЙНОСТТА (18.11.2026). „Какво знаем“ гледаше само признаците
+// от записките (`st.fakti`) и затова казваше „нищо не знаем“ за обект с
+// попълнен паспорт, регистър и коти. Тук всеки склад казва стойността си и
+// ОТКЪДЕ е. Признакът, сверен от оператора, си остава първи; разминава ли се
+// със склада, не се решава тихо — връщат се и двете (`razminava`).
+//
+// Само сигурните двойки: строежът, идентификаторът и категорията от паспорта,
+// възложителите от регистъра, котите на Протокол 2; плюс документите и
+// участниците — РС, строителят, консултантът, заповедната книга — които
+// признаците изобщо нямат.
+const SKLAD_KLYUCHOVE = {
+    rs: 'Разрешение за строеж', stroitel: 'Строител', konsultant: 'Консултант',
+    zk_nomer: 'Заповедна книга',
+};
+
+function stoynostOtSkladove(p, st, k) {
+    const imot = p || st || {};
+    const s = st || imot;
+    const t = v => String((v && typeof v === 'object' ? v.stoynost : v) ?? '').trim();
+    const dosie = typeof _ppOtDosie === 'function' ? _ppOtDosie(s) : { rs: {}, builder: {} };
+    const r = (stoynost, otkade) => stoynost ? { stoynost, otkade } : null;
+    if (k === 'obekt') return r(t(s.stroej), 'Паспорт');
+    if (k === 'identifikator') return r(t(imot.pi), 'Паспорт');
+    if (k === 'kategoria') return r(t(s.kategoria), 'Паспорт');
+    if (k === 'sobstvenik' && typeof vazlozhiteli === 'function') {
+        const v = vazlozhiteli(imot);
+        if (v && v.otkade === 'registar' && (v.spisak || []).length)
+            return r(v.spisak.map(c => c.name).filter(Boolean).join(' · '), 'Собственост');
+    }
+    const koti = s.p2_koti || {};
+    if (k === 'kota_izkop') return r(t(koti.izkop), 'Протокол 2');
+    if (k === 'kota_cokul') return r(t(koti.cokul), 'Протокол 2');
+    if (k === 'kota_bilo') return r(t(koti.bilo), 'Протокол 2');
+    if (k === 'rs') {
+        const pas = s.permit || imot.permit || {};
+        const ot = t(pas.number) ? pas : (dosie.rs || {});
+        const tekst = [t(ot.number) && '№ ' + t(ot.number), t(ot.date) && 'от ' + t(ot.date),
+                       t(ot.issuer)].filter(Boolean).join(' ');
+        return r(tekst, t(pas.number) ? 'Паспорт' : 'Досието');
+    }
+    if (k === 'stroitel') {
+        const pas = s.builder || imot.builder || {};
+        return t(pas.company) ? r(t(pas.company), 'Паспорт')
+            : r(t((dosie.builder || {}).company), 'Досието · договорът за СМР');
+    }
+    if (k === 'konsultant') return r(t(((s.consultant || imot.consultant) || {}).name), 'Паспорт');
+    if (k === 'zk_nomer') {
+        const zk = (s.zk && s.zk.number ? s.zk : imot.zk) || {};
+        return r(t(zk.number) && ('№ ' + t(zk.number) + (t(zk.date) ? ' от ' + t(zk.date) : '')), 'Регистър на ЗК');
+    }
+    return null;
+}
+
+// Стойността, която системата знае, с откъде. Сверен признак → първи; иначе
+// складът. И двете ли са и се различават — `razminava` носи складовата.
+function aktStoynost(p, st, k) {
+    const f = ((st || {}).fakti || {})[k];
+    const sveren = f && (f.sastoyanie === 'potvardeno' || f.sastoyanie === 'popraveno');
+    const sklad = stoynostOtSkladove(p, st, k);
+    const zn = v => String(v || '').toLowerCase().replace(/[\s.,„“"]+/g, '');
+    if (sveren) {
+        const v = String(f.stoynost ?? '').trim();
+        return { stoynost: v, otkade: 'признак', sastoyanie: f.sastoyanie,
+                 razminava: sklad && v && zn(sklad.stoynost) !== zn(v) ? sklad : null };
+    }
+    if (sklad) return { stoynost: sklad.stoynost, otkade: sklad.otkade, sastoyanie: 'sklad', razminava: null };
+    return { stoynost: '', otkade: '', sastoyanie: (f && f.sastoyanie) || '', razminava: null };
+}
+
+function _nadzorNalichni(st, p) {
     const otChetene = (st.sloy2?.od?.dokumenti || [])
         .map(d => (d.cheklist_red || '').trim()).filter(Boolean);
-    return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene])];
+    const otSkladove = nalichniOtSkladove(p, st).map(x => x.red);
+    return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene, ...otSkladove])];
 }
 
 const _NADZOR_CVYAT = { 'налично': 'var(--green,#2e7d32)', 'очаква се': 'var(--ink)',

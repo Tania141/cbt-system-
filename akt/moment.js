@@ -496,6 +496,15 @@ function momentImamHtml() {
         // Научено от друг обект със същите съставки — казва се откъде е.
         const urok = typeof nauchZaRed === 'function' ? nauchZaRed(z.p, z.st, ime) : null;
         if (urok) return 'не се отнася · ' + nauchObyasnenie(urok);
+        // От склад на системата — регистъра, паспорта, регистъра на ЗК (18.11.2026).
+        const sklad = typeof nalichniOtSkladove === 'function'
+            ? nalichniOtSkladove(z.p, z.st).find(x => x.red === ime) : null;
+        if (sklad) return sklad.otkade;
+        // Прочетено в досието.
+        const prochet = ((z.st.sloy2 && z.st.sloy2.od && z.st.sloy2.od.dokumenti) || [])
+            .find(d => String(d.cheklist_red || '').trim() === ime);
+        if (prochet) return 'Досието · ' + [prochet.nomer, prochet.data].filter(Boolean)
+            .map(v => typeof v === 'object' ? v.stoynost : v).filter(Boolean).join(' · ');
         return 'отметнато';
     };
     return `

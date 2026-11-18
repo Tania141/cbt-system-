@@ -94,6 +94,7 @@ function znaemRisuvai() {
         znaemGlavaHtml(z)
         + znaemRazminavaniaHtml(z)
         + znaemRedoveHtml(z)
+        + znaemDokumentiHtml(z)
         + ZNAEM_GRUPI.map(g => znaemGrupaHtml(z, g[0], g[1], g[2])).join('')
         + znaemGrupaHtml(z, 'drugo', 'Друго', znaemOstanali());
 }
@@ -106,7 +107,8 @@ function znaemOstanali() {
 }
 
 function znaemIme(k) {
-    return (typeof _KES_IME !== 'undefined' && _KES_IME[k]) || k;
+    return (typeof _KES_IME !== 'undefined' && _KES_IME[k])
+        || (typeof SKLAD_KLYUCHOVE !== 'undefined' && SKLAD_KLYUCHOVE[k]) || k;
 }
 
 // ── Главата ──────────────────────────────────────────────────────────────────
@@ -151,7 +153,11 @@ function znaemSastoyanie(z, k) {
 
 // Стойността, която системата наистина знае: само сверената. Предложената от
 // четеца не е знание — тя чака ✔.
+// Огледалото гледа през ВРАТАТА (`aktStoynost`, 18.11.2026), не само признаците:
+// паспортът, регистърът, котите на Протокол 2, досието. Дотук казваше „нищо не
+// знаем“ за обект с попълнен паспорт и регистър.
 function znaemStoynost(z, k) {
+    if (typeof aktStoynost === 'function') return aktStoynost(z.p, z.st, k).stoynost;
     const f = z.fakti[k];
     return f && (f.sastoyanie === 'potvardeno' || f.sastoyanie === 'popraveno')
         ? String(f.stoynost ?? '').trim() : '';
@@ -316,18 +322,37 @@ function znaemGrupaHtml(z, kod, ime, klyuchove) {
 }
 
 function znaemRedHtml(z, k) {
-    const f = z.fakti[k] || {};
-    const s = znaemSastoyanie(z, k);
-    const sveren = s === 'potvardeno' || s === 'popraveno';
-    const znak = sveren ? '✓' : s === 'sporno' ? '≠' : s === 'predlozheno' ? '…' : '—';
-    const v = sveren ? String(f.stoynost ?? '').trim() : '';
+    const d = typeof aktStoynost === 'function' ? aktStoynost(z.p, z.st, k)
+        : { stoynost: znaemStoynost(z, k), sastoyanie: znaemSastoyanie(z, k), otkade: '' };
+    const s = d.razminava ? 'sporno' : d.sastoyanie;
+    const znak = d.razminava ? '≠' : d.stoynost ? '✓' : s === 'sporno' ? '≠' : s === 'predlozheno' ? '…' : '—';
     return `
     <div class="znaem-red znaem-red-${s || 'prazno'}">
         <span class="znaem-znak">${znak}</span>
         <span class="znaem-etiket">${_e(znaemIme(k))}</span>
-        <span class="znaem-stoynost ${v ? '' : 'znaem-prazno'}">${
-            _e(v || znaemPrazno(s))}</span>
-        ${znaemOtkadeHtml(z, k)}
+        <span class="znaem-stoynost ${d.stoynost ? '' : 'znaem-prazno'}">${
+            _e(d.stoynost || znaemPrazno(s))}</span>
+        ${d.razminava ? `<div class="otkade znaem-razminava">≠ ${_e(d.razminava.otkade)} казва
+            „${_e(d.razminava.stoynost)}“ — провери кое е вярно</div>` : ''}
+        ${d.sastoyanie === 'sklad' ? `<div class="otkade">от ${_e(d.otkade)}</div>` : znaemOtkadeHtml(z, k)}
+    </div>`;
+}
+
+// Документите и участниците — признаците ги нямат; знаят ги паспортът,
+// досието и регистърът на ЗК (18.11.2026).
+function znaemDokumentiHtml(z) {
+    const kl = Object.keys(typeof SKLAD_KLYUCHOVE !== 'undefined' ? SKLAD_KLYUCHOVE : {});
+    if (!kl.length) return '';
+    const znae = kl.filter(k => znaemStoynost(z, k)).length;
+    const otvoren = znaemGrupa === 'dokumenti' || znaemOtvoreni.dokumenti;
+    return `
+    <div class="kutiya-razdel ${znaemGrupa === 'dokumenti' ? 'razdel-podchertan' : ''}" id="znaem-dokumenti">
+        <div class="nadpis nadpis-klik" onclick="znaemRazgani('dokumenti')" tabindex="0"
+             onkeydown="if(event.key==='Enter')znaemRazgani('dokumenti')">
+            Документите и участниците <span class="otkade">${znae} от ${kl.length}</span>
+            ${otvoren ? '▾' : '▸'}
+        </div>
+        ${otvoren ? `<div class="znaem-redove">${kl.map(k => znaemRedHtml(z, k)).join('')}</div>` : ''}
     </div>`;
 }
 
