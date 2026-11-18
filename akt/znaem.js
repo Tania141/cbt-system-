@@ -332,10 +332,39 @@ function znaemRedHtml(z, k) {
         <span class="znaem-etiket">${_e(znaemIme(k))}</span>
         <span class="znaem-stoynost ${d.stoynost ? '' : 'znaem-prazno'}">${
             _e(d.stoynost || znaemPrazno(s))}</span>
-        ${d.razminava ? `<div class="otkade znaem-razminava">≠ ${_e(d.razminava.otkade)} казва
-            „${_e(d.razminava.stoynost)}“ — провери кое е вярно</div>` : ''}
+        ${d.razminava ? znaemReshiHtml(k, d) : ''}
         ${d.sastoyanie === 'sklad' ? `<div class="otkade">от ${_e(d.otkade)}</div>` : znaemOtkadeHtml(z, k)}
     </div>`;
+}
+
+// Разминаването — двата източника и твоят отговор (операторът, 18.11.2026:
+// „оператора казва 4 — той бие“). Полетата на ръка (категория, идентификатор)
+// не се избират с едно натискане — пишат се (`_KES_NARAKA`, 13.10.2026).
+function znaemReshiHtml(k, d) {
+    const k64 = encodeURIComponent(k);
+    const naraka = typeof _KES_NARAKA !== 'undefined' && _KES_NARAKA[k];
+    const izbor = v => `<button class="bt" onclick="znaemReshi('${k64}', this.dataset.v)"
+        data-v="${_e(v)}">вярно е „${_e(v)}“</button>`;
+    return `
+    <div class="otkade znaem-razminava">
+        ≠ признакът казва „${_e(d.stoynost)}“, ${_e(d.razminava.otkade)} казва „${_e(d.razminava.stoynost)}“.
+        Коя е?
+        <div class="znaem-reshi">
+            ${naraka
+                ? `<input type="text" class="znaem-reshi-pole" placeholder="впиши вярната"
+                          onkeydown="if(event.key==='Enter')znaemReshi('${k64}', this.value)">
+                   <button class="bt" onclick="znaemReshi('${k64}', this.previousElementSibling.value)">запиши</button>`
+                : izbor(d.stoynost) + izbor(d.razminava.stoynost)}
+        </div>
+    </div>`;
+}
+
+function znaemReshi(k64, v) {
+    const z = znaemZhiv();
+    if (!z || typeof stoynostReshi !== 'function') return;
+    if (!stoynostReshi(z.p, z.st, decodeURIComponent(k64), v)) return;
+    aktZapishi();
+    znaemRisuvai();
 }
 
 // Документите и участниците — признаците ги нямат; знаят ги паспортът,

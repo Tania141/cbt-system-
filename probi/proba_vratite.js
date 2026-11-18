@@ -111,6 +111,22 @@ async function otvori(hash) {
     t('огледалото вече не казва „нищо не знаем“ за строежа', /Жилищна сграда/.test(kakvo), kakvo);
     t('огледалото без грешка', z.greshki.length === 0, z.greshki);
 
+    // ── „Коя е?“ — операторът казва и той бие (18.11.2026) ─────────────────
+    const red = z.d.querySelector('#znaem-kakvo .znaem-razminava');
+    t('разминаването пита „Коя е?“', !!red && /Коя е\?/.test(tekst(red)), tekst(red));
+    t('категорията се пише, не се избира с бутон (поле на ръка)',
+      !!red && !!red.querySelector('input.znaem-reshi-pole') && !/вярно е/.test(tekst(red)), red && red.innerHTML);
+    z.w.znaemReshi('kategoria', 'трета');
+    const pz = z.w.eval('aktDanni.projects[0]');
+    t('отговорът става признак „поправено“', pz.fakti.kategoria.sastoyanie === 'popraveno'
+      && pz.fakti.kategoria.stoynost === 'трета', pz.fakti.kategoria);
+    t('и стига до паспорта', pz.kategoria === 'трета', pz.kategoria);
+    t('червеното изчезва', !z.d.querySelector('#znaem-kakvo .znaem-razminava'),
+      tekst(z.d.getElementById('znaem-kakvo')));
+    t('записано в браузъра', JSON.parse(z.w.localStorage.getItem('akt_v5')).projects[0].fakti.kategoria.stoynost === 'трета');
+    t('празен отговор не се записва', z.w.stoynostReshi(pz, pz, 'kategoria', '  ') === false);
+    t('мнозинство по документи не се прави (забрана 5)', !/честот|мнозинств/.test(z.w.stoynostReshi.toString().replace(/\/\/.*$/gm, '')));
+
     dobri.forEach(x => console.log('  ok  ' + x));
     loshi.forEach(x => console.log('  ЛО  ' + x));
     console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — двете врати виждат всички складове`);

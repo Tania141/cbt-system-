@@ -346,6 +346,29 @@ function aktStoynost(p, st, k) {
     return { stoynost: '', otkade: '', sastoyanie: (f && f.sastoyanie) || '', razminava: null };
 }
 
+// ОПЕРАТОРЪТ КАЗВА КОЯ Е — И ТОЙ БИЕ (18.11.2026). При разминаване системата
+// показва източниците и пита веднъж; отговорът става признак „поправено“ и
+// влиза навсякъде, без да се пита пак. Мнозинство по документи НЕ се прави
+// (забрана 5: три документа с една и съща стойност може да са три копия на
+// една грешка). Където паспортът носи същото поле, отговорът стига и до него —
+// иначе червеното би останало. Идентификаторът не се пише от тук: той е
+// ключът на имота.
+function stoynostReshi(p, st, k, v) {
+    const s = st || p;
+    if (!s) return false;
+    const stoynost = String(v ?? '').trim();
+    if (!stoynost) return false;
+    s.fakti = s.fakti || {};
+    const star = s.fakti[k] || {};
+    s.fakti[k] = { ...star, stoynost, sastoyanie: 'popraveno',
+                   prochetena: star.prochetena ?? star.stoynost ?? '',
+                   koy: typeof _s2Koy === 'function' ? _s2Koy() : 'оператора',
+                   koga: new Date().toISOString(), reshenie: true };
+    if (k === 'kategoria') s.kategoria = stoynost;
+    if (k === 'obekt') s.stroej = stoynost;
+    return true;
+}
+
 function _nadzorNalichni(st, p) {
     const otChetene = (st.sloy2?.od?.dokumenti || [])
         .map(d => (d.cheklist_red || '').trim()).filter(Boolean);
