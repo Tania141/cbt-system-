@@ -996,7 +996,7 @@ async function _osipDokumenti(p) {
     try {
         const r = await apiCall('/api/nadzor', 'POST', {
             pi: p.pi, faza: 'osip',
-            nalichni: _nadzorNalichni(st),
+            nalichni: _nadzorNalichni(st, p),
             tekusht: 'ОСИП',
             priznaci: _nadzorPriznaci(p, st),
             izklyucheni: st.izklyucheni_momenti || [],
