@@ -213,13 +213,13 @@ t('празният повод го казва честно',
 
 // ── връзките навън и навътре ────────────────────────────────────────────────
 const o = await otvori('#/obekt/hus/0');
-const vrazki = [...o.d.querySelectorAll('.vrazka')];
-// Пет от 04.11.2026 — паспортът се нареди пръв.
-// Осем от 17.11.2026 (ОСИП, Заповедна книга, Проверки — от старото ПВА);
-// огледалото остава пето.
-t('Екран 2 вече има ОСЕМ връзки', vrazki.length === 8, vrazki.map(x => tekst(x)));
-t('последната е огледалото',
-  vrazki[4].getAttribute('href') === '#/znaem/hus/0', vrazki[4].getAttribute('href'));
+// ОБЪРНАТО 18.11.2026 — три колони: огледалото вече не е пета връзка долу,
+// а „Какво знаем · всичко“ вдясно долу (кройката от 17.11.2026).
+const vrazki = [...o.d.querySelectorAll('#obekt-telo a[href], #dyasna a[href]')];
+t('от обекта към огледалото — вдясно долу',
+  !!o.d.querySelector('#dyasna a[href="#/znaem/hus/0"]'), vrazki.map(x => x.getAttribute('href')));
+t('огледалото е споменато веднъж — едно нещо на едно място',
+  vrazki.filter(x => x.getAttribute('href') === '#/znaem/hus/0').length === 1, vrazki.map(x => x.getAttribute('href')));
 t('и не отпраща към старото ПВА',
   !vrazki.some(x => /index\.html/.test(x.getAttribute('href') || '')),
   vrazki.map(x => x.getAttribute('href')));

@@ -641,9 +641,10 @@ body {
    трите цели; лаптоп (<1440) — лявата свита до икона и число; в моментите
    лявата е свита винаги. Дясната засега е само на плота.                    */
 .ramka { display: grid; grid-template-columns: 232px minmax(0, 1fr) 272px; min-height: 100vh; }
-.ramka:not([data-ekran="plot"]) { grid-template-columns: 232px minmax(0, 1fr); }
-.ramka:not([data-ekran="plot"]) .dyasna { display: none; }
+.ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) { grid-template-columns: 232px minmax(0, 1fr); }
+.ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) .dyasna { display: none; }
 .sreda { min-width: 0; display: flex; flex-direction: column; }
+.sreda > .telo { width: 100%; }   /* margin: auto в колона флекс иначе я свива до съдържанието */
 
 .lyava {
     position: sticky; top: 0; height: 100vh; overflow-y: auto;
@@ -699,7 +700,7 @@ body {
 
 @media (max-width: 1439px) {
     .ramka { grid-template-columns: 68px minmax(0, 1fr) 216px; }
-    .ramka:not([data-ekran="plot"]) { grid-template-columns: 68px minmax(0, 1fr); }
+    .ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) { grid-template-columns: 68px minmax(0, 1fr); }
     .lyava { padding: 16px 10px 14px; }
     .lyava :is(.firma-ime, .fp-tekst, .bled span) { display: none; }
     .firma { justify-content: center; padding: 2px 0 14px; }
@@ -710,7 +711,7 @@ body {
     .bled { justify-content: center; padding: 8px 0; }
 }
 @media (max-width: 1099px) {
-    .ramka, .ramka:not([data-ekran="plot"]) { grid-template-columns: 56px minmax(0, 1fr); }
+    .ramka, .ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) { grid-template-columns: 56px minmax(0, 1fr); }
     .ramka .dyasna { display: none; }
 }
 
@@ -732,3 +733,34 @@ body {
 .d-vrazka { display: block; padding: 10px 12px; border-radius: 9px; background: var(--white);
             color: #134f86; font-weight: 600; font-size: 13px; text-decoration: none; }
 .red.posochen { border-color: var(--ral6004); box-shadow: inset 3px 0 0 var(--ral6004), var(--shadow); }
+
+/* ── Обектът в три колони (18.11.2026) ─────────────────────────────────────
+   Лентата с изворите е горе, в RAL 6004 (операторът); всеки извор казва
+   състоянието си с цвета на значението. Главата отиде вдясно.            */
+.ramka[data-ekran="obekt"] .telo { max-width: none; padding: 0 0 64px; }
+.izvori { display: flex; gap: 8px; padding: 10px 24px; background: var(--ral6004);
+          border-bottom: 1px solid var(--ral6004-tamno); }
+.izvor { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+         padding: 8px 12px; border-radius: 9px; text-decoration: none; color: #fff;
+         background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); transition: var(--prehod); }
+.izvor:hover { background: rgba(255,255,255,.1); }
+.izvor:focus-visible { outline: 2px solid var(--ral1004); outline-offset: 2px; }
+.izvor-t { font-weight: 600; font-size: 13px; line-height: 1.2; }
+.izvor-s { font-size: 11.5px; display: flex; align-items: center; gap: 5px; white-space: nowrap;
+           overflow: hidden; text-overflow: ellipsis; color: #8eaaab; }
+.izvor-s::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.izvor-gotovo .izvor-s { color: #8fd19a; }
+.izvor-chaka { box-shadow: inset 0 0 0 1px rgba(240,194,74,.55); }
+.izvor-chaka .izvor-s { color: #f0c24a; }
+.izvor-lipsva { box-shadow: inset 0 0 0 1px rgba(241,154,154,.55); }
+.izvor-lipsva .izvor-s { color: #f3a3a3; }
+.izvori-vrazki { gap: 4px; padding: 7px 24px; align-items: center; }
+.izvori-vrazki .izvor { flex: none; flex-direction: row; background: none; box-shadow: none; padding: 5px 10px; color: #d5e3e2; }
+.izvori-vrazki .izvor::after { content: " →"; color: #8eaaab; }
+.izvori-etiket { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8eaaab; font-weight: 600; margin-right: 6px; }
+.obekt-rabota { max-width: 1040px; padding: 20px 24px 0; display: flex; flex-direction: column; gap: 14px; }
+.obekt-rabota > .nadpis { margin-top: 6px; }
+.obekt-oshte { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding-top: 10px;
+               border-top: 1px solid #f1e4c4; font-size: 13px; }
+.vrazka-tiha { color: var(--blue); text-decoration: none; }
+.vrazka-tiha:hover { text-decoration: underline; }

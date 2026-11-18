@@ -155,7 +155,8 @@ async function otvori(hash) {
 
     // ── обектът води към стаите си ──────────────────────────────────────────
     const ob = await otvori('#/obekt/ob1/0');
-    const vr = tekst(ob.d.querySelector('.vrazki'));
+    // 18.11.2026: от реда „връзки“ долу — в тихия ред „Още“ под моментите.
+    const vr = tekst(ob.d.querySelector('.obekt-oshte'));
     t('обектът води към ОСИП, Заповедна книга и Проверки', /ОСИП/.test(vr) && /Заповедна книга/.test(vr) && /Проверки/.test(vr), vr);
 
     dobri.forEach(x => console.log('  ok  ' + x));

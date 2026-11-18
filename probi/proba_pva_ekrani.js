@@ -160,19 +160,20 @@ t('от Екран 2 има обратен път към плота',
   !b.d.getElementById('shapka-nazad').hidden
   && b.d.getElementById('shapka-nazad').getAttribute('href') === '#/plot');
 
-// главата
-const glava = [...b.d.querySelectorAll('.glava-red')];
-t('главата е три реда текст, не формуляр', glava.length === 3, glava.length);
-t('в главата няма полета за въвеждане',
-  b.d.querySelectorAll('.glava input, .glava select').length === 0);
-t('първи ред: ПИ и строежът', tekst(glava[0]).includes('68134.1006.2440')
-  && tekst(glava[0]).includes('шахтов ТП'), tekst(glava[0]));
-t('втори ред: възложител и РС', tekst(glava[1]).includes('ХЪС Инвест')
-  && tekst(glava[1]).includes('Б-228'), tekst(glava[1]));
-t('трети ред: консултантът', tekst(glava[2]).includes('СиБиТи Консулт'));
-t('редът на главата се отваря за поправка с клик',
-  glava.every(x => /obektPopravi/.test(x.getAttribute('onclick') || '')));
-t('възложителят казва откъде е', /регистъра/.test(tekst(glava[1])), tekst(glava[1]));
+// ОБЪРНАТО 18.11.2026 — кройката в три колони. Главата отиде в дясната
+// колона и там САМО се показва; поправката на място отпадна (операторът,
+// 17.11.2026: „данните отдясно не се поправят там“ — поправя се в паспорта
+// или в досието). Пазят се същите факти, но на новото място и без полета.
+const dyasna = b.d.getElementById('dyasna');
+const dT = tekst(dyasna);
+t('обектът е вдясно: ПИ и строежът', dT.includes('68134.1006.2440') && dT.includes('шахтов ТП'), dT);
+t('вдясно: възложител и РС', dT.includes('ХЪС Инвест') && dT.includes('Б-228'), dT);
+t('вдясно: консултантът', dT.includes('СиБиТи Консулт'), dT);
+t('възложителят казва откъде е — собствеността', /ХЪС Инвест.{0,40}собственост/.test(dT), dT);
+t('вдясно нищо не се поправя — няма полета', !dyasna.querySelector('input, textarea, select'));
+t('главата с поправка я няма в средата', !b.d.querySelector('#obekt-telo .glava'));
+t('вдясно долу — „Какво знаем · всичко“ към огледалото',
+  !!dyasna.querySelector('a[href="#/znaem/hus/0"]'));
 
 // съставките
 const krugcheta = [...b.d.querySelectorAll('.krugcheta .krugche:not(.krugche-plyus)')];
@@ -247,42 +248,29 @@ t('отвореният обект се помни като текущ — ст�
   JSON.parse(b.w.localStorage.getItem('akt_v5')).currentProject.id === 'hus',
   (JSON.parse(b.w.localStorage.getItem('akt_v5')).currentProject || {}).id);
 
-// четирите връзки
-const vrazki = [...b.d.querySelectorAll('.vrazka')].map(x => tekst(x));
-// Паспортът се нареди пръв на 04.11.2026: данните идват преди документа.
-// Осем от 17.11.2026: ОСИП, Заповедна книга и Проверки дойдоха от старото ПВА.
-t('долу има осем връзки', vrazki.length === 8, vrazki);
-t('връзките са Паспортът · Проектът · Собственост · Досието · Какво знаем',
-  /Паспортът/.test(vrazki[0]) && /Проектът/.test(vrazki[1]) && /Собственост/.test(vrazki[2])
-  && /Досието/.test(vrazki[3]) && /Какво знаем/.test(vrazki[4]), vrazki);
-t('паспортът носи разрешението за строеж в подзаглавието си',
-  /разрешение за строеж/.test(vrazki[0]), vrazki[0]);
-// Проектът и Собствеността вече са ВЪТРЕ в новото; навън води само Досието.
-const vsichki = [...b.d.querySelectorAll('.vrazka')];
-
-t('Паспортът води на Екран 9',
-  vsichki[0].getAttribute('href') === '#/pasport/hus/0', vsichki[0].getAttribute('href'));
-t('Проектът води вътре, на Екран 4',
-  vsichki[1].getAttribute('href') === '#/proekt/hus/0'
-  && vsichki[1].getAttribute('target') === null,
-  vsichki[1].getAttribute('href'));
-t('Собствеността води вътре, на Екран 5',
-  vsichki[2].getAttribute('href') === '#/sobstvenost/hus/0'
-  && vsichki[2].getAttribute('target') === null,
-  vsichki[2].getAttribute('href'));
-t('собствеността виси на ИМОТА, не на строежа',
-  /68134\.1006\.2440/.test(vrazki[2]), vrazki[2]);
-t('Досието също води вътре, на Екран 6',
-  vsichki[3].getAttribute('href') === '#/dosie/hus/0'
-  && vsichki[3].getAttribute('target') === null,
-  vsichki[3].getAttribute('href'));
-t('Какво знаем води на Екран 7 — огледалото',
-  vsichki[4].getAttribute('href') === '#/znaem/hus/0'
-  && vsichki[4].getAttribute('target') === null,
-  vsichki[4].getAttribute('href'));
-t('и четирите връзки вече са вътре в новото',
-  vsichki.every(a => (a.getAttribute('href') || '').startsWith('#/')),
-  vsichki.map(a => a.getAttribute('href')));
+// ОБЪРНАТО 18.11.2026: осемте връзки долу станаха лента с изворите горе
+// (Паспортът · Проектът · Собственост · Досието — всеки казва състоянието
+// си), „Какво знаем“ отиде вдясно долу, а ОСИП, Заповедна книга и Проверки
+// стоят тихо под моментите, докато станат моменти. Адресите са същите.
+const izvori = [...b.d.querySelectorAll('.izvori .izvor')];
+t('горе — лента с четирите извора', izvori.map(x => tekst(x.querySelector('.izvor-t'))).join('|')
+  === 'Паспортът|Проектът|Собственост|Досието', izvori.map(x => tekst(x)));
+t('изворите водят вътре, на своите екрани',
+  izvori.map(x => x.getAttribute('href')).join('|')
+  === '#/pasport/hus/0|#/proekt/hus/0|#/sobstvenost/hus/0|#/dosie/hus/0',
+  izvori.map(x => x.getAttribute('href')));
+t('всеки извор казва състоянието си', izvori.every(x => tekst(x.querySelector('.izvor-s'))),
+  izvori.map(x => tekst(x)));
+t('състоянието е с цвета на значението',
+  izvori.every(x => /izvor-(gotovo|chaka|lipsva|sivo)/.test(x.className)), izvori.map(x => x.className));
+t('паспортът брои невписаното, не измисля (няма категория и строител)',
+  /2 полета не са вписани/.test(tekst(izvori[0])) && /izvor-lipsva/.test(izvori[0].className), tekst(izvori[0]));
+t('досието без прочетено казва „още нищо прочетено“', /още нищо прочетено/.test(tekst(izvori[3])), tekst(izvori[3]));
+const oshte = [...b.d.querySelectorAll('.obekt-oshte a')].map(x => x.getAttribute('href'));
+t('под моментите — ОСИП, Заповедна книга, Проверки',
+  oshte.join('|') === '#/osip/hus/0|#/zk/hus/0|#/proverki/hus/0', oshte);
+t('и всички връзки са вътре в новото',
+  [...izvori.map(x => x.getAttribute('href')), ...oshte].every(h => (h || '').startsWith('#/')));
 
 // ── ЕКРАН 8: ДОКУМЕНТИТЕ ─────────────────────────────────────────────────────
 // Първата стая, преместена от старото ПВА (04.11.2026). Дотук бутонът

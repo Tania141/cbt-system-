@@ -3,11 +3,13 @@
 //
 // „Една страница за целия обект. Оттук се тръгва навсякъде.“ (ЗАДАНИЕ.md)
 //
-// Четири неща, отгоре надолу:
-//   1. главата — три реда текст, не формуляр; клик отваря за поправка;
-//   2. съставките — кръгчета с „откъде е“, × и +;
-//   3. лентата на моментите — на СТРОЕЖА, с превключвател при няколко строежа;
-//   4. долу три връзки: Проектът · Собствеността · Досието.
+// В три колони (кройката от 17–18.11.2026):
+//   горе — лентата с изворите: Паспортът · Проектът · Собственост · Досието,
+//          всеки казва състоянието си;
+//   среда — съставките и моментите (на СТРОЕЖА, с превключвател);
+//   дясно — данните на обекта, само показани, и „Какво знаем · всичко“.
+// Главата с поправка на място отпадна: дясното само показва, поправя се на
+// едно място — в паспорта или досието (операторът, 17.11.2026).
 //
 // Собственост и Акт 16 висят на ИМОТА, не на строежа — затова връзката за
 // собственост не носи номер на строеж.
@@ -46,62 +48,100 @@ function obektRisuvai() {
     const z = obektZhiv();
     if (!z) return;
     document.getElementById('obekt-telo').innerHTML =
-        obektGlavaHtml(z.p, z.st)
+        aktIzvoriHtml(z.p, z.st, obektIndeks, 'sastoyanie')
+        + '<div class="obekt-rabota">'
+        + obektArhivHtml(z.st)
         + obektSastavkiHtml(z.p, z.st)
         + obektStroezhiHtml(z.p)
-        // Паспортът стои НАД моментите: данните идват преди документа, а дотук
-        // връзката му беше най-долу, след всички актове. (04.11.2026)
-        + obektVrazkiHtml(z.p)
-        + '<div id="obekt-lenta">' + obektLentaHtml() + '</div>';
+        + '<div class="nadpis">Моментите</div>'
+        + '<div id="obekt-lenta">' + obektLentaHtml() + '</div>'
+        + obektOshteHtml()
+        + '</div>';
+    const d = document.getElementById('dyasna');
+    if (d) d.innerHTML = aktDyasnoHtml(z.p, z.st, obektIndeks) + `
+        <div class="d-dolu"><a class="d-vrazka" href="#/znaem/${encodeURIComponent(obektId)}/${obektIndeks}">Какво знаем · всичко →</a></div>`;
 }
 
-// ── 1. Главата: три реда текст ───────────────────────────────────────────────
+// ── Изворите: лента горе ─────────────────────────────────────────────────────
+// В Обекта всеки извор казва състоянието си — само онова, което системата
+// наистина е преброила; в Момента същата лента е само връзки (състоянието там
+// е в „Липсва ми“). Числото идва от мястото, където фактът живее.
 
-function obektGlavaHtml(p, st) {
-    const redove = aktGlavaRedove(p, st);
+function aktIzvoriHtml(p, st, i, rezhim) {
+    const id = encodeURIComponent(p.id);
+    const izv = [
+        { kl: 'pasport', ime: 'Паспортът', href: `#/pasport/${id}/${i}`, ...aktIzvorPasport(p, st) },
+        { kl: 'proekt', ime: 'Проектът', href: `#/proekt/${id}/${i}`, ...aktIzvorProekt(st) },
+        // Собствеността е на ИМОТА; строежът в адреса е само за обратния път.
+        { kl: 'sobst', ime: 'Собственост', href: `#/sobstvenost/${id}/${i}`, ...aktIzvorSobstvenost(p) },
+        { kl: 'dosie', ime: 'Досието', href: `#/dosie/${id}/${i}`, ...aktIzvorDosie(st) },
+    ];
     return `
-    <div class="glava">
-        ${redove.map((r, i) => obektRedOtvoren === i ? `
-            <div class="glava-red glava-red-otvoren">
-                ${r.polya.map(pole => `
-                    <label class="p2-pole"><span>${_e(pole.ime)}</span>
-                        <input type="text" value="${_e(String(obektStoynost({ p, st }, pole) ?? ''))}"
-                               onchange="obektPopraviPole('${_e(pole.kade)}', '${_e(pole.pole)}', this.value)"></label>`).join('')}
-                <button class="bt bt-tih" onclick="obektPopravi(-1)">готово</button>
-            </div>` : `
-            <div class="glava-red" onclick="obektPopravi(${i})" tabindex="0"
-                 onkeydown="if(event.key==='Enter')obektPopravi(${i})"
-                 title="Клик — поправи">
-                <span class="glava-tekst">${_e(r.tekst) || '<span class="prazno">[___]</span>'}</span>
-                ${r.otkade ? `<span class="otkade">${_e(r.otkade)}</span>` : ''}
-            </div>`).join('')}
-        ${aktVremeZaArhiv(st) ? `
-            <div class="podsetka">
-                Моментът е „${_e(st.tekusht_moment)}“ — обектът може да слезе в архива.
-                Връща се с клик.
-                <button class="bt bt-tih" onclick="obektArhiviraj()">в архива</button>
-            </div>` : ''}
-    </div>`;
+    <nav class="izvori izvori-${rezhim}">
+        ${rezhim === 'vrazki' ? '<span class="izvori-etiket">Извори</span>' : ''}
+        ${izv.map(x => `
+            <a class="izvor izvor-${x.cvyat}" data-izvor="${x.kl}" href="${x.href}"${x.zashto ? ` title="${_e(x.zashto)}"` : ''}>
+                <span class="izvor-t">${x.ime}</span>
+                ${rezhim === 'vrazki' ? '' : `<span class="izvor-s">${_e(x.sastoyanie)}</span>`}
+            </a>`).join('')}
+    </nav>`;
 }
 
-// Поправката е на място: клик на реда го отваря в полета; записва се при
-// излизане от полето. Без отделен прозорец (операторът, 11.11.2026: „поправката
-// за всички полета“ — в полето, което се вижда).
-let obektRedOtvoren = -1;
-
-function obektPopravi(i) {
-    obektRedOtvoren = Number(i);
-    obektRisuvai();
+// Паспортът: седемте основни полета — същите, които показва дясната колона.
+function aktIzvorPasport(p, st) {
+    st = st || {};
+    const rs = st.permit || p.permit || {};
+    const vazl = (p.clients && p.clients.length) || (p.client && p.client.name);
+    const polya = [p.pi, st.stroej, st.kategoria, vazl, rs.number,
+                   (st.builder || p.builder || {}).name, st.consultant && st.consultant.name];
+    const nyama = polya.filter(x => !x).length;
+    return nyama
+        ? { cvyat: 'lipsva', sastoyanie: `${nyama} ${nyama === 1 ? 'поле не е вписано' : 'полета не са вписани'}` }
+        : { cvyat: 'gotovo', sastoyanie: 'попълнен' };
 }
 
-function obektPopraviPole(kade, pole, v) {
-    aktPopravi(obektId, kade, pole, String(v || '').trim());
+// Проектът: блоковете на текущия кръг, които влизат в доклада и чакат ✔.
+function aktIzvorProekt(st) {
+    const bl = Object.values((aktKrug(st) || {}).blokove || {})
+        .filter(b => !b.rolya || b.rolya === 'описание');
+    if (!bl.length) return { cvyat: 'sivo', sastoyanie: 'няма прочетени записки' };
+    const chakat = bl.filter(b => (b.sastoyanie || 'predlozheno') === 'predlozheno').length;
+    return chakat
+        ? { cvyat: 'chaka', sastoyanie: `${chakat} ${chakat === 1 ? 'блок чака' : 'блока чакат'} ✔` }
+        : { cvyat: 'gotovo', sastoyanie: 'текстовете са потвърдени' };
 }
 
-function obektStoynost(z, pole) {
-    let v = pole.kade === 'imot' ? z.p : z.st;
-    for (const c of String(pole.pole).split('.')) v = v && v[c];
-    return v;
+// Собствеността: кухнята казва дали веригата връзва (`_sbSastoyanie`).
+function aktIzvorSobstvenost(p) {
+    if (typeof _sbSastoyanie !== 'function') return { cvyat: 'sivo', sastoyanie: '' };
+    const s = _sbSastoyanie(p);
+    return s.gotovo
+        ? { cvyat: 'gotovo', sastoyanie: 'веригата връзва', zashto: s.tekst }
+        : { cvyat: 'lipsva', sastoyanie: 'веригата не връзва', zashto: s.tekst };
+}
+
+// Досието: прочетените документи и колко от тях не са сверени.
+function aktIzvorDosie(st) {
+    const s2 = ((st || {}).sloy2 || {}).od || {};
+    const dok = s2.dokumenti || [];
+    if (!dok.length) return { cvyat: 'sivo', sastoyanie: 'още нищо прочетено' };
+    const potv = s2.potvardeni || {};
+    const nesvereni = typeof _s2Sveren === 'function' ? dok.filter(d => !_s2Sveren(d, potv)).length : 0;
+    return nesvereni
+        ? { cvyat: 'chaka', sastoyanie: `${dok.length} прочетени · ${nesvereni} несверени` }
+        : { cvyat: 'gotovo', sastoyanie: `${dok.length} прочетени, сверени` };
+}
+
+// ── Подсещането за архив ─────────────────────────────────────────────────────
+// Стоеше в главата; главата отиде вдясно, а там нищо не се натиска.
+
+function obektArhivHtml(st) {
+    return aktVremeZaArhiv(st) ? `
+        <div class="podsetka">
+            Моментът е „${_e(st.tekusht_moment)}“ — обектът може да слезе в архива.
+            Връща се с клик.
+            <button class="bt bt-tih" onclick="obektArhiviraj()">в архива</button>
+        </div>` : '';
 }
 
 // ── 2. Съставките ────────────────────────────────────────────────────────────
@@ -346,39 +386,17 @@ function obektArhiviraj() {
     location.hash = '#/plot';
 }
 
-// ── 5. Трите връзки ──────────────────────────────────────────────────────────
-
-// Четири връзки: Проектът · Собствеността · Досието · Какво знаем. Четвъртата
-// е огледалото (Екран 7) — отваря се и при клик върху число, затова от тук
-// се влиза без група и всичко стои сгънато.
-function obektVrazkiHtml(p) {
-    // Проектът вече е тук, в новото — затова не отпраща навън.
-    const proekt = `
-        <a class="vrazka" href="#/proekt/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Проектът<span>записките и текстовете</span></a>`;
-    // Собствеността е на ИМОТА — затова връзката ѝ не носи номер на строеж.
-    const sobstvenost = `
-        <a class="vrazka" href="#/sobstvenost/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Собственост<span>на имота ${_e(p.pi || '')}</span></a>`;
-    // Паспортът е ДАННИТЕ на обекта — те идват преди всеки документ, затова
-    // стои пръв. (04.11.2026)
-    const pasport = `
-        <a class="vrazka" href="#/pasport/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Паспортът<span>данните: участници, разрешение за строеж</span></a>`;
+// ── Още: стаите, които още не са станали моменти ────────────────────────────
+// Паспортът, Проектът, Собствеността и Досието отидоха в лентата горе; „Какво
+// знаем“ — вдясно долу. ОСИП и Заповедната книга ще станат моменти;
+// Проверките отиват при записката. Дотогава стоят тук, тихо.
+function obektOshteHtml() {
+    const id = encodeURIComponent(obektId), i = obektIndeks;
     return `
-    <div class="vrazki">
-        ${pasport}
-        ${proekt}
-        ${sobstvenost}
-        <a class="vrazka" href="#/dosie/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Досието<span>всичко прочетено, с цитатите</span></a>
-        <a class="vrazka" href="#/znaem/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Какво знаем<span>огледалото — с откъде и от кого</span></a>
-        <a class="vrazka" href="#/osip/${encodeURIComponent(obektId)}/${obektIndeks}">
-            ОСИП<span>оценката на съответствието, документите до РС</span></a>
-        <a class="vrazka" href="#/zk/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Заповедна книга<span>номерът от регистъра и генерирането</span></a>
-        <a class="vrazka" href="#/proverki/${encodeURIComponent(obektId)}/${obektIndeks}">
-            Проверки<span>сглобеното от записките</span></a>
+    <div class="obekt-oshte">
+        <span class="nadpis">Още</span>
+        <a class="vrazka-tiha" href="#/osip/${id}/${i}">ОСИП</a>
+        <a class="vrazka-tiha" href="#/zk/${id}/${i}">Заповедна книга</a>
+        <a class="vrazka-tiha" href="#/proverki/${id}/${i}">Проверки</a>
     </div>`;
 }
