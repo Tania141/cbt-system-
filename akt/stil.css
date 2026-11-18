@@ -798,3 +798,36 @@ body {
 .lipsva-prashta .kam { color: var(--blue); font-weight: 600; font-size: 13px; text-decoration: none;
                        white-space: nowrap; padding: 6px 10px; border-radius: 7px; }
 .lipsva-prashta .kam:hover { background: var(--blue-light); }
+
+/* ── Акт 7: таблицата по бетоновия дневник (облеклото, 18.11.2026) ─────────
+   Състоянието на реда е с цвета на значението; подписаните са сгънати в един
+   ред; „провери в досието →“ води, „Съставѝ избраните“ е единственият тъмен. */
+.dn-karta { background: var(--white); }
+.dn-tablica { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.dn-tablica th { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600;
+                 color: var(--muted); padding: 8px 8px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.dn-tablica td { padding: 6px 8px; vertical-align: middle; }
+.dn-tablica .dn-red td { border-top: 1px solid var(--border-light); }
+.dn-tablica .dn-izvor td { padding-top: 0; }
+.dn-tablica td.kota input { font-family: var(--f-id); font-size: 12.5px; }
+.dn-tablica td.dt input { font-variant-numeric: tabular-nums; }
+.dn-tablica input[type=text], .dn-tablica textarea { border: 1px solid transparent; background: transparent; border-radius: 6px;
+    padding: 4px 6px; font: inherit; color: var(--ink); }
+.dn-tablica input[type=text]:not(:disabled):hover, .dn-tablica textarea:not(:disabled):hover { border-color: var(--border); }
+.dn-tablica input[type=text]:focus, .dn-tablica textarea:focus { border-color: var(--blue); background: var(--white); outline: none; }
+.dn-grupa td { background: var(--green-light); color: #295c31; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 8px;
+        border-radius: 20px; white-space: nowrap; }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip-gotovo { background: var(--green-light); color: #295c31; }
+.chip-chaka { background: var(--zhalto-light); color: var(--zhalto); }
+.chip-lipsva { background: var(--red-light); color: #8f2424; }
+.dn-sastavi { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.dn-sastavi .kam { color: var(--blue); font-weight: 600; font-size: 13px; text-decoration: none; padding: 6px 10px; border-radius: 7px; }
+.dn-sastavi .kam:hover { background: var(--blue-light); }
+.dyasna .krug-7 { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 2px; position: relative; text-align: center; }
+.dyasna .krug-7 svg { width: 76px; height: 76px; display: block; }
+.dyasna .krug-7 .vezna-post { position: absolute; top: 34px; left: 0; right: 0; font-size: 16px; font-weight: 700; }
+.dyasna .krug-7 .vezna-ime { font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+.dyasna .krug-7 .vezna-ot { font-size: 11px; color: #3c5254; }

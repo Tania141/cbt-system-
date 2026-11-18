@@ -87,11 +87,16 @@ function momentRisuvai() {
         return;
     }
     const dve = aktDveChisla(momentGrupa, aktNeotnasya(z.p, z.st));
+    // Повтарящият се момент (Акт 7) — таблицата по бетоновия дневник е горе;
+    // тя носи и своя „Съставѝ избраните“, затова общият бутон не се дублира.
+    const tabl7 = momentIme === 'Акт 7';
+    const imaDn = tabl7 && ((z.st.akt7_dnevnik || {}).aktove || []).length;
     kutiya.innerHTML =
-        momentLipsvaHtml(dve)
+        (tabl7 ? momentDnevnikHtml(z.st) : '')
+        + momentLipsvaHtml(dve)
         + momentImamHtml()
         + momentOstatakHtml(z.st)
-        + momentSastaviHtml(dve)
+        + (imaDn ? '' : momentSastaviHtml(dve))
         + momentPapkaHtml();
     momentDyasno(z, dve);
 }
@@ -120,9 +125,11 @@ function momentDyasno(z, dve) {
     const gore = document.getElementById('moment-gore');
     if (gore) gore.innerHTML = momentGoreHtml(z);
     if (!d) return;
+    const dn7 = momentIme === 'Акт 7' ? momentDnSastoyaniya(z) : null;
     d.innerHTML = aktDyasnoHtml(z.p, z.st, momentIndeks)
         + momentDokumentHtml(z)
-        + (dve ? `<div class="d-dolu">${momentVezniHtml(dve)}</div>` : '');
+        + (dn7 && dn7.length ? `<div class="d-dolu">${momentKrugove7(dn7)}</div>`
+           : dve ? `<div class="d-dolu">${momentVezniHtml(dve)}</div>` : '');
 }
 
 // Документът: само онова, което историята казва. Не намери ли генериране —
@@ -643,7 +650,7 @@ function momentImamHtml() {
 function momentOstatakHtml(st) {
     const polya = aktOstatak(momentIme);
     const sega = st.ostatak || {};
-    return `${momentIme === 'Акт 7' ? momentDnevnikHtml(st) : ''}${momentIme === 'Акт 14' || momentIme === 'Акт 15' ? momentDnevnikRedHtml(st) : ''}
+    return `${momentIme === 'Акт 14' || momentIme === 'Акт 15' ? momentDnevnikRedHtml(st) : ''}
     <div class="kutiya-razdel">
         <div class="nadpis">Това, което само ти знаеш</div>
         <p class="poyasnenie">Системата няма откъде да го вземе. Попълненото влиза направо в текста.</p>
@@ -853,36 +860,129 @@ function momentDnevnikSlei(staro, novi) {
     return { aktove, mahnati: staro.mahnati || [], dobaveni: dobaveni.length };
 }
 
+// СЪСТОЯНИЕТО НА РЕДА (облеклото, 18.11.2026): подписан · сканиран, провери ·
+// само в дневника. „Подписан“ е твоето ✔ или сверен скан; „сканиран“ — в
+// досието има прочетен акт обр. 7 със същата дата или със същите коти.
+// Съвпадението е СЪЩОТО като в `dokTetradka` (js/04b-spisak.js): дата или коти,
+// всеки скан поглъща най-много един ред. Повторено е, защото кухнята не го
+// изнася; `proba_pva_akt7_tablica.js` сверява двете и пада, ако се разминат.
+function _dn7DataKl(v) {
+    const m = String(v || '').match(/(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+    return m ? [+m[1], +m[2], m[3].length === 2 ? 2000 + +m[3] : +m[3]].join('.') : '';
+}
+function _dn7KotiKl(v) {
+    const k = [], re = /([±+\-–−])?\s*(\d+)\s*[.,]\s*(\d+)/g;
+    let m;
+    while ((m = re.exec(String(v || '')))) {
+        const x = parseFloat(m[2] + '.' + m[3]) * (m[1] && /[\-–−]/.test(m[1]) ? -1 : 1);
+        k.push(x.toFixed(2));
+    }
+    return [...new Set(k)].sort().join('|');
+}
+
+function momentDnSastoyaniya(z) {
+    const aktove = ((z.st.akt7_dnevnik || {}).aktove) || [];
+    if (!aktove.length) return [];
+    const AKT7 = /акт\s*(обр\.?|образец)?\s*№?\s*7(?![\dа-я])/i;
+    const skanove = (typeof dokTetradka === 'function' ? dokTetradka(z.p, z.st) : [])
+        .filter(r => r.otkade === (typeof _DOK_PROCHETEN !== 'undefined' ? _DOK_PROCHETEN : 'прочетен')
+            && (r.kod === 'AKT7' || AKT7.test([r.ime, r.vid].join(' '))))
+        .map(r => ({ data: _dn7DataKl(r.data), koti: _dn7KotiKl(r.sadarzhanie || ((r.izvor || {}).sadarzhanie || {}).stoynost),
+                     sveren: !!r.sveren, vzet: false }));
+    return aktove.map(a => {
+        let sk = skanove.find(x => !x.vzet && x.data && x.data === _dn7DataKl(a.data));
+        if (!sk) { const k = _dn7KotiKl(a.smr); sk = k ? skanove.find(x => !x.vzet && x.koti === k) : null; }
+        if (sk) sk.vzet = true;
+        const vid = (sk && sk.sveren) ? 'skan' : a.podpisan ? 'podpisan' : sk ? 'proveri' : 'dnevnik';
+        return { a, vid, skan: !!sk };
+    });
+}
+const DN7_SASTOYANIE = {
+    skan: ['gotovo', 'подписан скан'], podpisan: ['gotovo', 'подписан · твоето ✔'],
+    proveri: ['chaka', 'сканиран, провери'], dnevnik: ['lipsva', 'само в дневника'],
+};
+
+// Кои несъставени са избрани за „Съставѝ избраните“. По подразбиране — всички
+// „само в дневника“; пази се кои си махнала (по бетонирането, не по номер на ред).
+let momentDnMahnatiOtIzbora = new Set();
+let momentDnPodpisaniOtvoreni = false;
+function _dn7Kl(a) { return (a.klyuchove || [_dnKlyuch(a)])[0]; }
+function momentDnIzbrani(z) {
+    return momentDnSastoyaniya(z).filter(r => r.vid === 'dnevnik' && !momentDnMahnatiOtIzbora.has(_dn7Kl(r.a)));
+}
+function momentDnIzberi(i, da) {
+    const dn = _momentDnevnik();
+    if (!dn || !dn.aktove[i]) return;
+    const k = _dn7Kl(dn.aktove[i]);
+    if (da) momentDnMahnatiOtIzbora.delete(k); else momentDnMahnatiOtIzbora.add(k);
+    momentRisuvai();
+}
+function momentDnPodpisaniSgavane() {
+    momentDnPodpisaniOtvoreni = !momentDnPodpisaniOtvoreni;
+    momentRisuvai();
+}
+
+function momentKrugove7(redove) {
+    const C = 2 * Math.PI * 30, M = redove.length;
+    const podp = redove.filter(r => DN7_SASTOYANIE[r.vid][0] === 'gotovo').length;
+    const prov = redove.filter(r => r.vid === 'proveri').length;
+    const krug = (n, ime, cvyat) => `
+        <div class="vezna krug krug-7">
+            <svg viewBox="0 0 76 76" aria-hidden="true">
+                <circle cx="38" cy="38" r="30" fill="none" stroke="#a7b5b6" stroke-width="7"/>
+                ${n ? `<circle cx="38" cy="38" r="30" fill="none" stroke="${cvyat}" stroke-width="7" stroke-linecap="round"
+                    stroke-dasharray="${(C * n / M).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/>` : ''}
+            </svg>
+            <span class="vezna-post">${n}</span>
+            <span class="vezna-ime">${ime}</span>
+            <span class="vezna-ot">${n} от ${M}</span>
+        </div>`;
+    return `<div class="vezni">${krug(podp, 'подписани', podp === M ? 'var(--green)' : 'var(--gold)')}${
+        krug(prov, 'чакат проверка', 'var(--gold)')}</div>`;
+}
+
 function momentDnevnikHtml(st) {
+    const z = momentZhiv();
     const dn = st.akt7_dnevnik;
     const aktove = (dn && dn.aktove) || [];
+    const sast = z ? momentDnSastoyaniya(z) : [];
     const podpisani = aktove.filter(a => a.podpisan).length;
-    const kl = (i, pole, a, shir) => `<td><input type="text" value="${_e(a[pole] || '')}" ${a.podpisan ? 'disabled' : ''}
+    const gotovi = sast.filter(r => DN7_SASTOYANIE[r.vid][0] === 'gotovo');
+    const proveri = sast.filter(r => r.vid === 'proveri').length;
+    const izbrani = z ? momentDnIzbrani(z) : [];
+    const kl = (i, pole, a, shir) => `<td class="${pole === 'data' ? 'dt' : 'kota'}"><input type="text" value="${_e(a[pole] || '')}" ${a.podpisan ? 'disabled' : ''}
         ${pole === 'data' ? 'placeholder="дд.мм.гггг"' : ''} style="width:100%;min-width:${shir}"
         onchange="momentDnevnikPoprav(${i}, '${pole}', this.value)"></td>`;
-    const red = (a, i) => `
-        <tr class="${a.podpisan ? 'dn-podpisan' : ''}">
-            <td><input type="checkbox" ${a.podpisan ? 'checked' : ''} title="подписан"
-                       onchange="momentDnevnikPodpisan(${i}, this.checked)"></td>
-            ${kl(i, 'data', a, '88px')}${kl(i, 'ot', a, '56px')}${kl(i, 'do', a, '56px')}
-            <td><textarea rows="1" ${a.podpisan ? 'disabled' : ''} style="width:100%;min-width:220px"
+    const red = (r, i) => {
+        const a = r.a, [cvyat, ime] = DN7_SASTOYANIE[r.vid];
+        const sgaanat = cvyat === 'gotovo' && !momentDnPodpisaniOtvoreni;
+        return `
+        <tr class="dn-red dn-${r.vid} ${a.podpisan ? 'dn-podpisan' : ''}"${sgaanat ? ' hidden' : ''}>
+            <td>${r.vid === 'dnevnik' ? `<input type="checkbox" class="dn-izbor" title="избери за съставяне"
+                    ${momentDnMahnatiOtIzbora.has(_dn7Kl(a)) ? '' : 'checked'} onchange="momentDnIzberi(${i}, this.checked)">` : ''}</td>
+            ${kl(i, 'data', a, '88px')}
+            <td><textarea rows="1" ${a.podpisan ? 'disabled' : ''} style="width:100%;min-width:200px"
                     onchange="momentDnevnikPoprav(${i}, 'smr', this.value)">${_e(a.smr || '')}</textarea></td>
-            <td class="tiho">${_e(a.data_beton || '')}</td>
-            <td style="white-space:nowrap">${a.podpisan ? '' : `
+            ${kl(i, 'ot', a, '56px')}${kl(i, 'do', a, '56px')}
+            <td><span class="chip chip-${cvyat}">${ime}</span></td>
+            <td style="white-space:nowrap">${a.podpisan
+                ? `<button class="bt bt-tih" title="махни твоето ✔" onclick="momentDnevnikPodpisan(${i}, false)">върни</button>`
+                : `<button class="bt bt-tih" title="подписан е — казваш го ти" onclick="momentDnevnikPodpisan(${i}, true)">✔ подписан</button>
                 ${i < aktove.length - 1 && !aktove[i + 1].podpisan
                     ? `<button class="bt bt-tih" title="слей със следващия" onclick="momentDnevnikSleiRed(${i})">⊕</button>` : ''}
                 <button class="bt bt-tih" title="махни" onclick="momentDnevnikMahni(${i})">✕</button>`}</td>
         </tr>
-        <tr class="dn-izvor"><td></td><td colspan="6" class="otkade">дневник${a.stranica ? ', стр. ' + _e(a.stranica) : ''}: „${
-            _e(a.element || '')}“${a.obem ? ' · ' + _e(a.obem) + ' м³' : ''}${
+        <tr class="dn-izvor"${sgaanat ? ' hidden' : ''}><td></td><td colspan="6" class="otkade">дневник${a.stranica ? ', стр. ' + _e(a.stranica) : ''}: „${
+            _e(a.element || '')}“${a.data_beton ? ' · бетон ' + _e(a.data_beton) : ''}${a.obem ? ' · ' + _e(a.obem) + ' м³' : ''}${
             a.belezhka ? ` · <strong>${_e(a.belezhka)}</strong>` : ''}</td></tr>`;
+    };
+    const id = encodeURIComponent(momentId);
     return `
-    <div class="kutiya-razdel">
+    <div class="kutiya-razdel dn-karta">
         <div class="nadpis">Бетоновият дневник → актове обр. 7</div>
-        <p class="poyasnenie">По един акт на бетониране. Датата на акта е предложена ден
-           преди бетона — провери я. ✔ „подписан“ значи, че актът е подписан такъв, какъвто
-           е в реда — тогава влиза в 1.3 на Акт 15. Прочетен скан със същата дата бие реда.</p>
-        <div class="redica" style="margin:6px 0">
+        <p class="poyasnenie">По един акт на бетониране, по датата на бетона. Датата на акта е
+           предложена ден преди бетона — провери я. Подписаните влизат в 1.3 на Акт 15.</p>
+        <div class="redica dn-chetene">
             <input type="file" id="moment-dnevnik-fajl" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.xlsx"
                    onchange="momentDnevnikCheti()">
             <span class="tiho">${dn ? 'прочети дневника пак — добавят се само новите бетонирания'
@@ -894,15 +994,17 @@ function momentDnevnikHtml(st) {
             ${podpisani} подписани</strong></p>
             <div style="overflow-x:auto">
             <table class="sverka dn-tablica">
-                <tr><th><input type="checkbox" title="всички са подписани" ${aktove.length && podpisani === aktove.length ? 'checked' : ''}
-                               onchange="momentDnevnikVsichki(this.checked)"></th>
-                    <th>Акт от</th><th>от ниво</th><th>до ниво</th><th>Изпълнени СМР</th><th>бетон</th><th></th></tr>
-                ${aktove.map(red).join('')}
+                <tr><th></th><th>Дата</th><th>Елемент · СМР</th><th>От ниво</th><th>До ниво</th><th>Състояние</th><th></th></tr>
+                ${gotovi.length ? `<tr class="dn-grupa" onclick="momentDnPodpisaniSgavane()" tabindex="0"
+                        onkeydown="if(event.key==='Enter')momentDnPodpisaniSgavane()">
+                    <td>✔</td><td colspan="6">Подписани · ${gotovi.length} ${momentDnPodpisaniOtvoreni ? '▾' : '· сгънато ▸'}</td></tr>` : ''}
+                ${sast.map(red).join('')}
             </table></div>
-            <div class="redica">
+            <div class="sastavi dn-sastavi">
+                ${proveri ? `<a class="kam" href="#/dosie/${id}/${momentIndeks}">провери ${proveri} в досието →</a>` : ''}
+                <button class="bt bt-glaven bt-golyam" ${izbrani.length ? '' : 'disabled'}
+                        onclick="momentDnevnikSastavi()">Съставѝ избраните · един файл (${izbrani.length})</button>
                 <button class="bt bt-tih" onclick="momentDnevnikDobavi()">+ акт на ръка</button>
-                <button class="bt bt-glaven" ${aktove.length ? '' : 'disabled'}
-                        onclick="momentDnevnikSastavi()">Състави всички (${aktove.length}) в един файл</button>
             </div>` : ''}
     </div>`;
 }
@@ -1011,17 +1113,20 @@ async function momentDnevnikSastavi() {
     const z = momentZhiv(), dn = _momentDnevnik();
     const hod = document.getElementById('moment-dnevnik-hod');
     if (!z || !dn || !dn.aktove.length) return;
+    // Само избраните несъставени — подписаните и сканираните вече ги има.
+    const izbor = momentDnIzbrani(z).map(r => r.a);
+    if (!izbor.length) { hod.innerHTML = '<p class="tiho">Няма избрани актове за съставяне.</p>'; return; }
     const konsultant = (aktDanni.consultants || []).find(c => c.id == ((z.st && z.st.consultant) || z.p.consultant || {}).id);
     if (!konsultant) { hod.innerHTML = '<p class="greshka">Няма избран консултант в паспорта.</p>'; return; }
-    hod.innerHTML = `<p class="tiho">Съставям ${dn.aktove.length} акта…</p>`;
+    hod.innerHTML = `<p class="tiho">Съставям ${izbor.length} акта…</p>`;
     try {
         const { sadarzhanie } = await genDokument(aktZaDokument(z.p, z.st), konsultant, 'akt7', {
-            akt7_seriya: dn.aktove.map(a => ({ data: a.data, ot: a.ot, do: a.do, smr: a.smr, razreshava: a.razreshava })),
+            akt7_seriya: izbor.map(a => ({ data: a.data, ot: a.ot, do: a.do, smr: a.smr, razreshava: a.razreshava })),
         });
-        genSvali(`akt7_vsichki_${z.p.pi}.docx`, sadarzhanie);
-        genZapishi(z.st, [{ type: `Акт 7 — ${dn.aktove.length} акта`, date: new Date().toISOString(), url: '', path: '' }]);
+        genSvali(`akt7_${z.p.pi}.docx`, sadarzhanie);
+        genZapishi(z.st, [{ type: `Акт 7 — ${izbor.length} акта`, date: new Date().toISOString(), url: '', path: '' }]);
         aktZapishi();
-        hod.innerHTML = `<p class="gotov">✔ ${dn.aktove.length} акта в един файл — свален.</p>`;
+        hod.innerHTML = `<p class="gotov">✔ ${izbor.length} акта в един файл — свален.</p>`;
     } catch (e) {
         hod.innerHTML = e.izteklo ? aktGreshkaHtml(e) : `<p class="greshka">✗ ${_e(e.message)}</p>`;
     }
