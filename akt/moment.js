@@ -3,13 +3,18 @@
 //
 // „Това е сърцето. 90 % от работата става тук.“ (ЗАДАНИЕ.md)
 //
-// Отгоре надолу:
-//   1. двете везни и ЕДНО ИЗРЕЧЕНИЕ какво сега може;
-//   2. папката — изброява се, без да се чете; до всеки файл пише какво струва;
-//   3. „Липсва ми“ — по ред, с три възможности; ЕДИН ЖЕСТ ЗАТВАРЯ ЕДИН РЕД;
-//   4. „Имам“ — сгънато;
-//   5. остатъкът — онова, което системата не може да знае;
-//   6. „Съставѝ документа“ — активен според правилото на момента.
+// В три колони (кройката от 17–18.11.2026). Лявата е свита винаги — работният
+// екран е еднакво голям за всеки момент. Горе — изворите, само като връзки
+// (състоянието им тук е в „Липсва ми“). Лента с моментите НЯМА.
+// Средата, отгоре надолу:
+//   „Липсва ми“ — по ред, с три възможности; ЕДИН ЖЕСТ ЗАТВАРЯ ЕДИН РЕД;
+//   „Имам“ — сгънато;
+//   остатъкът — онова, което системата не може да знае;
+//   „Съставѝ документа“ — активен според правилото на момента; моментът,
+//   който се ПОЛУЧАВА (РС, Акт 16), няма „Съставѝ“;
+//   папката — изброява се, без да се чете (най-долу).
+// Дясната: обектът, документът и долу ДВАТА КРЪГА — „Какво знаем“ е зад тях,
+// клик на кръга казва кои са редовете.
 //
 // Какво НЕ е тук: признаци, съставки, записки, собственост. Те се правят на
 // своите места и тук само се ползват.
@@ -71,31 +76,91 @@ function momentRisuvai() {
     const z = momentZhiv();
     if (!z) return;
     const kutiya = document.getElementById('moment-telo');
-    if (!momentGrupa) { kutiya.innerHTML = '<div class="chaka">Питам чеклиста…</div>'; return; }
-    if (momentGrupa.greshka) {
-        kutiya.innerHTML = aktGreshkaHtml(momentGrupa.greshka, 'Чеклистът не отговори');
+    if (!momentGrupa || momentGrupa.greshka) {
+        // Изворите и обектът вдясно са верни и без чеклиста; кръговете — не.
+        momentDyasno(z, null);
+        kutiya.innerHTML = !momentGrupa ? '<div class="chaka">Питам чеклиста…</div>'
+            : aktGreshkaHtml(momentGrupa.greshka, 'Чеклистът не отговори');
         return;
     }
     const dve = aktDveChisla(momentGrupa, aktNeotnasya(z.p, z.st));
     kutiya.innerHTML =
-        momentVezniHtml(dve)
-        + momentPapkaHtml()
-        + momentLipsvaHtml(dve)
+        momentLipsvaHtml(dve)
         + momentImamHtml()
         + momentOstatakHtml(z.st)
-        + momentSastaviHtml(dve);
+        + momentSastaviHtml(dve)
+        + momentPapkaHtml();
+    momentDyasno(z, dve);
+}
+
+// ── Трите вида моменти ───────────────────────────────────────────────────────
+// Съставя се (Липсва ми → Съставѝ) · повтаря се (Акт 7–12 — таблицата) ·
+// получава се (РС, Акт 16 — качи/впиши, без Съставѝ). (Решено 18.11.2026.)
+const MOMENT_POLUCHAVA = ['РС', 'Разрешение за строеж', 'Акт 16'];
+function aktVidMoment(ime) {
+    if (MOMENT_POLUCHAVA.includes(ime)) return 'poluchava';
+    if (/^Акт (7|8|9|10|11|12)\b/.test(ime || '')) return 'povtarya';
+    return 'sastavya';
+}
+const MOMENT_VID_IME = { sastavya: 'съставя се', povtarya: 'повтаря се', poluchava: 'получава се' };
+
+// Горе, над заглавието: изворите като връзки и видът на момента.
+function momentGoreHtml(z) {
+    const vid = aktVidMoment(momentIme);
+    return (typeof aktIzvoriHtml === 'function' ? aktIzvoriHtml(z.p, z.st, momentIndeks, 'vrazki') : '')
+        + `<div class="moment-vid moment-vid-${vid}">${MOMENT_VID_IME[vid]}</div>`;
+}
+
+// Дясната колона: обектът (само показва), документът, двата кръга.
+function momentDyasno(z, dve) {
+    const d = document.getElementById('dyasna');
+    const gore = document.getElementById('moment-gore');
+    if (gore) gore.innerHTML = momentGoreHtml(z);
+    if (!d) return;
+    d.innerHTML = aktDyasnoHtml(z.p, z.st, momentIndeks)
+        + momentDokumentHtml(z)
+        + (dve ? `<div class="d-dolu">${momentVezniHtml(dve)}</div>` : '');
+}
+
+// Документът: само онова, което историята казва. Не намери ли генериране —
+// казва точно това, не „не е съставян“.
+function momentDokumentHtml(z) {
+    const vid = aktVidMoment(momentIme);
+    const nomer = (String(momentIme).match(/\d+/) || [''])[0];
+    const gen = (aktDanni.history || []).find(h => h.type === 'generate' && h.pi === z.p.pi
+        && (String(h.detail || '').includes(momentIme)
+            || (nomer && new RegExp('обр\\.?\\s*' + nomer + '\\b').test(String(h.detail || '')))));
+    return `
+        <div class="d-blok">
+            <div class="d-etiket">Документът</div>
+            <div class="dan-s">${vid === 'poluchava' ? 'получава се от органа — не се съставя тук'
+                : gen ? `генериран на ${_e(aktData(gen.date))}` : 'в историята няма генериран'}</div>
+            ${gen ? `<div class="dan-o">история · ${_e(gen.detail)}</div>` : ''}
+        </div>`;
 }
 
 // ── 1. Двете везни ───────────────────────────────────────────────────────────
 
+// Двата кръга — долу вдясно. Клик на кръга отваря „Какво знаем“ за това число:
+// кои са редовете и кой го има. Кръгът е бутон, процентът е от чеклиста.
 function momentVezniHtml(dve) {
-    const vezna = (ime, v, koe) => `
-        <button type="button" class="vezna vezna-${v === null ? 'nyama' : v.post === 100 ? 'pylno' : 'chastichno'}"
-                onclick="momentKoeLipsva('${koe}')">
-            <span class="vezna-ime">${ime}</span>
+    const C = 2 * Math.PI * 30;
+    const vezna = (ime, v, koe) => {
+        const post = v ? v.post : 0;
+        const cvyat = v === null ? 'var(--sivo)' : post === 100 ? 'var(--green)' : 'var(--gold)';
+        return `
+        <button type="button" class="vezna krug vezna-${v === null ? 'nyama' : post === 100 ? 'pylno' : 'chastichno'}"
+                onclick="momentKoeLipsva('${koe}')" title="Какво знаем — кои са редовете">
+            <svg viewBox="0 0 76 76" aria-hidden="true">
+                <circle cx="38" cy="38" r="30" fill="none" stroke="#a7b5b6" stroke-width="7"/>
+                ${v ? `<circle cx="38" cy="38" r="30" fill="none" stroke="${cvyat}" stroke-width="7" stroke-linecap="round"
+                        stroke-dasharray="${(C * post / 100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/>` : ''}
+            </svg>
             <span class="vezna-post">${aktProcent(v)}</span>
+            <span class="vezna-ime">${ime}</span>
             <span class="vezna-ot">${v ? `имам ${v.imam} от ${v.ot}` : 'чеклистът не казва'}</span>
         </button>`;
+    };
     return `
     <div class="vezni">
         ${vezna('За да започна', dve.nachalo, 'nachalo')}
@@ -930,6 +995,13 @@ function momentZapishiOstatak(klyuch, stoynost) {
 // Решението е твое; системата само казва какво знае.
 
 function momentSastaviHtml(dve) {
+    // Моментът, който се получава, не се съставя — качва се или се вписва
+    // от „Липсва ми“. (Решено 18.11.2026.)
+    if (aktVidMoment(momentIme) === 'poluchava') return `
+    <div class="kutiya-razdel sastavi sastavi-poluchava">
+        <p class="poyasnenie">${_e(momentIme)} се получава от органа — не се съставя.
+           Качи го или го впиши от „Липсва ми“; информацията от него тече напред.</p>
+    </div>`;
     const pr = aktPraviloNaMomenta(dve);
     return `
     <div class="kutiya-razdel sastavi">

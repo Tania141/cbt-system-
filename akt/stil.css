@@ -641,8 +641,8 @@ body {
    трите цели; лаптоп (<1440) — лявата свита до икона и число; в моментите
    лявата е свита винаги. Дясната засега е само на плота.                    */
 .ramka { display: grid; grid-template-columns: 232px minmax(0, 1fr) 272px; min-height: 100vh; }
-.ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) { grid-template-columns: 232px minmax(0, 1fr); }
-.ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) .dyasna { display: none; }
+.ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]):not([data-ekran="moment"]) { grid-template-columns: 232px minmax(0, 1fr); }
+.ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]):not([data-ekran="moment"]) .dyasna { display: none; }
 .sreda { min-width: 0; display: flex; flex-direction: column; }
 .sreda > .telo { width: 100%; }   /* margin: auto в колона флекс иначе я свива до съдържанието */
 
@@ -686,7 +686,8 @@ body {
 .lyava a:focus-visible { outline: 2px solid var(--ral1004); outline-offset: 2px; }
 
 /* свита: икона и число, текстът — при посочване (title) */
-.ramka[data-ekran="moment"], .ramka[data-ekran="dokumenti"] { grid-template-columns: 68px minmax(0, 1fr); }
+.ramka[data-ekran="dokumenti"] { grid-template-columns: 68px minmax(0, 1fr); }
+.ramka[data-ekran="moment"] { grid-template-columns: 68px minmax(0, 1fr) 272px; }
 .ramka[data-ekran="moment"] .lyava, .ramka[data-ekran="dokumenti"] .lyava { padding: 16px 10px 14px; }
 .ramka[data-ekran="moment"] :is(.firma-ime, .fp-tekst, .bled span),
 .ramka[data-ekran="dokumenti"] :is(.firma-ime, .fp-tekst, .bled span) { display: none; }
@@ -700,7 +701,8 @@ body {
 
 @media (max-width: 1439px) {
     .ramka { grid-template-columns: 68px minmax(0, 1fr) 216px; }
-    .ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) { grid-template-columns: 68px minmax(0, 1fr); }
+    .ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]):not([data-ekran="moment"]) { grid-template-columns: 68px minmax(0, 1fr); }
+    .ramka[data-ekran="moment"] { grid-template-columns: 68px minmax(0, 1fr) 216px; }
     .lyava { padding: 16px 10px 14px; }
     .lyava :is(.firma-ime, .fp-tekst, .bled span) { display: none; }
     .firma { justify-content: center; padding: 2px 0 14px; }
@@ -711,7 +713,7 @@ body {
     .bled { justify-content: center; padding: 8px 0; }
 }
 @media (max-width: 1099px) {
-    .ramka, .ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]) { grid-template-columns: 56px minmax(0, 1fr); }
+    .ramka, .ramka:not([data-ekran="plot"]):not([data-ekran="obekt"]), .ramka[data-ekran="moment"] { grid-template-columns: 56px minmax(0, 1fr); }
     .ramka .dyasna { display: none; }
 }
 
@@ -764,3 +766,28 @@ body {
                border-top: 1px solid #f1e4c4; font-size: 13px; }
 .vrazka-tiha { color: var(--blue); text-decoration: none; }
 .vrazka-tiha:hover { text-decoration: underline; }
+
+/* ── Моментът в три колони (18.11.2026) ────────────────────────────────────
+   Лявата свита винаги; горе изворите само като връзки; вдясно обектът,
+   документът и двата кръга. Лента с моментите няма.                       */
+.ramka[data-ekran="moment"] .telo { max-width: none; padding: 0 0 64px; }
+.ramka[data-ekran="moment"] #ekran-moment > :not(#moment-gore) { max-width: 880px; margin-left: 24px; margin-right: 24px; }
+#moment-gore .moment-vid { margin: 18px 24px 0; }
+.moment-vid { display: inline-block; font-size: 11.5px; font-weight: 600; color: var(--slate);
+              background: var(--white); padding: 3px 10px; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--border); }
+.ramka[data-ekran="moment"] .moment-ime { margin-top: 6px; }
+.d-blok { border-top: 1px solid #a7b5b6; padding-top: 12px; display: flex; flex-direction: column; gap: 3px; }
+.dyasna .vezni { display: flex; gap: 6px; flex-wrap: nowrap; }
+.dyasna .vezna.krug { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: 0; padding: 8px 2px; border-radius: 10px; cursor: pointer; position: relative;
+    font: inherit; color: var(--ink); text-align: center; }
+.dyasna .vezna.krug:hover { background: rgba(255,255,255,.3); }
+.dyasna .vezna.krug svg { width: 76px; height: 76px; display: block; }
+.dyasna .vezna.krug .vezna-post { position: absolute; top: 34px; left: 0; right: 0; font-size: 16px; font-weight: 700;
+    font-variant-numeric: tabular-nums; }
+.dyasna .vezna.krug .vezna-ime { font-size: 11.5px; font-weight: 600; color: var(--ink-2); line-height: 1.2; }
+.dyasna .vezna.krug .vezna-ot { font-size: 11px; color: #3c5254; font-variant-numeric: tabular-nums; }
+.dyasna .kakvo-mozhe { font-size: 12px; color: #3c5254; margin: 6px 0 0; text-align: center; }
+/* тесен екран: лентата се пренася, не разпъва страницата */
+.izvori-vrazki { flex-wrap: wrap; }
+@media (max-width: 1099px) { .izvori:not(.izvori-vrazki) { overflow-x: auto; } .izvor { min-width: 140px; } }
