@@ -12,6 +12,7 @@
 
 let aktIzgled = 'raboti';      // 'raboti' | 'arhiv'
 let aktTarseno = '';
+let plotPosochen = null;       // кой ред показва дясната колона: `id/строеж`
 
 function plotRisuvai() {
     const kutiya = document.getElementById('plot-spisak');
@@ -26,7 +27,10 @@ function plotRisuvai() {
             : `${vsichki.length} в работа`;
     }
 
+    plotLyava();
+
     if (!redove.length) {
+        plotDyasno(null);
         kutiya.innerHTML = `
             <div class="pusto">
                 <div class="pusto-ime">${aktTarseno
@@ -39,6 +43,9 @@ function plotRisuvai() {
     }
 
     kutiya.innerHTML = redove.map(r => plotRedHtml(r)).join('');
+    // Дясната колона показва посочения ред; докато не е посочен — първия.
+    const izbran = redove.find(r => `${r.id}/${r.i}` === plotPosochen) || redove[0];
+    plotPosochi(izbran.id, izbran.i);
 }
 
 function plotRedHtml(r) {
@@ -53,7 +60,8 @@ function plotRedHtml(r) {
         </button>`;
 
     return `
-    <div class="red" onclick="plotOtvoriObekt('${_e(r.id)}',${r.i})" tabindex="0"
+    <div class="red" data-red="${_e(r.id)}/${r.i}" onclick="plotOtvoriObekt('${_e(r.id)}',${r.i})" tabindex="0"
+         onmouseenter="plotPosochi('${_e(r.id)}',${r.i})" onfocus="plotPosochi('${_e(r.id)}',${r.i})"
          onkeydown="if(event.key==='Enter')plotOtvoriObekt('${_e(r.id)}',${r.i})">
         <div class="red-ime">
             <div class="red-stroezh">${_e(r.ime)}</div>
@@ -71,6 +79,81 @@ function plotRedHtml(r) {
         </div>
         <div class="red-koga" title="${_e(r.posledno || '')}">${_e(aktData(r.posledno)) || '—'}</div>
     </div>`;
+}
+
+// ── Трите колони ─────────────────────────────────────────────────────────────
+// Лявата е фирмата и стои на всеки екран; дясната е обектът. Рамката само
+// казва кой екран е отворен — видът (свита, скрита) е в stil.css.
+
+const RAMKA_PLOCHKA = { zk: 'knigi', konsultanti: 'konsult', normativna: 'normi', istoria: 'istoria', danni: 'kopie' };
+
+function aktRamka(ekran) {
+    const ramka = document.getElementById('ramka');
+    if (!ramka) return;
+    ramka.dataset.ekran = ekran;
+    const aktivna = RAMKA_PLOCHKA[ekran] || 'obekti';
+    for (const a of document.querySelectorAll('#lyava [data-plochka]'))
+        a.classList.toggle('aktivna', a.dataset.plochka === aktivna);
+}
+
+// Плочките казват нещо за себе си — само онова, което системата наистина
+// знае. Числото на свитата плочка е същото като текста на разгънатата.
+function plotLyava() {
+    const pishi = (id, tekst, znachka) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = tekst;
+        const z = document.getElementById(id + '-z');
+        if (z) { z.textContent = znachka; z.hidden = !znachka; }
+    };
+    const raboti = aktRedove(aktDanni, 'raboti').length;
+    const arhiv = aktRedove(aktDanni, 'arhiv').length;
+    pishi('lyava-obekti', `${raboti} в работа${arhiv ? ` · ${arhiv} в архива` : ''}`, String(raboti));
+    // Регистърът на книгите живее на сървъра; плочката не го пита само за да
+    // покаже число — казва какво има вътре.
+    pishi('lyava-knigi', 'номерата по ред, с анулиране', '');
+    const ko = (aktDanni.consultants || []).length;
+    pishi('lyava-konsult', ko ? `${ko} ${ko === 1 ? 'фирма' : 'фирми'}` : 'няма добавени', ko ? String(ko) : '');
+}
+
+// Дясната колона: основните данни на обекта, с „откъде е“. Не се поправя тук.
+function plotPosochi(id, i) {
+    plotPosochen = `${id}/${i}`;
+    for (const el of document.querySelectorAll('#plot-spisak .red'))
+        el.classList.toggle('posochen', el.dataset.red === plotPosochen);
+    const p = aktObekt(id);
+    plotDyasno(p ? { p, st: aktStroezh(p, i), i } : null);
+}
+
+function plotDyasno(o) {
+    const kutiya = document.getElementById('dyasna');
+    if (!kutiya) return;
+    if (!o) { kutiya.innerHTML = ''; return; }
+    kutiya.innerHTML = aktDyasnoHtml(o.p, o.st, o.i) + `
+        <div class="d-dolu"><a class="d-vrazka" href="#/obekt/${encodeURIComponent(o.p.id)}/${o.i}">Отвори обекта →</a></div>`;
+}
+
+function aktDyasnoHtml(p, st, i) {
+    st = st || {};
+    const rs = st.permit || p.permit || {};
+    const vazl = (p.clients && p.clients.length ? p.clients : [p.client].filter(Boolean))
+        .map(c => c && c.name).filter(Boolean);
+    const stroitel = (st.builder || p.builder || {}).name;
+    const red = (e, s, ot) => s ? `
+        <div class="dan"><div class="dan-e">${e}</div><div class="dan-s">${_e(s)}</div><div class="dan-o">${ot}</div></div>` : `
+        <div class="dan"><div class="dan-e">${e}</div><div class="dan-s dan-nyama">не е вписано</div></div>`;
+    return `
+        <div class="d-glava">
+            <div class="d-etiket">Обектът</div>
+            <div class="d-ime">${_e(aktImeStroezh(st, i))}</div>
+            <div class="d-pi">${p.pi ? 'ПИ ' + _e(p.pi) : 'ПИ —'}</div>
+        </div>
+        <div class="d-danni">
+            ${red('Категория', st.kategoria ? st.kategoria + ' категория' : '', 'паспорт')}
+            ${red('Възложители', vazl.join(', '), p.clients && p.clients.length ? 'собственост' : 'паспорт')}
+            ${red('Разрешение за строеж', rs.number ? `№ ${rs.number}${rs.date ? ' от ' + aktData(rs.date) : ''}` : '', 'паспорт')}
+            ${red('Строител', stroitel, 'паспорт')}
+            ${red('Консултант', st.consultant && st.consultant.name, 'паспорт')}
+        </div>`;
 }
 
 // ── Жестовете ────────────────────────────────────────────────────────────────

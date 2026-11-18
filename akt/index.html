@@ -20,10 +20,38 @@
      вход, но без него всяко натискане на Enter гърми в конзолата. -->
 <div id="login-screen" hidden></div>
 
+<!-- ТРИТЕ КОЛОНИ (кройката от 17–18.11.2026, облеклото — одобрено 18.11.2026):
+     лява, тъмна — фирмата; средата — работата; дясна — обектът. В моментите
+     и на лаптоп лявата е свита до икона и число. -->
+<div class="ramka" id="ramka" data-ekran="plot">
+
+<aside class="lyava" id="lyava">
+    <!-- Логото „Фронтон и кота“: сградата в разрез и кота ±0,00 със знака за
+         ниво в RAL 1004. -->
+    <a class="firma" href="#/plot" aria-label="АКТ СИСТЕМ — плотът"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 27L16 5l12 22" fill="none" stroke="#e8f0ef" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M7.5 19.5H29" stroke="#e8f0ef" stroke-width="1.6" stroke-linecap="round"/><path d="M23.6 14.6h5l-2.5 4.1z" fill="#e0a21c"/></svg><span class="firma-ime"><span class="akt">АКТ</span> <span class="sis">СИСТЕМ</span></span></a>
+    <nav class="fp-spisak">
+        <a class="fp" data-plochka="obekti" href="#/plot" title="Обекти">
+            <svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V6l8-3 8 3v14M9 20v-4h6v4M8 9h.01M12 9h.01M16 9h.01M8 13h.01M12 13h.01M16 13h.01"/></svg><span class="fp-tekst"><span class="fp-t">Обекти</span><span class="fp-k" id="lyava-obekti"></span></span>
+            <span class="znachka" id="lyava-obekti-z"></span>
+        </a>
+        <a class="fp" data-plochka="knigi" href="#/zk" title="Заповедни книги">
+            <svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10"/></svg><span class="fp-tekst"><span class="fp-t">Заповедни книги</span><span class="fp-k" id="lyava-knigi"></span></span>
+            <span class="znachka" id="lyava-knigi-z"></span>
+        </a>
+        <a class="fp" data-plochka="konsult" href="#/konsultanti" title="Консултанти">
+            <svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5a3 3 0 0 1 0 6M21 20c0-2.6-1.7-4.8-4-5.6"/></svg><span class="fp-tekst"><span class="fp-t">Консултанти</span><span class="fp-k" id="lyava-konsult"></span></span>
+            <span class="znachka" id="lyava-konsult-z"></span>
+        </a>
+    </nav>
+    <nav class="bledi">
+            <a class="bled" data-plochka="normi" href="#/normativna" title="Нормативна уредба"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-3 6a3 3 0 0 0 6 0zM19 8l-3 6a3 3 0 0 0 6 0z"/></svg><span>Нормативна уредба</span></a>
+            <a class="bled" data-plochka="istoria" href="#/istoria" title="История"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>История</span></a>
+            <a class="bled" data-plochka="kopie" href="#/danni" title="Резервно копие"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v12H4zM3 4h18v4H3zM10 12h4"/></svg><span>Резервно копие</span></a>
+    </nav>
+</aside>
+
+<div class="sreda">
 <header class="shapka">
-    <!-- Логото „Фронтон и кота“ (одобрено 18.11.2026): сградата в разрез и
-         кота ±0,00 със знака за ниво в RAL 1004. -->
-    <div class="shapka-ime"><a href="#/plot" aria-label="АКТ СИСТЕМ — плотът"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 27L16 5l12 22" fill="none" stroke="#e8f0ef" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M7.5 19.5H29" stroke="#e8f0ef" stroke-width="1.6" stroke-linecap="round"/><path d="M23.6 14.6h5l-2.5 4.1z" fill="#e0a21c"/></svg><span class="akt">АКТ</span><span class="sis">СИСТЕМ</span></a></div>
     <!-- Горе на плота: търсене и „+ нов обект“. Нищо друго. -->
     <div class="shapka-plot" id="shapka-plot">
         <input type="text" class="tarsene" id="plot-tarsene" placeholder="Търси по ПИ, ник, адрес или строеж…"
@@ -32,14 +60,6 @@
         <button class="bt" data-izgled="raboti" onclick="plotSmeniIzgled('raboti')">в работа</button>
         <button class="bt" data-izgled="arhiv" onclick="plotSmeniIzgled('arhiv')">архив</button>
         <button class="bt bt-glaven" onclick="plotNovObekt()">+ нов обект</button>
-        <!-- Стаите на фирмата, преместени от старото ПВА (17.11.2026) -->
-        <nav class="shapka-stai">
-            <a href="#/konsultanti">консултанти</a>
-            <a href="#/zk">заповедни книги</a>
-            <a href="#/normativna">нормативна уредба</a>
-            <a href="#/istoria">история</a>
-            <a href="#/danni">данните</a>
-        </nav>
     </div>
     <!-- На обекта: само обратният път. -->
     <a class="bt" id="shapka-nazad" href="#/plot" hidden>← плотът</a>
@@ -357,6 +377,14 @@
         </div>
     </section>
 </main>
+</div>
+
+<!-- Дясната колона — обектът. Само показва; поправя се в досието или в
+     извора. Засега живее на плота (посоченият ред); обектът и моментът я
+     получават в следващите стъпки. -->
+<aside class="dyasna" id="dyasna"></aside>
+
+</div>
 
 <!-- Кое липсва: всяко число се отваря тук (правило 2) -->
 <div id="obekt-kutiya" onclick="if(event.target===this)obektZatvoriKutiya()">
@@ -454,6 +482,7 @@ function aktPokazhi() {
                      'konsultanti', 'zk', 'osip', 'proverki', 'normativna', 'istoria', 'danni'])
         document.getElementById('ekran-' + x).hidden = x !== ekran;
     document.getElementById('shapka-plot').hidden = ekran !== 'plot';
+    aktRamka(ekran);
     document.getElementById('shapka-nazad').hidden = ekran === 'plot';
     // От момента и от проекта се връщаш в обекта, не чак на плота. От стая на
     // обекта — пак в обекта; от стая на фирмата — на плота.

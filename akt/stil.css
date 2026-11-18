@@ -634,3 +634,101 @@ body {
 @media (max-width: 700px) {
     .stara-staya .dve-koloni, .stara-staya .form-grid { grid-template-columns: 1fr; }
 }
+
+/* ── ТРИТЕ КОЛОНИ (кройката 17–18.11.2026, облеклото 18.11.2026) ──────────
+   Лява — фирмата (RAL 6004); средата — работата (бяло + 15 % RAL 1004);
+   дясна — обектът (бяло + 30 % RAL 6004), само показва. Голям монитор —
+   трите цели; лаптоп (<1440) — лявата свита до икона и число; в моментите
+   лявата е свита винаги. Дясната засега е само на плота.                    */
+.ramka { display: grid; grid-template-columns: 232px minmax(0, 1fr) 272px; min-height: 100vh; }
+.ramka:not([data-ekran="plot"]) { grid-template-columns: 232px minmax(0, 1fr); }
+.ramka:not([data-ekran="plot"]) .dyasna { display: none; }
+.sreda { min-width: 0; display: flex; flex-direction: column; }
+
+.lyava {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    background: var(--ral6004-tamno); color: #d5e3e2;
+    display: flex; flex-direction: column; gap: 6px; padding: 16px 14px 14px;
+}
+.firma { display: flex; align-items: center; gap: 10px; padding: 2px 4px 16px; margin-bottom: 8px;
+         border-bottom: 1px solid rgba(255,255,255,.08); color: #fff; text-decoration: none; }
+.firma .logo { width: 32px; height: 32px; flex: none; display: block; }
+.firma-ime { line-height: 1; white-space: nowrap; }
+.firma-ime .akt { font-family: var(--f-doc); font-weight: 700; font-size: 18px; letter-spacing: .06em; }
+.firma-ime .sis { font-weight: 500; font-size: 9.5px; letter-spacing: .42em; color: #8eaaab; margin-left: 2px; }
+.fp-spisak { display: flex; flex-direction: column; gap: 6px; }
+.fp {
+    position: relative; display: flex; gap: 10px; align-items: flex-start;
+    padding: 11px 12px; border-radius: 9px; text-decoration: none;
+    background: var(--ral6004); color: #d5e3e2; box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
+    transition: var(--prehod);
+}
+.fp:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.lyava .ik { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6;
+             stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.fp .ik { color: #8eaaab; margin-top: 1px; }
+.fp-tekst { display: flex; flex-direction: column; min-width: 0; }
+.fp-t { font-weight: 600; font-size: 13.5px; color: #fff; line-height: 1.25; }
+.fp-k { font-size: 12px; color: #8eaaab; margin-top: 3px; line-height: 1.35; }
+.fp.aktivna { background: #2a5458; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.fp.aktivna .ik { color: #fff; }
+.fp.aktivna::before { content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 3px;
+                           border-radius: 0 3px 3px 0; background: var(--ral1004); }
+.znachka { display: none; }
+.bledi { margin-top: auto; display: flex; flex-direction: column; gap: 2px;
+         border-top: 1px solid rgba(255,255,255,.08); padding-top: 10px; }
+.bled { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 7px;
+        color: #8eaaab; font-size: 12.5px; text-decoration: none; }
+.bled:hover { background: rgba(255,255,255,.06); color: #d5e3e2; }
+.bled.aktivna { color: #fff; background: rgba(255,255,255,.08); }
+.bled .ik { width: 16px; height: 16px; }
+.lyava a:focus-visible { outline: 2px solid var(--ral1004); outline-offset: 2px; }
+
+/* свита: икона и число, текстът — при посочване (title) */
+.ramka[data-ekran="moment"], .ramka[data-ekran="dokumenti"] { grid-template-columns: 68px minmax(0, 1fr); }
+.ramka[data-ekran="moment"] .lyava, .ramka[data-ekran="dokumenti"] .lyava { padding: 16px 10px 14px; }
+.ramka[data-ekran="moment"] :is(.firma-ime, .fp-tekst, .bled span),
+.ramka[data-ekran="dokumenti"] :is(.firma-ime, .fp-tekst, .bled span) { display: none; }
+.ramka[data-ekran="moment"] .firma, .ramka[data-ekran="dokumenti"] .firma { justify-content: center; padding: 2px 0 14px; }
+.ramka[data-ekran="moment"] .fp, .ramka[data-ekran="dokumenti"] .fp { flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px 8px; }
+.ramka[data-ekran="moment"] .fp.aktivna::before, .ramka[data-ekran="dokumenti"] .fp.aktivna::before { left: -10px; }
+.ramka[data-ekran="moment"] .znachka:not([hidden]), .ramka[data-ekran="dokumenti"] .znachka:not([hidden]) {
+    display: block; font-size: 10.5px; font-weight: 600; line-height: 1; padding: 3px 5px; border-radius: 10px;
+    background: rgba(255,255,255,.1); color: #d5e3e2; font-variant-numeric: tabular-nums; }
+.ramka[data-ekran="moment"] .bled, .ramka[data-ekran="dokumenti"] .bled { justify-content: center; padding: 8px 0; }
+
+@media (max-width: 1439px) {
+    .ramka { grid-template-columns: 68px minmax(0, 1fr) 216px; }
+    .ramka:not([data-ekran="plot"]) { grid-template-columns: 68px minmax(0, 1fr); }
+    .lyava { padding: 16px 10px 14px; }
+    .lyava :is(.firma-ime, .fp-tekst, .bled span) { display: none; }
+    .firma { justify-content: center; padding: 2px 0 14px; }
+    .fp { flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px 8px; }
+    .fp.aktivna::before { left: -10px; }
+    .znachka:not([hidden]) { display: block; font-size: 10.5px; font-weight: 600; line-height: 1; padding: 3px 5px;
+        border-radius: 10px; background: rgba(255,255,255,.1); color: #d5e3e2; font-variant-numeric: tabular-nums; }
+    .bled { justify-content: center; padding: 8px 0; }
+}
+@media (max-width: 1099px) {
+    .ramka, .ramka:not([data-ekran="plot"]) { grid-template-columns: 56px minmax(0, 1fr); }
+    .ramka .dyasna { display: none; }
+}
+
+/* дясната колона — обектът */
+.dyasna {
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    background: var(--obekt); color: #142a2c; border-left: 1px solid #a7b5b6;
+    display: flex; flex-direction: column; gap: 14px; padding: 20px 18px 16px;
+}
+.d-etiket, .dan-e { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #3c5254; font-weight: 600; }
+.d-ime { font-family: var(--f-doc); font-weight: 700; font-size: 15.5px; line-height: 1.25; margin-top: 4px; color: var(--ink); }
+.d-pi { font-family: var(--f-id); font-size: 12.5px; margin-top: 4px; }
+.d-danni { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #a7b5b6; padding-top: 12px; }
+.dan-s { font-size: 13px; line-height: 1.35; color: var(--ink); }
+.dan-s.dan-nyama { color: #3c5254; font-style: italic; }
+.dan-o { font-size: 10.5px; color: #3c5254; }
+.dan-o::before { content: "↳ "; opacity: .6; }
+.d-dolu { margin-top: auto; border-top: 1px solid #a7b5b6; padding-top: 10px; }
+.d-vrazka { display: block; padding: 10px 12px; border-radius: 9px; background: var(--white);
+            color: #134f86; font-weight: 600; font-size: 13px; text-decoration: none; }
+.red.posochen { border-color: var(--ral6004); box-shadow: inset 3px 0 0 var(--ral6004), var(--shadow); }

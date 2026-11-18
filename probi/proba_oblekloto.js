@@ -30,7 +30,8 @@ t('имената на моментите са със серифи', /\.moment-i
 
 const shapka = (css.match(/\.shapka\s*\{([^}]*)\}/) || [])[1] || '';
 t('лентата горе е в RAL 6004', /background:\s*var\(--ral6004\)/.test(shapka));
-const ime = (html.match(/<div class="shapka-ime">([\s\S]*?)<\/div>/) || [])[1] || '';
+// Логото е горе в лявата колона (от 18.11.2026 — трите колони).
+const ime = (html.match(/<a class="firma"[^>]*>([\s\S]*?)<\/a>/) || [])[0] || '';
 t('логото: фронтон, кота и знак в RAL 1004', /M4 27L16 5l12 22/.test(ime) && /H29/.test(ime) && /#e0a21c/i.test(ime));
 t('до логото „АКТ“ и „СИСТЕМ“', />АКТ</.test(ime) && />СИСТЕМ</.test(ime));
 t('логото води към плота', /href="#\/plot"/.test(ime));

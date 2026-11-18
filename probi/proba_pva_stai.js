@@ -70,9 +70,13 @@ async function otvori(hash) {
 (async () => {
     // ── плотът: връзките към стаите на фирмата ──────────────────────────────
     const a = await otvori('#/plot');
-    const nav = tekst(a.d.querySelector('.shapka-stai'));
-    t('горе на плота — стаите на фирмата', /консултанти/.test(nav) && /заповедни книги/.test(nav)
-      && /нормативна/.test(nav) && /история/.test(nav) && /данните/.test(nav), nav);
+    // ОБЪРНАТО 18.11.2026: стаите на фирмата вече не са ред връзки горе на
+    // плота, а лявата колона (кройката от 17.11 — „Резервно копие“, не
+    // „Данните“). Пазят се същите пет адреса, но на новото място.
+    const nav = a.d.getElementById('lyava');
+    const adresi = nav ? [...nav.querySelectorAll('a[href]')].map(x => x.getAttribute('href')) : [];
+    t('лявата колона — стаите на фирмата', ['#/konsultanti', '#/zk', '#/normativna', '#/istoria', '#/danni']
+      .every(h => adresi.includes(h)) && /Резервно копие/.test(tekst(nav)), adresi);
     t('плотът без грешка', a.greshki.length === 0, a.greshki);
 
     // ── Консултанти ─────────────────────────────────────────────────────────
