@@ -892,3 +892,14 @@ body {
 .podoben-broy { font-family: var(--f-id); font-size: 12px; color: var(--ink-2); }
 .podoben-dosl summary { cursor: pointer; color: var(--blue); font-size: 12px; }
 .podoben-dosl ul { margin: 4px 0 2px 18px; font-family: var(--f-doc); font-size: 12.5px; color: var(--ink-2); }
+/* 4б — трите отговора */
+.podoben-zhestove { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+.podoben-zhestove .bt { font-size: 12px; padding: 4px 10px; }
+.podoben-pred { font-weight: 400; opacity: .75; font-size: 11px; }
+.podoben-izbor, .podoben-vid-izbor { font: inherit; font-size: 12.5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--white); max-width: 100%; }
+.podoben-vid-prazen { border-color: var(--red); }
+.podoben-otg { margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--slate); }
+.podoben-otg-da { color: var(--green); }
+.podoben-otg-ne { color: var(--muted); font-weight: 500; }
+.podoben-red-otg { opacity: .9; }
+.podoben-ne > summary { cursor: pointer; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }

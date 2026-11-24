@@ -44,6 +44,11 @@ const OTGOVOR = {
         ] },
 };
 
+// Сървърът — „базата“ на пробата. Един собствен ред вече има (от „Видени, но
+// неописани“) — той не бива да изчезне при запис оттук.
+const SARVAR = { cheklist_sobstveni: [{ dokument: 'Удостоверение за кадастъра', etap: 'подпис', uslovie: 'sast_ktp' }] };
+const CHEKLIST = ['Разрешение за строеж', 'Акт 7 и обр. 12 по част архитектура', 'Заповедна книга на строежа'];
+
 (async () => {
     const vc = new VirtualConsole(), greshki = [];
     vc.on('jsdomError', e => greshki.push(String(e.message || e)));
@@ -57,8 +62,15 @@ const OTGOVOR = {
             w.localStorage.setItem('akt_token', 'proba');
             w.fetch = async (url, o) => {
                 const telo = JSON.parse((o && o.body) || '{}');
-                if (/\/api\/podoben\/chete/.test(String(url))) zaiavki.push(telo.fajl.ime);
-                const r = /\/api\/podoben\/chete/.test(String(url)) ? { podoben: OTGOVOR[telo.fajl.ime] } : {};
+                const u = String(url), metod = (o && o.method) || 'GET';
+                let r = {};
+                if (/\/api\/podoben\/chete/.test(u)) { zaiavki.push(telo.fajl.ime); r = { podoben: OTGOVOR[telo.fajl.ime] }; }
+                else if (/\/api\/podoben\/redove/.test(u)) r = { redove: CHEKLIST.map(d => ({ dokument: d, otkade: 'чеклистът' })) };
+                else if (/\/api\/danni\/(\w+)/.test(u)) {
+                    const k = /\/api\/danni\/(\w+)/.exec(u)[1];
+                    if (metod === 'POST') SARVAR[k] = JSON.parse(JSON.stringify(telo.stoynost));
+                    r = { stoynost: SARVAR[k] === undefined ? null : JSON.parse(JSON.stringify(SARVAR[k])) };
+                }
                 return { ok: true, status: 200, json: async () => r, text: async () => '{}', headers: { get: () => 'application/json' } };
             };
         } });
@@ -75,7 +87,8 @@ const OTGOVOR = {
       && plochka.previousElementSibling.dataset.plochka === 'knigi');
     t('екранът се отваря и плочката свети', !d.getElementById('ekran-podobni').hidden && plochka.classList.contains('aktivna'));
     const telo = () => tx(d.getElementById('podobni-telo'));
-    t('казва, че нищо в чеклиста не се мени', /Нищо в чеклиста не се мени/.test(telo()), telo());
+    t('казва, че нищо не влиза в чеклиста само', /Нищо не влиза в чеклиста само/.test(telo()), telo());
+    t('и честно — в „Липсва ми“ на Акт 15 още не излиза', /В „Липсва ми“ на Акт 15 още не излиза/.test(telo()), telo());
     t('и кой чете — кодът, без АИ', /с кода, без АИ/.test(telo()), telo());
 
     // ── без „да“ — нищо не се чете ──────────────────────────────────────────
@@ -124,11 +137,76 @@ const OTGOVOR = {
     zap = JSON.parse(w.localStorage.getItem('akt_v5'));
     t('същият файл, качен пак към обекта, не се трупа', zap.podobni[1].fajlove.length === 1, zap.podobni[1].fajlove.map(f => f.fajl));
 
-    // ── чеклистът не е пипнат ───────────────────────────────────────────────
-    const p = zap.projects[0];
+    // ── 4б: без вид не се пита ──────────────────────────────────────────────
+    await w.podobniZarediOtgovori(); w.podobniRisuvai();
+    t('без вид — няма бутони и казва защо', !d.querySelector('.podoben-zhestove')
+      && /Кажи какъв вид е обектът/.test(telo()), telo());
+    w.podobniSmeniVid(0, 'сграда'); w.podobniSmeniVid(1, 'сграда');
+    t('видът е казан и записан', JSON.parse(w.localStorage.getItem('akt_v5')).podobni.every(o => o.vid === 'сграда'));
+    t('списъкът е за вид „сграда“', /Списъкът за вид „сграда“/.test(telo()), telo());
+    const zhest = ime => (redNa(ime) && redNa(ime).querySelector('.podoben-zhestove')) || null;
+    const bt = (ime, re) => [...((zhest(ime) || {}).querySelectorAll ? zhest(ime).querySelectorAll('button') : [])].find(b => re.test(tx(b)));
+    t('вързан от кода ред пита „✔ същото е като …“, не „изисквай“',
+      !!bt('Акт обр. 7', /същото е като „Акт 7 и обр\. 12/) && !bt('Акт обр. 7', /изисквай/), tx(zhest('Акт обр. 7')));
+    t('ред в 2 от 2 → „същото е“ е предложеното (тъмният бутон)',
+      bt('Акт обр. 7', /същото е като/).classList.contains('bt-glaven'));
+    t('ред без ред в чеклиста пита изисквай / същото като / не и за мен',
+      !!bt('Акт обр. 5', /изисквай — за да подпиша/) && !!bt('Акт обр. 5', /същото като…/) && !!bt('Акт обр. 5', /не и за мен/),
+      tx(zhest('Акт обр. 5')));
+    t('ред само при единия — нищо не е предложено тъмно', !zhest('Акт обр. 5').querySelector('.bt-glaven'),
+      zhest('Акт обр. 5').innerHTML);
+    t('етапът е предложен от раздела', /изисквай — за да подпиша \(предложено от раздела\)/.test(tx(zhest('Акт обр. 5'))));
+
+    // ── изисквай → собствен ред с условие по вида ───────────────────────────
+    w.prompt = (q, def) => def;
+    await w.podobniIzisquay(encodeURIComponent('акт обр. 5'), 'подпис');
+    const novRed = SARVAR.cheklist_sobstveni.find(x => x.dokument === 'Акт обр. 5');
+    t('„изисквай“ прави собствен ред', !!novRed, SARVAR.cheklist_sobstveni);
+    t('условието е „вид ∈ сграда“ — не „вид = “ (сървърът пренаписва старите)', novRed && novRed.uslovie === 'вид ∈ сграда', novRed);
+    t('разделът е за въвеждането', novRed && /^Въвеждане в експлоатация/.test(novRed.razdel), novRed);
+    t('основанието казва откъде — обект, година, раздел, „1 от 2“',
+      novRed && /от подобен обект: „Жилищна сграда — Овча купел“ \(2025\)/.test(novRed.osnovanie)
+      && /раздел „1\.3\. Актове и протоколи“/.test(novRed.osnovanie) && /1 от 2/.test(novRed.osnovanie), novRed && novRed.osnovanie);
+    t('старият собствен ред остава', SARVAR.cheklist_sobstveni.some(x => x.dokument === 'Удостоверение за кадастъра'));
+    t('отговорът е записан на сървъра, по вид', SARVAR.podobni_otgovori['сграда|акт обр. 5']
+      && SARVAR.podobni_otgovori['сграда|акт обр. 5'].otgovor === 'izisquay', SARVAR.podobni_otgovori);
+    t('на екрана: „✔ изисква се за „сграда“ — за да подпишеш“', /✔ изисква се за „сграда“ — за да подпишеш/.test(tx(redNa('Акт обр. 5'))),
+      tx(redNa('Акт обр. 5')));
+    // името съвпада с ред от чеклиста → не се записва (сървърът би го прескочил мълчаливо)
+    w.prompt = () => 'Разрешение за строеж';
+    const predi = SARVAR.cheklist_sobstveni.length;
+    await w.podobniIzisquay(encodeURIComponent('протокол от изпитване на вода'), 'подпис');
+    t('име на съществуващ ред → отказ с думи', SARVAR.cheklist_sobstveni.length === predi
+      && /вече е ред в чеклиста — отговори „същото като…“/.test(telo()), telo());
+
+    // ── не и за мен ─────────────────────────────────────────────────────────
+    await w.podobniNe(encodeURIComponent('протокол от изпитване на вода'));
+    t('„не и за мен“ се пази на сървъра', SARVAR.podobni_otgovori['сграда|протокол от изпитване на вода']
+      && SARVAR.podobni_otgovori['сграда|протокол от изпитване на вода'].otgovor === 'ne');
+    t('и редът слиза долу, свит', /не и за мен · 1/.test(tx(d.querySelector('.podoben-ne summary'))) && !zhest('Протокол от изпитване на вода'));
+
+    // ── същото като… ────────────────────────────────────────────────────────
+    await w.podobniSashtoto(encodeURIComponent('акт обр. 7'), 'Акт 7 и обр. 12 по част архитектура');
+    const s7 = SARVAR.podobni_otgovori['*|акт обр. 7'];
+    t('„същото като“ не зависи от вида и пази двете имена', s7 && s7.otgovor === 'sashtoto'
+      && JSON.stringify(s7.imena) === '["Акт обр. 7","Акт 7 и обр. 12 по част архитектура"]', s7);
+    t('на екрана: „= същото като …, казано от теб“', /= същото като „Акт 7 и обр\. 12 по част архитектура“ · казано от теб/.test(tx(redNa('Акт обр. 7'))));
+
+    // ── отговорите остават при ново отваряне ────────────────────────────────
+    await w.podobniOtvori();
+    t('след ново отваряне не пита пак', !zhest('Акт обр. 5') && !zhest('Акт обр. 7'), [tx(redNa('Акт обр. 5')), tx(redNa('Акт обр. 7'))]);
+
+    // ── върни ───────────────────────────────────────────────────────────────
+    await w.podobniVarni(encodeURIComponent('акт обр. 5'));
+    t('„върни“ маха собствения ред', !SARVAR.cheklist_sobstveni.some(x => x.dokument === 'Акт обр. 5')
+      && SARVAR.cheklist_sobstveni.some(x => x.dokument === 'Удостоверение за кадастъра'), SARVAR.cheklist_sobstveni);
+    t('и отговора — пита пак', !SARVAR.podobni_otgovori['сграда|акт обр. 5'] && !!zhest('Акт обр. 5'));
+
+    // ── чеклистът на обекта не е пипнат ─────────────────────────────────────
+    const p = JSON.parse(w.localStorage.getItem('akt_v5')).projects[0];
     t('чеклистът на обекта не е пипнат', JSON.stringify(p.nadzor_otmetnati) === '["Разрешение за строеж"]'
-      && !p.neotnasya && !p.cheklist_sobstveni, p);
-    t('в кода няма запис в чеклиста', !/nadzor_otmetnati|neotnasya|cheklist_sobstveni|kandidati/.test(
+      && !p.neotnasya, p);
+    t('в кода няма запис по обекта (отметнато, „не се отнася“)', !/nadzor_otmetnati|neotnasya/.test(
       fs.readFileSync(path.join(PAPKA, 'podobni.js'), 'utf8').replace(/\/\/.*$/gm, '')));
 
     // ── махни ───────────────────────────────────────────────────────────────
@@ -141,6 +219,6 @@ const OTGOVOR = {
 
     dobri.forEach(x => console.log('  ok  ' + x));
     loshi.forEach(x => console.log('  ЛО  ' + x));
-    console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — подобният обект се показва, чеклистът не се пипа`);
+    console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — подобният обект: списъкът и трите отговора`);
     process.exit(loshi.length ? 1 : 0);
 })();
