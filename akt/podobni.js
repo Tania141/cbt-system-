@@ -97,7 +97,7 @@ function podobniRisuvai() {
             return `<div class="podoben-fajl">
                 <span class="podoben-vid">${_e(f.vid || 'не е ясно Акт 15 ли е или ОД')}</span>
                 <span>${_e(f.fajl)}</span>
-                <span class="tiho">${f.godina ? _e(f.godina) + ' г.' : ''} · ${(f.redove || []).length} документа · прочетен с ${_e(f.chetec || 'кода')}</span>
+                <span class="tiho">${f.godina ? _e(f.godina) + ' г.' : ''} · ${(f.redove || []).length} документа · чете: ${_e(f.chetec || 'кодът')}</span>
                 ${bel ? `<span class="greshka podoben-bel">${_e(bel)}</span>` : ''}
             </div>`;
         }).join('');
