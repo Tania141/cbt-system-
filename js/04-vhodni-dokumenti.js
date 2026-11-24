@@ -74,10 +74,16 @@ function _dokVpishi(p, ime, nomer, cheklistRed, ot) {
         return true;
     }
     let pipnato = false;
+    const svoy = !!ot && red.ot === ot;   // записът е от този документ, не на ръка
     if (ot && !red.ot) { red.ot = ot; pipnato = true; }
     // Наименованието бие името на реда: описът сочи документа, не рубриката.
     if (k(red.ime) !== k(ime)) { red.ime = String(ime).trim(); pipnato = true; }
     if (!String(red.nomer || '').trim() && nomer) { red.nomer = String(nomer).trim(); pipnato = true; }
+    // Своят запис следва документа: поправен номер или дата се пренася.
+    // Вписаното на ръка (без `ot`) не се пипа.
+    else if (svoy && nomer && String(red.nomer).trim() !== String(nomer).trim()) {
+        red.nomer = String(nomer).trim(); pipnato = true;
+    }
     if (!String(red.red || '').trim() && cheklistRed) { red.red = String(cheklistRed).trim(); pipnato = true; }
     return pipnato;
 }
@@ -152,8 +158,11 @@ function _dokVpishiSverenite(obekt, p, dokumenti, potv) {
         // тепърва се учи от оператора и е нарочно малък — малък чеклист плюс
         // преграда значи изгубени документи.
         if (!_s2Sveren(d, potv)) continue;
-        const nomer = [d.nomer && d.nomer.stoynost ? '№ ' + d.nomer.stoynost : '',
-                       d.data && d.data.stoynost ? 'от ' + d.data.stoynost : '']
+        // ПОПРАВЕНОТО БИЕ ПРОЧЕТЕНОТО (24.11.2026): поправка 01.03 → 02.03
+        // стигаше до досието, а описът пазеше прочетеното 01.03.
+        const v = pole => String(((potv || {})[`${_s2Id(d)}::${pole}`] || {}).stoynost
+            || (d[pole] && d[pole].stoynost) || '').trim();
+        const nomer = [v('nomer') ? '№ ' + v('nomer') : '', v('data') ? 'от ' + v('data') : '']
             .filter(Boolean).join(' ');
         if (_dokVpishi(p, _dokIme(d, potv), nomer, d.cheklist_red, _s2Id(d))) n++;
     }

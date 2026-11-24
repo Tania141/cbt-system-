@@ -38,7 +38,7 @@ t('несверен документ не е сверен', !F._s2Sveren(DOK, pr
 // Всички факти, потвърдени един по един.
 const potv = {};
 const kluchove = ['nomer', 'data', 'izdatel'];
-for (const k of kluchove) potv[`${DOK.fajl}::${k}`] = { stoynost: 'x' };
+for (const k of kluchove) potv[`${DOK.fajl}::${k}`] = { stoynost: DOK[k].stoynost };
 t('сверен е, щом всичките му факти са потвърдени', F._s2Sveren(DOK, potv),
   Object.keys(potv));
 
@@ -74,6 +74,19 @@ t('записано е в обекта, не само на екрана', F.zapi
 // Второ минаване не удвоява.
 const n2 = F._dokVpishiSverenite(obekt, obekt, [DOK], potv);
 t('второто минаване не удвоява', n2 === 0 && obekt.dokumenti.length === 1, obekt.dokumenti);
+
+// ПОПРАВЕНОТО БИЕ ПРОЧЕТЕНОТО (24.11.2026): поправената от хартията дата
+// стига до описа, и когато документът вече е вписан с прочетената.
+potv[`${DOK.fajl}::data`] = { stoynost: '30.10.2015', prochetena: '29.10.2015' };
+F._dokVpishiSverenite(obekt, obekt, [DOK], potv);
+t('поправената дата влиза в описа', /30\.10\.2015/.test(obekt.dokumenti[0].nomer)
+  && !/29\.10\.2015/.test(obekt.dokumenti[0].nomer), obekt.dokumenti[0].nomer);
+t('и пак не се удвоява', obekt.dokumenti.length === 1, obekt.dokumenti);
+const RACHNO = { pi: '1' };
+F._dokVpishi(RACHNO, 'Скица', '№ 1 от 01.01.2020');
+F._dokVpishi(RACHNO, 'Скица', '№ 2 от 02.02.2020', '', 'skica.pdf');
+t('вписаното на ръка не се презаписва от четене', RACHNO.dokumenti[0].nomer === '№ 1 от 01.01.2020',
+  RACHNO.dokumenti);
 
 // Несверен документ не влиза.
 const DRUG = { ...DOK, fajl: 'Становище.pdf', cheklist_red: 'Становище от РЗИ' };
