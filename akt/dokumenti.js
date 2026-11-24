@@ -291,6 +291,8 @@ async function dokumentiSastavi() {
         ? readAkt12Parts('dok-akt12') : [];
     const p2 = dokumentiIma('protokol2combined') ? dokumentiChetiP2() : null;
     if (dokumentiIma('akt12') && !chasti.length) { alert('Акт 12: отбележи поне една част.'); return; }
+    // Разминаване, по което не си казала „Коя е?“ — казва се какво ще влезе.
+    if (typeof stoynostPitaiPrediDokument === 'function' && !stoynostPitaiPrediDokument(z.p, z.st)) return;
 
     dokRaboti = true;
     dokumentiRisuvai();

@@ -1331,6 +1331,7 @@ async function momentDnevnikSastavi() {
     if (!izbor.length) { hod.innerHTML = '<p class="tiho">Няма избрани актове за съставяне.</p>'; return; }
     const konsultant = (aktDanni.consultants || []).find(c => c.id == ((z.st && z.st.consultant) || z.p.consultant || {}).id);
     if (!konsultant) { hod.innerHTML = '<p class="greshka">Няма избран консултант в паспорта.</p>'; return; }
+    if (typeof stoynostPitaiPrediDokument === 'function' && !stoynostPitaiPrediDokument(z.p, z.st)) return;
     hod.innerHTML = `<p class="tiho">Съставям ${izbor.length} акта…</p>`;
     try {
         const { sadarzhanie } = await genDokument(aktZaDokument(z.p, z.st), konsultant, 'akt7', {

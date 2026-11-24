@@ -154,9 +154,9 @@ function aktDyasnoHtml(p, st, i) {
         </div>
         <div class="d-danni">
             ${red('Категория', st.kategoria ? st.kategoria + ' категория' : '', 'паспорт')}
-            ${red('Възложители', vazl.join(', '), reg.stoynost ? 'собственост' : 'паспорт')}
-            ${red('Разрешение за строеж', rs.number ? `№ ${rs.number}${rs.date ? ' от ' + aktData(rs.date) : ''}` : d('rs').stoynost,
-                  rs.number ? 'паспорт' : String(d('rs').otkade || '').toLowerCase())}
+            ${red('Възложители', vazl.join(', '), String(reg.otkade || 'паспорт').toLowerCase())}
+            ${red('Разрешение за строеж', rs.number && rs.date ? `№ ${rs.number} от ${aktData(rs.date)}` : d('rs').stoynost,
+                  rs.number && rs.date ? 'паспорт' : String(d('rs').otkade || '').toLowerCase())}
             ${red('Строител', stroitel, String(d('stroitel').otkade || 'паспорт').toLowerCase())}
             ${red('Консултант', d('konsultant').stoynost, 'паспорт')}
         </div>`;

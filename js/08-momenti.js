@@ -301,21 +301,33 @@ function stoynostOtSkladove(p, st, k) {
     if (k === 'obekt') return r(t(s.stroej), 'Паспорт');
     if (k === 'identifikator') return r(t(imot.pi), 'Паспорт');
     if (k === 'kategoria') return r(t(s.kategoria), 'Паспорт');
+    // Същото като шаблона (`buildPassportRows`): регистърът, а празен ли е —
+    // писаното в паспорта. Дотук вратата гледаше само регистъра и при празен
+    // казваше „не знам“, а документът пишеше възложителите от паспорта.
     if (k === 'sobstvenik' && typeof vazlozhiteli === 'function') {
         const v = vazlozhiteli(imot);
-        if (v && v.otkade === 'registar' && (v.spisak || []).length)
-            return r(v.spisak.map(c => c.name).filter(Boolean).join(' · '), 'Собственост');
+        if (v && (v.spisak || []).length && v.otkade !== 'nyama')
+            return r(v.spisak.map(c => c.name).filter(Boolean).join(' · '),
+                     v.otkade === 'registar' ? 'Собственост' : 'Паспорт');
     }
     const koti = s.p2_koti || {};
     if (k === 'kota_izkop') return r(t(koti.izkop), 'Протокол 2');
     if (k === 'kota_cokul') return r(t(koti.cokul), 'Протокол 2');
     if (k === 'kota_bilo') return r(t(koti.bilo), 'Протокол 2');
+    // РС — поле по поле, КАКТО В ШАБЛОНА: паспортът, а празното поле — от
+    // досието. Дотук при РС с номер, но без дата, екранът казваше „№ 254“, а
+    // документът „№ 254 от 10.12.2023“ — от досието, без да личи.
     if (k === 'rs') {
         const pas = s.permit || imot.permit || {};
-        const ot = t(pas.number) ? pas : (dosie.rs || {});
-        const tekst = [t(ot.number) && '№ ' + t(ot.number), t(ot.date) && 'от ' + t(ot.date),
-                       t(ot.issuer)].filter(Boolean).join(' ');
-        return r(tekst, t(pas.number) ? 'Паспорт' : 'Досието');
+        const d = dosie.rs || {};
+        const pole = kl => t(pas[kl]) || t(d[kl]);
+        const tekst = [pole('number') && '№ ' + pole('number'), pole('date') && 'от ' + pole('date'),
+                       pole('issuer')].filter(Boolean).join(' ');
+        const otDosie = ['number', 'date', 'issuer'].filter(kl => !t(pas[kl]) && t(d[kl]));
+        const otkade = !t(pas.number) ? 'Досието'
+            : otDosie.length ? 'Паспорт · ' + otDosie.map(kl => ({ number: 'номерът', date: 'датата',
+                issuer: 'издателят' })[kl]).join(' и ') + ' от досието' : 'Паспорт';
+        return r(tekst, otkade);
     }
     if (k === 'stroitel') {
         const pas = s.builder || imot.builder || {};
@@ -349,6 +361,37 @@ function aktStoynost(p, st, k) {
     }
     if (sklad) return { stoynost: sklad.stoynost, otkade: sklad.otkade, sastoyanie: 'sklad', razminava: null };
     return { stoynost: '', otkade: '', sastoyanie: (f && f.sastoyanie) || '', razminava: null };
+}
+
+// КАКВО ВЛИЗА В ДОКУМЕНТА, КОГАТО ВРАТАТА КАЗВА „РАЗМИНАВА СЕ“ (24.11.2026).
+//
+// Шаблонът пише строежа и категорията от паспорта. Вратата при сверен признак,
+// който се разминава с паспорта, показва двете и чака „Коя е?“. Ако съставиш,
+// без да си казала — паспортът влиза тихо. Решено 18.11: разминаването не
+// печели тихо. Затова преди съставяне се казва какво влиза.
+const STOYNOST_V_DOKUMENTA = { obekt: 'Строежът', kategoria: 'Категорията',
+    rs: 'Разрешението за строеж', stroitel: 'Строителят', sobstvenik: 'Възложителите' };
+
+function stoynostRazminavaniaZaDokument(p, st) {
+    const out = [];
+    for (const [k, ime] of Object.entries(STOYNOST_V_DOKUMENTA)) {
+        const s = aktStoynost(p, st, k);
+        if (s && s.razminava) out.push({ k, ime, vliza: s.razminava.stoynost, otkade: s.razminava.otkade,
+                                         drugo: s.stoynost, drugoOtkade: 'записките (сверен признак)' });
+    }
+    return out;
+}
+
+// Питането преди съставяне — едно и също навсякъде, където се съставя.
+// true = съставяй; false = операторът отказа, за да избере коя е.
+function stoynostPitaiPrediDokument(p, st) {
+    const razm = stoynostRazminavaniaZaDokument(p, st);
+    if (!razm.length || typeof confirm !== 'function') return true;
+    const NR = String.fromCharCode(10);
+    return confirm('Тези стойности се разминават и не си казала коя е:' + NR + NR
+        + razm.map(x => `• ${x.ime}: в документа влиза „${x.vliza}“ (${x.otkade}), `
+            + `а ${x.drugoOtkade} казват „${x.drugo}“.`).join(NR)
+        + NR + NR + 'Да съставя ли така? (Отказ — и избери коя е в „Какво знаем“.)');
 }
 
 // ОПЕРАТОРЪТ КАЗВА КОЯ Е — И ТОЙ БИЕ (18.11.2026). При разминаване системата
