@@ -91,6 +91,16 @@ t('Акт 15 пита и за двата срока',
   Y.aktOstatak('Акт 15').some(x => x.klyuch === 'nedostatuci_srok')
   && Y.aktOstatak('Акт 15').some(x => x.klyuch === 'vremenno_srok'));
 
+// ПИ на документа срещу ПИ на обекта — по цифрите, без гадаене.
+const piD = v => ({ obekt: { identifikator: { stoynost: v } } });
+t('същият ПИ съвпада', Y.aktPiNaDokumenta(piD('68134.1006.2440'), '68134.1006.2440').status === 'savpada');
+t('самостоятелният обект в имота съвпада',
+  Y.aktPiNaDokumenta(piD('ПИ с идентификатор 68134.1006.2440.1.5'), '68134.1006.2440').status === 'savpada');
+t('друг ПИ се разминава', Y.aktPiNaDokumenta(piD('68134.1006.244'), '68134.1006.2440').status === 'razlichen',
+  Y.aktPiNaDokumenta(piD('68134.1006.244'), '68134.1006.2440'));
+t('по-къс ПИ не минава за префикс', Y.aktPiNaDokumenta(piD('68134.1006.24'), '68134.1006.2440').status === 'razlichen');
+t('без ПИ в документа — казва „няма“', Y.aktPiNaDokumenta({}, '68134.1006.2440').status === 'nyama');
+
 // ── екранът ──────────────────────────────────────────────────────────────────
 
 function stranica() {
@@ -292,29 +302,76 @@ a.w.momentOtmetni(0, true);
 t('отметнатото се брои',
   /прочети отметнатите \(1\)/.test(tekst(a.d.getElementById('moment-telo'))));
 
-// 📎 качи: показва какво е разбрал и чака ✔
-const fajl = new a.w.File(['%PDF-1.4 проба'], 'dogovor.pdf', { type: 'application/pdf' });
-await a.w.momentKachiFajl('Договор за СМР', fajl);
-await new Promise(r => setTimeout(r, 200));
-const hod = tekst(a.d.querySelector('.razbrano'));
-t('прочетеното се ПОКАЗВА, преди да влезе', /Прочетох/.test(hod), hod);
-t('показва номера и датата, които е разбрал',
-  /12\/2026/.test(hod) && /01\.03\.2026/.test(hod), hod);
-t('името на файла е само подсказка, не данна',
-  /подсказка от името/.test(hod) && /не влиза никъде/.test(hod), hod);
-t('затваря се с ЕДИН ✔', /✔ това е/.test(hod), hod);
-zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
-t('нищо не е влязло в чеклиста без ✔',
-  !(zapis.nadzor_otmetnati || []).includes('Договор за СМР'), zapis.nadzor_otmetnati);
-t('но прочетеното се пази при строежа',
-  (((zapis.sloy2 || {}).od || {}).dokumenti || []).length === 1);
-
 // нечетимият файл не тръгва да се качва
 await a.w.momentKachiFajl('Договор за СМР',
     new a.w.File(['x'], 'staro.doc', { type: 'application/msword' }));
 t('стар .doc не се праща на четеца',
   /не се чете/.test(tekst(a.d.querySelector('.lipsva-hod'))),
-  tekst(a.d.querySelector('.lipsva-hod')));
+  tekst(a.d.getElementById('moment-telo')).slice(0, 400));
+
+// 📎 качи: прочетеното ЧАКА ПРОВЕРКА ТУК, под реда — не влиза веднага в
+// досието (18.11.2026: заповедна книга от стар обект отиде направо там).
+const fajl = new a.w.File(['%PDF-1.4 проба'], 'dogovor.pdf', { type: 'application/pdf' });
+await a.w.momentKachiFajl('Договор за СМР', fajl);
+await new Promise(r => setTimeout(r, 200));
+const karta = a.d.querySelector('.lipsva-red[data-dokument="Договор за СМР"] .chakasht');
+const hod = tekst(karta);
+t('прочетеното стои ПОД РЕДА, за който е качено', !!karta, tekst(a.d.getElementById('moment-telo')).slice(0, 300));
+t('прочетеното се ПОКАЗВА, преди да влезе', /Прочетох/.test(hod), hod);
+t('показва номера и датата, които е разбрал',
+  /12\/2026/.test(hod) && /01\.03\.2026/.test(hod), hod);
+t('името на файла е само подсказка, не данна', /не влиза никъде/.test(hod), hod);
+t('фактите са под реда — с поле и ✔', !!karta.querySelector('.fakt input.fakt-pole')
+  && /✔ вярно е/.test(hod), hod);
+t('документът без ПИ го казва', /не назовава ПИ/.test(hod), hod);
+t('записва се с „✔ запиши“', /✔ запиши в досието/.test(hod), hod);
+zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
+t('нищо не е влязло в чеклиста без ✔',
+  !(zapis.nadzor_otmetnati || []).includes('Договор за СМР'), zapis.nadzor_otmetnati);
+t('нищо не е влязло в ДОСИЕТО без ✔',
+  !(((zapis.sloy2 || {}).od || {}).dokumenti || []).length, zapis.sloy2);
+t('но прочетеното се пази при строежа — чака',
+  (((zapis.sloy2 || {}).od || {}).chakat || []).length === 1, zapis.sloy2);
+
+// ✔ на един факт, поправка в полето на друг
+const id64 = encodeURIComponent('dogovor.pdf');
+a.w.momentChFakt(id64, encodeURIComponent('nomer'));
+a.w.momentChPole(id64, encodeURIComponent('data'), '02.03.2026');
+const sled = tekst(a.d.querySelector('.lipsva-red[data-dokument="Договор за СМР"] .chakasht'));
+t('сверено и поправено се казват', /✓ сверено/.test(sled) && /✓ поправено/.test(sled)
+  && /четецът беше прочел „01\.03\.2026“/.test(sled), sled);
+t('бутонът брои сверените', /сверени 2 от/.test(sled), sled);
+
+a.w.momentChZapishi(id64);
+await new Promise(r => setTimeout(r, 200));
+zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
+const od = (zapis.sloy2 || {}).od || {};
+t('„✔ запиши“ го слага в досието', (od.dokumenti || []).length === 1, od);
+t('и маха чакащото', !(od.chakat || []).length, od.chakat);
+t('потвърдените в момента влизат в досието като потвърдени',
+  (od.potvardeni || {})['dogovor.pdf::nomer'] && od.potvardeni['dogovor.pdf::data'].stoynost === '02.03.2026',
+  od.potvardeni);
+t('временните полета не влизат в досието',
+  !('_potv' in od.dokumenti[0]) && !('_za_red' in od.dokumenti[0]), Object.keys(od.dokumenti[0]));
+t('редът от „Липсва ми“ се затваря', (zapis.nadzor_otmetnati || []).includes('Договор за СМР'),
+  zapis.nadzor_otmetnati);
+
+// Заповедна книга от СТАР обект (18.11.2026): прочетена от папката, с чужд ПИ —
+// казва се високо и се маха, без да е стигнала до досието.
+{
+    const st = a.w.momentZhiv().st;
+    a.w.aktKamChakashti(st, [{ vid: 'Заповедна книга', nomer: { stoynost: '3' },
+        obekt: { identifikator: { stoynost: '68134.1006.1111' } } }], 'zk-staro.pdf');
+    a.w.momentRisuvai();
+    const blok = tekst(a.d.querySelector('.chakat-proverka'));
+    t('прочетеното от папката е в свой блок „чака проверка“', /Прочетено · чака проверка · 1/.test(blok), blok);
+    t('чуждият ПИ се казва високо', /Не е за този обект/.test(blok) && /68134\.1006\.1111/.test(blok)
+      && /68134\.1006\.2440/.test(blok), blok);
+    a.w.momentChMahni(encodeURIComponent('zk-staro.pdf'));
+    const z2 = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0].sloy2.od;
+    t('„махни“ го маха', !a.d.querySelector('.chakat-proverka') && !(z2.chakat || []).length, z2.chakat);
+    t('и не е стигнал до досието', !(z2.dokumenti || []).some(d => d.fajl === 'zk-staro.pdf'), z2.dokumenti);
+}
 
 // ── какво НЕ е на този екран ─────────────────────────────────────────────────
 

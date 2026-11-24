@@ -879,6 +879,7 @@ if (typeof module !== 'undefined' && module.exports) {
         aktSastavki, aktNalichni, aktPriznaci,
         aktKakvoMozhe, aktPraviloNaMomenta, aktCenaNaFajl, aktPodskazkaOtIme,
         aktOstatak, AKT_OSTATAK, aktDataTochki, aktVDosieto, aktZaDokument,
+        aktChakat, aktKamChakashti, aktPiNaDokumenta, aktZapishiProveren, aktMahniChakasht,
         aktKrugove, aktIndeksKrug, aktKrug, aktImeKrug,
     };
 }
@@ -897,6 +898,76 @@ function aktVDosieto(st, novi, imeFajl) {
     const s2 = ((st.sloy2 = st.sloy2 || {}).od = st.sloy2.od || { dokumenti: [] });
     s2.dokumenti = (s2.dokumenti || []).filter(x => x.fajl !== imeFajl).concat(novi);
     s2.koga = new Date().toISOString();
+    aktZapishi();
+    return true;
+}
+
+// ПРОЧЕТЕНОТО В МОМЕНТА ЧАКА ПРОВЕРКА ТАМ, НЕ ВЛИЗА ВЕДНАГА В ДОСИЕТО.
+//
+// Операторът, 18.11.2026: заповедна книга от СТАР обект, прочетена в момента,
+// отиде направо в досието. Прочетеното се проверява там, където е прочетено;
+// в досието само се записва. Чакащите стоят в `sloy2.od.chakat` — извън
+// `dokumenti`, затова нито чеклистът, нито досието, нито генерирането ги
+// виждат, докато операторът не каже „✔ запиши“.
+const _aktDokId = d => (d && (d.id || d.fajl)) || '';
+
+function aktChakat(st) {
+    return (st && st.sloy2 && st.sloy2.od && st.sloy2.od.chakat) || [];
+}
+
+// Същият файл, прочетен пак, заменя предишното си чакащо четене.
+function aktKamChakashti(st, novi, imeFajl, zaRed) {
+    if (!st || !(novi || []).length) return false;
+    const s2 = ((st.sloy2 = st.sloy2 || {}).od = st.sloy2.od || { dokumenti: [] });
+    const koga = new Date().toISOString();
+    // „раздели по 1 страница“ чете същия файл пак — редът, за който е качен, остава.
+    if (zaRed === undefined)
+        zaRed = ((s2.chakat || []).find(x => x.fajl === imeFajl) || {})._za_red || '';
+    const svoi = novi.map(d => ({ ...d, fajl: d.fajl || imeFajl, procheten_koga: koga,
+                                  _za_red: zaRed || '', _potv: {} }));
+    s2.chakat = (s2.chakat || []).filter(x => x.fajl !== imeFajl).concat(svoi);
+    aktZapishi();
+    return true;
+}
+
+// ПИ на документа срещу ПИ на обекта. Идентификаторът се ПРЕПИСВА, не се
+// поправя — затова сравнението е по цифрите и точките, без гадаене.
+// Самостоятелният обект (68134.4083.1234.1.5) е в имота 68134.4083.1234.
+function aktPiNaDokumenta(d, pi) {
+    const chisto = s => String(s || '').replace(/[^\d.]/g, '').replace(/^\.+|\.+$/g, '');
+    const o = (d && d.obekt) || {};
+    const surovo = String((o.identifikator && o.identifikator.stoynost) || '').trim();
+    const dok = (surovo.match(/\d{3,5}\.\d+\.\d+(?:\.\d+)*/) || [''])[0];
+    const obekt = chisto(pi);
+    if (!dok) return { status: 'nyama', dok: surovo, obekt };
+    if (!obekt) return { status: 'nyama-obekt', dok, obekt };
+    const s = dok === obekt || dok.startsWith(obekt + '.') ? 'savpada' : 'razlichen';
+    return { status: s, dok, obekt };
+}
+
+// „✔ запиши“: документът минава в досието с проверените в момента факти.
+// Четене на същия файл от друг път (друго разделяне) отпада — както в
+// `aktVDosieto`, същият файл, прочетен пак, заменя предишното си четене.
+function aktZapishiProveren(st, id) {
+    const s2 = st && st.sloy2 && st.sloy2.od;
+    const d = s2 && (s2.chakat || []).find(x => _aktDokId(x) === id);
+    if (!d) return null;
+    const { _za_red, _potv, ...chist } = d;
+    s2.chakat = s2.chakat.filter(x => x !== d);
+    s2.dokumenti = (s2.dokumenti || []).filter(x => _aktDokId(x) !== id
+        && !(x.fajl === d.fajl && x.procheten_koga !== d.procheten_koga));
+    s2.dokumenti.push(chist);
+    const potv = (s2.potvardeni = s2.potvardeni || {});
+    for (const [pole, v] of Object.entries(_potv || {})) potv[`${id}::${pole}`] = v;
+    s2.koga = new Date().toISOString();
+    aktZapishi();
+    return { dokument: chist, zaRed: _za_red || '', svereni: Object.keys(_potv || {}).length };
+}
+
+function aktMahniChakasht(st, id) {
+    const s2 = st && st.sloy2 && st.sloy2.od;
+    if (!s2 || !(s2.chakat || []).some(x => _aktDokId(x) === id)) return false;
+    s2.chakat = s2.chakat.filter(x => _aktDokId(x) !== id);
     aktZapishi();
     return true;
 }

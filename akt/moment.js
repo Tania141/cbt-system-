@@ -93,6 +93,7 @@ function momentRisuvai() {
     const imaDn = tabl7 && ((z.st.akt7_dnevnik || {}).aktove || []).length;
     kutiya.innerHTML =
         (tabl7 ? momentDnevnikHtml(z.st) : '')
+        + momentChakatHtml(z)
         + momentLipsvaHtml(dve)
         + momentImamHtml()
         + momentOstatakHtml(z.st)
@@ -291,7 +292,7 @@ async function momentProchetiOtmetnatite() {
             return;
         }
     }
-    momentSaobshtenie = `<div>Прочетени ${prochetenite}. Нищо не е влязло без твоето ✔.</div>`
+    momentSaobshtenie = `<div>Прочетени ${prochetenite}. Чакат проверка тук — в досието нищо не е влязло без твоето ✔.</div>`
         + razdeleni.join('');
     const h = hod(); if (h) h.innerHTML = momentSaobshtenie;
     momentPapka = momentPapka.filter(f => !f.otmetnat);
@@ -368,7 +369,7 @@ async function momentRazdeliPo(k, po) {
     try {
         const novi = await momentChetiFajl(z, fajl, ime, kazhi, po);
         momentPriberiProcheteno(z, novi, ime);
-        momentSaobshtenie = `<div>„${_e(ime)}“ — прочетени ${novi.length} документа. Сверяват се в Досието.</div>`
+        momentSaobshtenie = `<div>„${_e(ime)}“ — прочетени ${novi.length} документа. Чакат проверка тук.</div>`
             + momentRazdelyaneHtml(novi.razdelyane);
     } catch (e) {
         momentSaobshtenie = e.izteklo ? aktGreshkaHtml(e) : `❌ „${_e(ime)}“: ${_e(e.message)}`;
@@ -376,9 +377,178 @@ async function momentRazdeliPo(k, po) {
     momentRisuvai();
 }
 
-// Прочетеното е ПРЕДЛОЖЕНИЕ (правило 1): пази се при строежа и чака ✔.
-function momentPriberiProcheteno(z, novi, imeFajl) {
-    aktVDosieto(z.st, novi, imeFajl);
+// Прочетеното е ПРЕДЛОЖЕНИЕ (правило 1): пази се при строежа и чака ✔ —
+// ТУК, в момента. В досието влиза едва с „✔ запиши“ (18.11.2026).
+function momentPriberiProcheteno(z, novi, imeFajl, zaRed) {
+    aktKamChakashti(z.st, novi, imeFajl, zaRed);
+}
+
+// ── Прочетеното — чака проверка ──────────────────────────────────────────────
+// Под реда, за който е качено; прочетеното от папката — в свой блок горе.
+// Фактите са същите като в досието (`_s2Fakti`), с ✔ и поправка в полето.
+
+const _mId = d => d.id || d.fajl;
+
+function momentChakatHtml(z) {
+    const redove = new Set(momentRedove().filter(r => !momentImam(r)).map(r => r.dokument));
+    const svobodni = aktChakat(z.st).filter(d => !d._za_red || !redove.has(d._za_red));
+    if (!svobodni.length) return '';
+    return `
+    <div class="kutiya-razdel chakat-proverka">
+        <div class="nadpis">Прочетено · чака проверка · ${svobodni.length}</div>
+        <p class="poyasnenie">Нищо от тук не е в досието. Свери с хартията и „✔ запиши“.</p>
+        ${svobodni.map(d => momentChakashtHtml(z, d)).join('')}
+    </div>`;
+}
+
+function momentChakashtHtml(z, d) {
+    const id64 = encodeURIComponent(_mId(d));
+    const potv = d._potv || {};
+    const fakti = typeof _s2Fakti === 'function' ? _s2Fakti(d) : [];
+    if (!fakti.some(x => x.k === 'naimenovanie'))
+        fakti.unshift({ k: 'naimenovanie', etiket: 'наименование', obj: { stoynost: '' } });
+    const svereni = fakti.filter(x => potv[x.k]).length;
+    const nomer = (d.nomer && d.nomer.stoynost) || '', data = (d.data && d.data.stoynost) || '';
+    const pi = aktPiNaDokumenta(d, z.p.pi);
+    const piHtml = pi.status === 'razlichen'
+        ? `<div class="predupr chakasht-pi"><strong>Не е за този обект?</strong> ПИ в документа е
+              <span class="mono">${_e(pi.dok)}</span>, а на обекта — <span class="mono">${_e(pi.obekt)}</span>.
+              <button class="bt" onclick="momentChMahni('${id64}')">не е за този обект — махни</button></div>`
+        : pi.status === 'savpada'
+        ? `<div class="otkade">ПИ съвпада с обекта · <span class="mono">${_e(pi.dok)}</span></div>`
+        : `<div class="otkade">документът не назовава ПИ${pi.dok ? ` („${_e(pi.dok)}“)` : ''} — провери на хартията</div>`;
+    const chakat = fakti.filter(x => !potv[x.k] && String(x.obj.stoynost || '').trim());
+    return `
+    <div class="chakasht" data-id="${_e(_mId(d))}">
+        <div class="chakasht-glava">Прочетох: <strong>${_e(d.vid || aktPodskazkaOtIme(d.fajl))}</strong>
+            ${nomer ? ` · № ${_e(nomer)}` : ''}${data ? ` · от ${_e(data)}` : ''}</div>
+        <div class="otkade">файл „${_e(d.fajl)}“${d.id && d.id !== d.fajl ? ` · ${_e(d.id.slice(d.fajl.length).replace(/^#/, ''))}` : ''}
+            · името на файла не влиза никъде</div>
+        ${piHtml}
+        <div class="chakasht-fakti">
+            ${fakti.map(x => momentChFaktHtml(id64, x, potv[x.k])).join('')}
+        </div>
+        <div class="chakasht-zhestove">
+            <button class="bt bt-glaven" onclick="momentChZapishi('${id64}')">✔ запиши в досието · сверени ${svereni} от ${fakti.length}</button>
+            ${chakat.length > 1 ? `<button class="bt" onclick="momentChVsichki('${id64}')">✔ вярно е — всички ${chakat.length}</button>` : ''}
+            <button class="bt bt-tih" onclick="momentChMahni('${id64}')">махни</button>
+        </div>
+    </div>`;
+}
+
+function momentChFaktHtml(id64, x, v) {
+    const p64 = encodeURIComponent(x.k);
+    const pokazvana = v ? v.stoynost : (x.obj.stoynost || '');
+    const popravena = v && String(v.stoynost) !== String(v.prochetena || '');
+    const t = String(pokazvana);
+    const pole = t.length > 60 || t.includes('\n')
+        ? `<textarea class="fakt-pole" rows="${Math.min(8, Math.ceil(t.length / 70) + 1)}"
+               onchange="momentChPole('${id64}','${p64}', this.value)">${_e(t)}</textarea>`
+        : `<input type="text" class="fakt-pole" value="${_e(t)}"
+               ${x.k === 'naimenovanie' && !t ? 'placeholder="напиши го, както е в документа"' : ''}
+               onchange="momentChPole('${id64}','${p64}', this.value)">`;
+    return `
+    <div class="fakt ${v ? 'fakt-sveren' : ''}">
+        <span class="fakt-etiket">${_e(x.etiket)}</span>
+        ${pole}
+        <span class="fakt-znak">${v ? (popravena ? '✓ поправено' : '✓ сверено') : 'чака ✔'}</span>
+        ${x.obj.citat ? `<div class="fakt-citat">„${_e(x.obj.citat)}“${
+            x.obj.stranica ? ' · стр. ' + _e(x.obj.stranica) : ''}</div>` : ''}
+        ${popravena ? `<div class="otkade">четецът беше прочел „${_e(v.prochetena)}“</div>` : ''}
+        <div class="fakt-zhestove">${v
+            ? `<button class="bt bt-tih" onclick="momentChOtmeni('${id64}','${p64}')">отмени</button>`
+            : String(x.obj.stoynost || '').trim()
+              ? `<button class="bt bt-glaven" onclick="momentChFakt('${id64}','${p64}')">✔ вярно е</button>` : ''}
+        </div>
+    </div>`;
+}
+
+function _momentCh(id64) {
+    const z = momentZhiv();
+    if (!z) return {};
+    const id = decodeURIComponent(id64);
+    return { z, id, d: aktChakat(z.st).find(x => _mId(x) === id) };
+}
+
+function _momentChFakt(d, pole) {
+    const f = (typeof _s2Fakti === 'function' ? _s2Fakti(d) : []).find(x => x.k === pole);
+    return f || (pole === 'naimenovanie' ? { k: pole, obj: d.naimenovanie || { stoynost: '' } } : null);
+}
+
+function _momentChSlozhi(d, pole, stoynost, prochetena) {
+    (d._potv = d._potv || {})[pole] = { stoynost, prochetena,
+        koy: typeof _s2Koy === 'function' ? _s2Koy() : 'оператор', koga: new Date().toISOString() };
+}
+
+function momentChFakt(id64, p64) {
+    const { d } = _momentCh(id64);
+    const pole = decodeURIComponent(p64), f = d && _momentChFakt(d, pole);
+    if (!f) return;
+    const st = String(f.obj.stoynost || '');
+    _momentChSlozhi(d, pole, st, st);
+    aktZapishi();
+    momentRisuvai();
+}
+
+function momentChVsichki(id64) {
+    const { d } = _momentCh(id64);
+    if (!d) return;
+    for (const f of _s2Fakti(d)) {
+        const st = String(f.obj.stoynost || '');
+        if (!(d._potv || {})[f.k] && st.trim()) _momentChSlozhi(d, f.k, st, st);
+    }
+    aktZapishi();
+    momentRisuvai();
+}
+
+// Поправка в самото поле: написаното от хартията бие прочетеното.
+function momentChPole(id64, p64, nova) {
+    const { d } = _momentCh(id64);
+    const pole = decodeURIComponent(p64), f = d && _momentChFakt(d, pole);
+    if (!f) return;
+    const n = String(nova || '').trim();
+    if (!n) delete (d._potv || {})[pole];
+    else _momentChSlozhi(d, pole, n, String(f.obj.stoynost || ''));
+    aktZapishi();
+    momentRisuvai();
+}
+
+function momentChOtmeni(id64, p64) {
+    const { d } = _momentCh(id64);
+    if (!d || !d._potv) return;
+    delete d._potv[decodeURIComponent(p64)];
+    aktZapishi();
+    momentRisuvai();
+}
+
+function momentChMahni(id64) {
+    const { z, id } = _momentCh(id64);
+    if (!z) return;
+    aktMahniChakasht(z.st, id);
+    momentRisuvai();
+}
+
+// „✔ запиши“: в досието с проверените факти; ако е качено за ред от
+// „Липсва ми“ — редът се затваря със същия номер и дата.
+function momentChZapishi(id64) {
+    const { z, id, d } = _momentCh(id64);
+    if (!d) return;
+    const r = aktZapishiProveren(z.st, id);
+    if (!r) return;
+    const s2 = z.st.sloy2.od;
+    if (typeof _dokVpishiSverenite === 'function')
+        _dokVpishiSverenite(z.p, z.p, s2.dokumenti || [], s2.potvardeni || {});
+    if (typeof addHistory === 'function')
+        addHistory('edit', z.p.pi, `Момент ${momentIme}: записано в досието — ${r.dokument.vid || r.dokument.fajl} (сверени ${r.svereni})`);
+    momentSaobshtenie = `<div>„${_e(r.dokument.vid || r.dokument.fajl)}“ е в досието · сверени ${r.svereni}.</div>`;
+    if (r.zaRed) {
+        const v = k => (s2.potvardeni[`${id}::${k}`] || {}).stoynost || (r.dokument[k] || {}).stoynost || '';
+        momentZatvoriRed(r.zaRed, [v('nomer') && '№ ' + v('nomer'), v('data') && 'от ' + v('data')]
+            .filter(Boolean).join(' '));
+        return;
+    }
+    aktZapishi();
+    momentRisuvai();
 }
 
 function momentBase64(fajl) {
@@ -460,6 +630,13 @@ function momentKadeSeRazhda(dokument) {
     return null;
 }
 
+// Прочетеното за този ред — под него, докато чака „✔ запиши“.
+function momentChakatZaRed(dokument) {
+    const z = momentZhiv();
+    return z ? aktChakat(z.st).filter(d => d._za_red === dokument)
+        .map(d => momentChakashtHtml(z, d)).join('') : '';
+}
+
 function momentLipsvashtRed(r) {
     const k = encodeURIComponent(r.dokument);
     const hod = momentHod[r.dokument];
@@ -480,6 +657,7 @@ function momentLipsvashtRed(r) {
             <button class="bt bt-tih" onclick="momentNeSeOtnasya('${k}')">— не се отнася</button>
         </div>
         ${hod ? `<div class="lipsva-hod">${hod}</div>` : ''}
+        ${momentChakatZaRed(r.dokument)}
     </div>`;
 }
 
@@ -506,42 +684,14 @@ async function momentKachiFajl(dokument, fajl) {
     try {
         const novi = await momentChetiFajl(z, fajl, fajl.name,
             t => { momentHod[dokument] = _e(t); momentRisuvai(); });
-        momentPriberiProcheteno(z, novi, fajl.name);
-        momentRazbrano(dokument, novi, fajl.name);
+        momentPriberiProcheteno(z, novi, fajl.name, dokument);
+        momentHod[dokument] = novi.length <= 1 ? momentRazdelyaneHtml(novi.razdelyane) : '';
+        if (!momentHod[dokument]) delete momentHod[dokument];
+        momentRisuvai();
     } catch (e) {
         momentHod[dokument] = e.izteklo ? aktGreshkaHtml(e) : `❌ ${_e(e.message)}`;
         momentRisuvai();
     }
-}
-
-// Какво е разбрал четецът — и ЕДИН ✔, който затваря реда. Името на файла е
-// само сива подсказка, не данна.
-function momentRazbrano(dokument, novi, imeFajl) {
-    const d = novi[0] || {};
-    const nomer = (d.nomer && d.nomer.stoynost) || '';
-    const data = (d.data && d.data.stoynost) || '';
-    momentHod[dokument] = `
-        <div class="razbrano">
-            <div>Прочетох: <strong>${_e(d.vid || aktPodskazkaOtIme(imeFajl))}</strong>
-                ${nomer ? ` · № ${_e(nomer)}` : ''}${data ? ` · от ${_e(data)}` : ''}</div>
-            ${novi.length > 1 ? `<div>Файлът е разделен на <strong>${novi.length} документа</strong> —
-                всеки е отделен ред в Досието, там се сверяват.</div>` : ''}
-            ${novi.length <= 1 ? momentRazdelyaneHtml(novi.razdelyane) : ''}
-            <div class="otkade">подсказка от името: ${_e(aktPodskazkaOtIme(imeFajl))} — не влиза никъде</div>
-            <button class="bt bt-glaven" onclick="momentPotvardi('${encodeURIComponent(dokument)}','${
-                encodeURIComponent([nomer && '№ ' + nomer, data && 'от ' + data].filter(Boolean).join(' '))}')">✔ това е</button>
-            <button class="bt bt-tih" onclick="momentOtkazhi('${encodeURIComponent(dokument)}')">не е това</button>
-        </div>`;
-    momentRisuvai();
-}
-
-function momentPotvardi(k, nomer64) {
-    momentZatvoriRed(decodeURIComponent(k), decodeURIComponent(nomer64 || ''));
-}
-
-function momentOtkazhi(k) {
-    delete momentHod[decodeURIComponent(k)];
-    momentRisuvai();
 }
 
 // ✍ впиши: нямаш файл, но документът съществува — номер и дата на ръка.
