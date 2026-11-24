@@ -110,9 +110,13 @@ t('страницата се вдига без грешки', !greshki.length, g
     const red7 = d2.window.document.querySelector('.lipsva-red[data-dokument="Акт 7 и обр. 12 по част архитектура"]');
     t('в „Липсва ми“ редът на обр. 7 казва, че актът вече го изрежда',
       /Актът вече го изрежда/.test(tx(red7)), tx(red7));
-    const imam = tx(d2.window.document.querySelector('details.minali'));
+    const butoni = [...d2.window.document.querySelectorAll('.razdel-bt')].map(tx).join(' | ');
+    t('бутоните казват разминаването и затворени', /Липсва ми · \d+ · 1 актът вече го изрежда/.test(butoni)
+      && /Имам · \d+ · 1 не влиза в акта/.test(butoni), butoni);
+    d2.window.momentOtvoriRazdel('imam');
+    const imam = tx(d2.window.document.querySelector('.razdel-telo'));
     t('в „Имам“ несвереният обр. 14 казва, че не влиза в акта',
-      /Акт обр\. 14/.test(imam) && /Актът не го изрежда/.test(imam) && /не влизат в акта/.test(imam), imam);
+      /Акт обр\. 14/.test(imam) && /Актът не го изрежда/.test(imam), imam);
     d2.window.momentSverkaOtmetni(encodeURIComponent('Акт 7 и обр. 12 по част архитектура'));
     await new Promise(r => setTimeout(r, 300));
     const zap = JSON.parse(d2.window.localStorage.getItem('akt_v5')).projects[0];

@@ -34,6 +34,8 @@ let momentSaobshtenie = '';
 let momentFajlove = {};
 // Имената на моментите, които чеклистът казва за този строеж — за „към … →“.
 let momentImena = [];
+// Кой от трите е отворен: „Липсва ми“ · „Имам“ · „Чака проверка“ (24.11.2026).
+let momentRazdel = 'lipsva';
 
 function momentOtvori(id, i, ime) {
     momentId = id;
@@ -44,6 +46,7 @@ function momentOtvori(id, i, ime) {
     momentSaobshtenie = '';
     momentFajlove = {};
     momentHod = {};
+    momentRazdel = 'lipsva';
     const p = aktObekt(id);
     if (!p) {
         document.getElementById('moment-telo').innerHTML =
@@ -94,13 +97,43 @@ function momentRisuvai() {
     const imaDn = tabl7 && ((z.st.akt7_dnevnik || {}).aktove || []).length;
     kutiya.innerHTML =
         (tabl7 ? momentDnevnikHtml(z.st) : '')
-        + momentChakatHtml(z)
-        + momentLipsvaHtml(dve)
-        + momentImamHtml()
+        + momentRazdeliHtml(z, dve)
         + momentOstatakHtml(z.st)
         + (imaDn ? '' : momentSastaviHtml(dve))
         + momentPapkaHtml();
     momentDyasno(z, dve);
+}
+
+// ── Превключвателят: Липсва ми · Имам · Чака проверка (24.11.2026) ────────────
+// Операторът: двата бутона, отворен е единият, и там се работи. Важи за всеки
+// момент. „Чака проверка“ излиза само когато има прочетено, което чака.
+// Разминаването от сверката личи и върху затворения бутон.
+function momentRazdeliHtml(z, dve) {
+    const lipsvat = momentRedove().filter(r => !momentImam(r) && r.sastoyanie !== 'не му е времето');
+    const imam = momentRedove().filter(r => momentImam(r));
+    const chakat = aktChakat(z.st);
+    if (momentRazdel === 'chakat' && !chakat.length) momentRazdel = 'lipsva';
+    const sv = momentSverka || { pisheNeBroi: [], broiNePishe: [] };
+    const cherveno = n => n ? ` <span class="razdel-cherveno-broy">· ${n} ${n === 1 ? 'не влиза' : 'не влизат'} в акта</span>` : '';
+    const lipsvaSv = sv.pisheNeBroi.filter(x => lipsvat.some(r => r.dokument === x.red)).length;
+    const buton = (kod, tekst, klas) => `<button class="razdel-bt ${klas || ''} ${momentRazdel === kod ? 'razdel-bt-otvoren' : ''}"
+        onclick="momentOtvoriRazdel('${kod}')">${tekst}</button>`;
+    const sadarzhanie = momentRazdel === 'imam' ? momentImamHtml()
+        : momentRazdel === 'chakat' ? momentChakatHtml(z)
+        : momentLipsvaHtml(dve);
+    return `
+    <div class="razdeli-prevkl">
+        ${buton('lipsva', `Липсва ми · ${lipsvat.length}${lipsvaSv
+            ? ` <span class="razdel-cherveno-broy">· ${lipsvaSv} актът вече ${lipsvaSv === 1 ? 'го изрежда' : 'ги изрежда'}</span>` : ''}`)}
+        ${buton('imam', `Имам · ${imam.length}${cherveno(sv.broiNePishe.length)}`)}
+        ${chakat.length ? buton('chakat', `Чака проверка · ${chakat.length}`, 'razdel-bt-zlato') : ''}
+    </div>
+    ${sadarzhanie}`;
+}
+
+function momentOtvoriRazdel(kod) {
+    momentRazdel = kod;
+    momentRisuvai();
 }
 
 // ── Трите вида моменти ───────────────────────────────────────────────────────
@@ -285,6 +318,7 @@ async function momentProchetiOtmetnatite() {
         try {
             const novi = await momentChetiFajl(z, f.fajl, f.ime, kazhi);
             momentPriberiProcheteno(z, novi, f.ime);
+            momentRazdel = 'chakat';
             razdeleni.push(momentRazdelyaneHtml(novi.razdelyane));
             prochetenite++;
         } catch (e) {
@@ -370,6 +404,7 @@ async function momentRazdeliPo(k, po) {
     try {
         const novi = await momentChetiFajl(z, fajl, ime, kazhi, po);
         momentPriberiProcheteno(z, novi, ime);
+        momentRazdel = 'chakat';
         momentSaobshtenie = `<div>„${_e(ime)}“ — прочетени ${novi.length} документа. Чакат проверка тук.</div>`
             + momentRazdelyaneHtml(novi.razdelyane);
     } catch (e) {
@@ -391,14 +426,12 @@ function momentPriberiProcheteno(z, novi, imeFajl, zaRed) {
 const _mId = d => d.id || d.fajl;
 
 function momentChakatHtml(z) {
-    const redove = new Set(momentRedove().filter(r => !momentImam(r)).map(r => r.dokument));
-    const svobodni = aktChakat(z.st).filter(d => !d._za_red || !redove.has(d._za_red));
-    if (!svobodni.length) return '';
+    const chakat = aktChakat(z.st);
+    if (!chakat.length) return '';
     return `
-    <div class="kutiya-razdel chakat-proverka">
-        <div class="nadpis">Прочетено · чака проверка · ${svobodni.length}</div>
+    <div class="kutiya-razdel razdel-telo chakat-proverka">
         <p class="poyasnenie">Нищо от тук не е в досието. Свери с хартията и „✔ запиши“.</p>
-        ${svobodni.map(d => momentChakashtHtml(z, d)).join('')}
+        ${chakat.map(d => momentChakashtHtml(z, d)).join('')}
     </div>`;
 }
 
@@ -421,6 +454,7 @@ function momentChakashtHtml(z, d) {
     const chakat = fakti.filter(x => !potv[x.k] && String(x.obj.stoynost || '').trim());
     return `
     <div class="chakasht" data-id="${_e(_mId(d))}">
+        ${d._za_red ? `<div class="otkade">качено за реда „${_e(d._za_red)}“</div>` : ''}
         <div class="chakasht-glava">Прочетох: <strong>${_e(d.vid || aktPodskazkaOtIme(d.fajl))}</strong>
             ${nomer ? ` · № ${_e(nomer)}` : ''}${data ? ` · от ${_e(data)}` : ''}</div>
         <div class="otkade">файл „${_e(d.fajl)}“${d.id && d.id !== d.fajl ? ` · ${_e(d.id.slice(d.fajl.length).replace(/^#/, ''))}` : ''}
@@ -542,6 +576,7 @@ function momentChZapishi(id64) {
     if (typeof addHistory === 'function')
         addHistory('edit', z.p.pi, `Момент ${momentIme}: записано в досието — ${r.dokument.vid || r.dokument.fajl} (сверени ${r.svereni})`);
     momentSaobshtenie = `<div>„${_e(r.dokument.vid || r.dokument.fajl)}“ е в досието · сверени ${r.svereni}.</div>`;
+    if (!aktChakat(z.st).length) momentRazdel = 'lipsva';
     if (r.zaRed) {
         const v = k => (s2.potvardeni[`${id}::${k}`] || {}).stoynost || (r.dokument[k] || {}).stoynost || '';
         momentZatvoriRed(r.zaRed, [v('nomer') && '№ ' + v('nomer'), v('data') && 'от ' + v('data')]
@@ -598,14 +633,12 @@ function momentLipsvaHtml(dve) {
         // „Нищо“ значи нищо, на което МУ Е ВРЕМЕТО. Редовете, чийто ред още не
         // е дошъл, се броят в подписа и затова се казват отделно — иначе
         // екранът би обещавал повече, отколкото знае.
-        return `<div class="kutiya-razdel">
-            <div class="nadpis">Липсва ми</div>
+        return `<div class="kutiya-razdel razdel-telo">
             <p>Нищо, на което му е времето.${neEVremeto
                 ? ` ${neEVremeto} чака${neEVremeto === 1 ? '' : 'т'} реда си.` : ''}</p></div>`;
     }
     return `
-    <div class="kutiya-razdel">
-        <div class="nadpis">Липсва ми · ${lipsvat.length}</div>
+    <div class="kutiya-razdel razdel-telo">
         ${lipsvat.map(r => momentLipsvashtRed(r)).join('')}
         ${neEVremeto ? `<p class="poyasnenie">${neEVremeto} още — не им е времето.</p>` : ''}
     </div>`;
@@ -656,13 +689,6 @@ function momentKadeSeRazhda(dokument) {
     return null;
 }
 
-// Прочетеното за този ред — под него, докато чака „✔ запиши“.
-function momentChakatZaRed(dokument) {
-    const z = momentZhiv();
-    return z ? aktChakat(z.st).filter(d => d._za_red === dokument)
-        .map(d => momentChakashtHtml(z, d)).join('') : '';
-}
-
 function momentSverkaZaLipsva(red) {
     const x = momentSverkaZa('pisheNeBroi', red);
     return x ? `<div class="sverka-red">Актът вече го изрежда: ${x.dokumenti.map(_e).join('; ')}
@@ -692,7 +718,6 @@ function momentLipsvashtRed(r) {
         </div>
         ${momentSverkaZaLipsva(r.dokument)}
         ${hod ? `<div class="lipsva-hod">${hod}</div>` : ''}
-        ${momentChakatZaRed(r.dokument)}
     </div>`;
 }
 
@@ -720,6 +745,7 @@ async function momentKachiFajl(dokument, fajl) {
         const novi = await momentChetiFajl(z, fajl, fajl.name,
             t => { momentHod[dokument] = _e(t); momentRisuvai(); });
         momentPriberiProcheteno(z, novi, fajl.name, dokument);
+        momentRazdel = 'chakat';
         momentHod[dokument] = novi.length <= 1 ? momentRazdelyaneHtml(novi.razdelyane) : '';
         if (!momentHod[dokument]) delete momentHod[dokument];
         momentRisuvai();
@@ -797,7 +823,7 @@ function momentImamHtml() {
     if (!z) return '';
     const vpisani = z.st.dokumenti || [];
     const nalichni = momentRedove().filter(r => momentImam(r));
-    if (!nalichni.length) return '';
+    if (!nalichni.length) return `<div class="kutiya-razdel razdel-telo"><p>Още нищо.</p></div>`;
     const kade = ime => {
         const v = vpisani.find(d => String(d.ime).toLowerCase() === String(ime).toLowerCase());
         if (v) return [v.nomer, v.ot].filter(Boolean).join(' · ');
@@ -819,9 +845,7 @@ function momentImamHtml() {
         return 'отметнато';
     };
     return `
-    <details class="kutiya-razdel minali" ${nalichni.some(r => momentSverkaZa('broiNePishe', r.dokument)) ? 'open' : ''}>
-        <summary>Имам · ${nalichni.length}${(momentSverka && momentSverka.broiNePishe.length)
-            ? ` · <span class="sverka-broy">${momentSverka.broiNePishe.length} не влизат в акта</span>` : ''}</summary>
+    <div class="kutiya-razdel razdel-telo">
         <ul class="lipsvat">
             ${nalichni.map(r => `<li>${_e(r.dokument)}
                 <span class="otkade">${_e(kade(r.dokument))}</span>
@@ -831,7 +855,7 @@ function momentImamHtml() {
                 <button class="bt bt-tih" onclick="momentVarni('${encodeURIComponent(r.dokument)}')">върни</button>
             </li>`).join('')}
         </ul>
-    </details>`;
+    </div>`;
 }
 
 // ── 5. Остатъкът ─────────────────────────────────────────────────────────────

@@ -225,13 +225,22 @@ t('вписаното казва, че е на ръка',
 t('везната се вдигна до 100 %',
   /100 %/.test(tekst(a.d.querySelector('.vezna'))), tekst(a.d.querySelector('.vezna')));
 
-// „Имам“ — сгънато, с откъде е
-const imam = a.d.querySelector('details.kutiya-razdel');
-t('„Имам“ е сгънато', imam && !imam.open);
+// Превключвателят (24.11.2026): „Липсва ми · N“ и „Имам · N“ — отворен е единият.
+const butoni = [...a.d.querySelectorAll('.razdel-bt')].map(tekst);
+t('горе са двата бутона с числата', butoni[0] === 'Липсва ми · 1' && butoni[1] === 'Имам · 2', butoni);
+t('по подразбиране е отворено „Липсва ми“',
+  /Липсва ми/.test(tekst(a.d.querySelector('.razdel-bt-otvoren'))));
+t('„Имам“ не се рисува, докато е затворено', !a.d.querySelector('.razdel-telo .lipsvat'));
+a.w.momentOtvoriRazdel('imam');
+const imam = a.d.querySelector('.razdel-telo');
+t('„Имам“ се отваря с бутона', /Имам/.test(tekst(a.d.querySelector('.razdel-bt-otvoren')))
+  && !a.d.querySelector('.lipsva-red'));
 t('„Имам“ показва вписаното с номера му',
   /Договор за СМР/.test(tekst(imam)) && /12\.05\.2026/.test(tekst(imam)), tekst(imam));
 t('всеки налице ред казва откъде е',
   [...imam.querySelectorAll('.lipsvat li .otkade')].every(x => tekst(x)), tekst(imam));
+
+a.w.momentOtvoriRazdel('lipsva');
 
 // — не се отнася
 a.w.momentNeSeOtnasya(encodeURIComponent('Протоколи от изпитвания'));
@@ -250,8 +259,10 @@ t('„не се отнася“ се помни с дата',
 t('и вдига подписа — 3 от 4, защото Акт 16 още чака реда си',
   /75 %/.test(tekst([...a.d.querySelectorAll('.vezna')][1])),
   tekst([...a.d.querySelectorAll('.vezna')][1]));
+a.w.momentOtvoriRazdel('imam');
 t('махнатото се вижда в „Имам“ като „не се отнася“',
-  /не се отнася/.test(tekst(a.d.querySelector('details.kutiya-razdel'))));
+  /не се отнася/.test(tekst(a.d.querySelector('.razdel-telo'))));
+a.w.momentOtvoriRazdel('lipsva');
 
 // бутонът „Съставѝ документа“
 let bt = a.d.querySelector('.sastavi .bt');
@@ -314,9 +325,12 @@ t('стар .doc не се праща на четеца',
 const fajl = new a.w.File(['%PDF-1.4 проба'], 'dogovor.pdf', { type: 'application/pdf' });
 await a.w.momentKachiFajl('Договор за СМР', fajl);
 await new Promise(r => setTimeout(r, 200));
-const karta = a.d.querySelector('.lipsva-red[data-dokument="Договор за СМР"] .chakasht');
+const karta = a.d.querySelector('.chakat-proverka .chakasht');
 const hod = tekst(karta);
-t('прочетеното стои ПОД РЕДА, за който е качено', !!karta, tekst(a.d.getElementById('moment-telo')).slice(0, 300));
+t('прочетеното се отваря в „Чака проверка · 1“', !!karta
+  && /Чака проверка · 1/.test(tekst(a.d.querySelector('.razdel-bt-otvoren'))),
+  tekst(a.d.getElementById('moment-telo')).slice(0, 300));
+t('и казва за кой ред е качено', /качено за реда „Договор за СМР“/.test(hod), hod);
 t('прочетеното се ПОКАЗВА, преди да влезе', /Прочетох/.test(hod), hod);
 t('показва номера и датата, които е разбрал',
   /12\/2026/.test(hod) && /01\.03\.2026/.test(hod), hod);
@@ -337,7 +351,7 @@ t('но прочетеното се пази при строежа — чака'
 const id64 = encodeURIComponent('dogovor.pdf');
 a.w.momentChFakt(id64, encodeURIComponent('nomer'));
 a.w.momentChPole(id64, encodeURIComponent('data'), '02.03.2026');
-const sled = tekst(a.d.querySelector('.lipsva-red[data-dokument="Договор за СМР"] .chakasht'));
+const sled = tekst(a.d.querySelector('.chakat-proverka .chakasht'));
 t('сверено и поправено се казват', /✓ сверено/.test(sled) && /✓ поправено/.test(sled)
   && /четецът беше прочел „01\.03\.2026“/.test(sled), sled);
 t('бутонът брои сверените', /сверени 2 от/.test(sled), sled);
@@ -348,6 +362,10 @@ zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
 const od = (zapis.sloy2 || {}).od || {};
 t('„✔ запиши“ го слага в досието', (od.dokumenti || []).length === 1, od);
 t('и маха чакащото', !(od.chakat || []).length, od.chakat);
+t('бутонът „Чака проверка“ изчезва, отваря се „Липсва ми“', !/Чака проверка/.test(
+  [...a.d.querySelectorAll('.razdel-bt')].map(tekst).join(' '))
+  && /Липсва ми/.test(tekst(a.d.querySelector('.razdel-bt-otvoren'))),
+  [...a.d.querySelectorAll('.razdel-bt')].map(tekst));
 t('потвърдените в момента влизат в досието като потвърдени',
   (od.potvardeni || {})['dogovor.pdf::nomer'] && od.potvardeni['dogovor.pdf::data'].stoynost === '02.03.2026',
   od.potvardeni);
@@ -363,8 +381,10 @@ t('редът от „Липсва ми“ се затваря', (zapis.nadzor_o
     a.w.aktKamChakashti(st, [{ vid: 'Заповедна книга', nomer: { stoynost: '3' },
         obekt: { identifikator: { stoynost: '68134.1006.1111' } } }], 'zk-staro.pdf');
     a.w.momentRisuvai();
+    t('прочетеното от папката вдига бутона „Чака проверка · 1“',
+      [...a.d.querySelectorAll('.razdel-bt')].some(b => tekst(b) === 'Чака проверка · 1'));
+    a.w.momentOtvoriRazdel('chakat');
     const blok = tekst(a.d.querySelector('.chakat-proverka'));
-    t('прочетеното от папката е в свой блок „чака проверка“', /Прочетено · чака проверка · 1/.test(blok), blok);
     t('чуждият ПИ се казва високо', /Не е за този обект/.test(blok) && /68134\.1006\.1111/.test(blok)
       && /68134\.1006\.2440/.test(blok), blok);
     a.w.momentChMahni(encodeURIComponent('zk-staro.pdf'));
