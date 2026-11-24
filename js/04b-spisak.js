@@ -198,3 +198,62 @@ function dokIzrechenie(r) {
     return [ime, !imaNomer && r.nomer && '№ ' + r.nomer, !imaData && r.data && 'от ' + r.data + ' г.']
         .filter(Boolean).join(', ');
 }
+
+// СВЕРКАТА: КАКВОТО АКТ 15 ПИШЕ ↔ КАКВОТО ЧЕКЛИСТЪТ БРОИ (24.11.2026).
+//
+// Анализът от 18.11.2026, т. 3.2: една истина на две места, а всеки читател
+// гледа своето. Акт 15 пише от тетрадката (сверените, `dokVliza`); чеклистът
+// брои от вратата към наличното (`_nadzorNalichni`). Разминат ли се, операторът
+// вижда „липсва“ за документ, който актът вече изрежда — или „имам“ за
+// документ, който в акта не влиза. Тук двете се сравняват и се казват.
+//
+// `redove` — имената на редовете от чеклиста за момента (каквито ги дава
+// сървърът). Редът на документа: редът, който четецът е посочил
+// (`cheklist_red`), иначе ред със същото име, а актът обр. 7 — редът за
+// „Акт 7…“. Документ без ред в чеклиста не е разминаване — чеклистът нарочно е
+// малък.
+//
+// Връща:
+//   pisheNeBroi — актът го изрежда, а чеклистът го иска (липсва му);
+//   broiNePishe — чеклистът казва „имам“ по прочетен документ, а актът не го
+//                 изрежда, защото документът не е сверен.
+// Складовете (регистър, паспорт, ЗК) не се проверяват тук: Акт 15 и
+// чеклистът ги четат от едно и също място.
+function dokSverkaSCheklista(p, st, redove) {
+    const k = x => String(x || '').trim().toLowerCase();
+    const poIme = new Map((redove || []).map(r => [k(r), r]));
+    const akt7 = (redove || []).find(r => /^акт\s*(обр\.?\s*)?7(?![\d])/i.test(String(r)));
+    const redNa = r => {
+        const cr = r.izvor && String(r.izvor.cheklist_red || '').trim();
+        if (cr && poIme.has(k(cr))) return poIme.get(k(cr));
+        if (poIme.has(k(r.ime))) return poIme.get(k(r.ime));
+        if (r.kod === 'AKT7' && akt7) return akt7;
+        return '';
+    };
+    const nalichni = new Set((typeof _nadzorNalichni === 'function' ? _nadzorNalichni(st, p) : [])
+        .map(k));
+    const vliza = typeof dokVliza === 'function' ? dokVliza(p, st) : [];
+    const pishe = new Map();
+    for (const r of vliza) {
+        const red = redNa(r);
+        if (!red) continue;
+        if (!pishe.has(red)) pishe.set(red, []);
+        pishe.get(red).push(r);
+    }
+    const pisheNeBroi = [...pishe.entries()].filter(([red]) => !nalichni.has(k(red)))
+        .map(([red, docs]) => ({ red, dokumenti: docs.map(d => typeof dokIzrechenie === 'function'
+            ? dokIzrechenie(d) : d.ime), otkade: [...new Set(docs.map(d => d.otkade))] }));
+    const s2 = (st && st.sloy2 && st.sloy2.od) || {};
+    const broiNePishe = [];
+    for (const red of redove || []) {
+        if (!nalichni.has(k(red)) || pishe.has(red)) continue;
+        // Само онова, което чеклистът брои ЗАРАДИ прочетен документ — отметнатото
+        // е твое и влиза с името си; складовете се четат и от акта.
+        const prochet = (s2.dokumenti || []).filter(d => k(d.cheklist_red) === k(red));
+        if (!prochet.length) continue;
+        if ((st.nadzor_otmetnati || []).some(x => k(x) === k(red))) continue;
+        broiNePishe.push({ red, dokumenti: prochet.map(d => d.vid || d.fajl),
+                           zashto: 'прочетен, но не е сверен — в акта не влиза' });
+    }
+    return { pisheNeBroi, broiNePishe };
+}

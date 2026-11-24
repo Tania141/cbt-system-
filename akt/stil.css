@@ -848,3 +848,11 @@ body {
 .koti-izbor .bt { font-size: 11.5px; padding: 2px 8px; margin-right: 3px; }
 .koti-izbrana { background: var(--green-light); color: var(--green); border-color: var(--green); }
 .koti-podskazka { background: var(--zhalto-light); color: var(--zhalto); border-color: var(--gold); }
+
+/* Сверката актът ↔ чеклистът (24.11.2026) — на самия ред. */
+.sverka-red {
+    margin-top: 7px; padding: 6px 10px; font-size: 13px;
+    border-left: 3px solid var(--red); background: var(--red-light);
+}
+.sverka-red .bt { margin-left: 6px; }
+.sverka-broy { color: var(--red); }

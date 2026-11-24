@@ -87,6 +87,7 @@ function momentRisuvai() {
         return;
     }
     const dve = aktDveChisla(momentGrupa, aktNeotnasya(z.p, z.st));
+    momentSverkaPresmetni(z);
     // Повтарящият се момент (Акт 7) — таблицата по бетоновия дневник е горе;
     // тя носи и своя „Съставѝ избраните“, затова общият бутон не се дублира.
     const tabl7 = momentIme === 'Акт 7';
@@ -560,6 +561,31 @@ function momentBase64(fajl) {
     });
 }
 
+// ── Сверката: актът ↔ чеклистът (24.11.2026) ─────────────────────────────────
+// Каквото Акт 15 изрежда, а чеклистът иска; каквото чеклистът брои, а актът не
+// изрежда. Системата го знае — значи го казва (`dokSverkaSCheklista`), и то на
+// самия ред: в „Липсва ми“ и в „Имам“, не в отделен блок.
+let momentSverka = null;
+function momentSverkaPresmetni(z) {
+    momentSverka = null;
+    if (momentIme !== 'Акт 15' || typeof dokSverkaSCheklista !== 'function') return;
+    const redove = ((momentGrupa && momentGrupa.dokumenti) || []).map(r => r.dokument);
+    momentSverka = dokSverkaSCheklista(z.p, z.st, redove);
+}
+const momentSverkaZa = (spisak, red) => momentSverka
+    ? (momentSverka[spisak] || []).find(x => x.red === red) : null;
+
+// Отметката е твоя (решено 18.11.2026: актовете обр. 7 от дневника не се
+// броят сами) — бутонът само спестява търсенето на реда.
+function momentSverkaOtmetni(k) {
+    const z = momentZhiv();
+    if (!z) return;
+    const red = decodeURIComponent(k);
+    z.st.nadzor_otmetnati = [...new Set([...(z.st.nadzor_otmetnati || []), red])];
+    aktZapishi();
+    momentZaredi();
+}
+
 // ── 3. „Липсва ми“ ───────────────────────────────────────────────────────────
 // Само липсващото, по един ред, и до всеки три възможности.
 // ЕДИН ЖЕСТ ЗАТВАРЯ ЕДИН РЕД — няма „Впиши“ + „Запази“ + „Провери“.
@@ -637,6 +663,13 @@ function momentChakatZaRed(dokument) {
         .map(d => momentChakashtHtml(z, d)).join('') : '';
 }
 
+function momentSverkaZaLipsva(red) {
+    const x = momentSverkaZa('pisheNeBroi', red);
+    return x ? `<div class="sverka-red">Актът вече го изрежда: ${x.dokumenti.map(_e).join('; ')}
+        <span class="otkade">${_e(x.otkade.join(', '))}</span>
+        <button class="bt" onclick="momentSverkaOtmetni('${encodeURIComponent(red)}')">✔ имам го — отметни</button></div>` : '';
+}
+
 function momentLipsvashtRed(r) {
     const k = encodeURIComponent(r.dokument);
     const hod = momentHod[r.dokument];
@@ -645,6 +678,7 @@ function momentLipsvashtRed(r) {
     <div class="lipsva-red lipsva-prashta" data-dokument="${_e(r.dokument)}">
         <div class="lipsva-ime">${_e(r.dokument)}</div>
         <a class="kam" href="${kade.href}">към ${_e(kade.ime)} →</a>
+        ${momentSverkaZaLipsva(r.dokument)}
     </div>`;
     return `
     <div class="lipsva-red" data-dokument="${_e(r.dokument)}">
@@ -656,6 +690,7 @@ function momentLipsvashtRed(r) {
             <button class="bt" onclick="momentVpishi('${k}')">✍ впиши</button>
             <button class="bt bt-tih" onclick="momentNeSeOtnasya('${k}')">— не се отнася</button>
         </div>
+        ${momentSverkaZaLipsva(r.dokument)}
         ${hod ? `<div class="lipsva-hod">${hod}</div>` : ''}
         ${momentChakatZaRed(r.dokument)}
     </div>`;
@@ -784,11 +819,15 @@ function momentImamHtml() {
         return 'отметнато';
     };
     return `
-    <details class="kutiya-razdel minali">
-        <summary>Имам · ${nalichni.length}</summary>
+    <details class="kutiya-razdel minali" ${nalichni.some(r => momentSverkaZa('broiNePishe', r.dokument)) ? 'open' : ''}>
+        <summary>Имам · ${nalichni.length}${(momentSverka && momentSverka.broiNePishe.length)
+            ? ` · <span class="sverka-broy">${momentSverka.broiNePishe.length} не влизат в акта</span>` : ''}</summary>
         <ul class="lipsvat">
             ${nalichni.map(r => `<li>${_e(r.dokument)}
                 <span class="otkade">${_e(kade(r.dokument))}</span>
+                ${momentSverkaZa('broiNePishe', r.dokument) ? `<div class="sverka-red">Актът не го изрежда — ${
+                    _e(momentSverkaZa('broiNePishe', r.dokument).zashto)}. <a class="kam" href="#/dosie/${
+                    encodeURIComponent(momentId)}/${momentIndeks}">свери в досието →</a></div>` : ''}
                 <button class="bt bt-tih" onclick="momentVarni('${encodeURIComponent(r.dokument)}')">върни</button>
             </li>`).join('')}
         </ul>
