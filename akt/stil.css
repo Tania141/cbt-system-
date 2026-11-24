@@ -869,3 +869,26 @@ body {
 .razdel-bt-zlato.razdel-bt-otvoren { box-shadow: inset 0 3px 0 var(--gold); }
 .razdel-cherveno-broy { color: var(--red); font-weight: 500; }
 .razdel-telo { border-top-left-radius: 0; margin-top: 0; }
+
+/* ── Подобни обекти (24.11.2026, стъпка 4а) ─────────────────────────────── */
+.podoben-nomer {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; font-size: 12px; font-weight: 700;
+    background: var(--ral6004); color: var(--white); flex: none;
+}
+.podoben-nomer-malak { width: 17px; height: 17px; font-size: 10.5px; }
+.podoben-ime { font-family: var(--f-doc); font-size: 14px; }
+.podoben-fajl { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; font-size: 13px; padding: 3px 0 3px 30px; }
+.podoben-vid { font-weight: 700; color: var(--ink-2); }
+.podoben-bel { font-size: 12px; }
+.podoben-red { padding: 9px 0 9px 12px; border-left: 3px solid var(--green); margin-bottom: 6px; }
+.podoben-red-chast { border-left-color: var(--gold); }
+.podoben-red-glava { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.podoben-dok { font-family: var(--f-doc); font-size: 14px; font-weight: 700; color: var(--ink); }
+.podoben-kolko { font-size: 12px; font-weight: 600; color: var(--zhalto); }
+.podoben-vsichki { color: var(--green); }
+.podoben-pri { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; margin-top: 3px; }
+.podoben-razdel { color: var(--slate); }
+.podoben-broy { font-family: var(--f-id); font-size: 12px; color: var(--ink-2); }
+.podoben-dosl summary { cursor: pointer; color: var(--blue); font-size: 12px; }
+.podoben-dosl ul { margin: 4px 0 2px 18px; font-family: var(--f-doc); font-size: 12.5px; color: var(--ink-2); }

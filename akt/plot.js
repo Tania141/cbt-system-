@@ -85,7 +85,7 @@ function plotRedHtml(r) {
 // Лявата е фирмата и стои на всеки екран; дясната е обектът. Рамката само
 // казва кой екран е отворен — видът (свита, скрита) е в stil.css.
 
-const RAMKA_PLOCHKA = { zk: 'knigi', konsultanti: 'konsult', normativna: 'normi', istoria: 'istoria', danni: 'kopie' };
+const RAMKA_PLOCHKA = { zk: 'knigi', podobni: 'podobni', konsultanti: 'konsult', normativna: 'normi', istoria: 'istoria', danni: 'kopie' };
 
 function aktRamka(ekran) {
     const ramka = document.getElementById('ramka');
@@ -111,6 +111,8 @@ function plotLyava() {
     // Регистърът на книгите живее на сървъра; плочката не го пита само за да
     // покаже число — казва какво има вътре.
     pishi('lyava-knigi', 'номерата по ред, с анулиране', '');
+    const po = (aktDanni.podobni || []).length;
+    pishi('lyava-podobni', po ? `${po} прочетен${po === 1 ? '' : 'и'} — само списък` : 'завършен Акт 15 и ОД', po ? String(po) : '');
     const ko = (aktDanni.consultants || []).length;
     pishi('lyava-konsult', ko ? `${ko} ${ko === 1 ? 'фирма' : 'фирми'}` : 'няма добавени', ko ? String(ko) : '');
 }

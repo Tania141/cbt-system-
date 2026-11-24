@@ -82,7 +82,9 @@ async function otvori(hash) {
     // лявата — фирмата
     const lyava = d.getElementById('lyava');
     const plochki = [...lyava.querySelectorAll('.fp')].map(x => tekst(x.querySelector('.fp-t')));
-    t('горе: Обекти · Заповедни книги · Консултанти', plochki.join('|') === 'Обекти|Заповедни книги|Консултанти', plochki);
+    // „Подобни обекти“ (24.11.2026, стъпка 4а) — на фирмата, до книгите.
+    t('горе: Обекти · Заповедни книги · Подобни обекти · Консултанти',
+      plochki.join('|') === 'Обекти|Заповедни книги|Подобни обекти|Консултанти', plochki);
     const bledi = [...lyava.querySelectorAll('.bled')].map(tekst);
     t('долу бледо: Нормативна уредба · История · Резервно копие',
       bledi.join('|') === 'Нормативна уредба|История|Резервно копие', bledi);
