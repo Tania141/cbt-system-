@@ -88,6 +88,11 @@ async function otvori(hash) {
     // и старата кухня (ОСИП, надзорът) пита същото
     t('кухнята пита същата врата', JSON.stringify(a.w._nadzorNalichni(p, p).sort()) === JSON.stringify(nal.slice().sort()),
       a.w._nadzorNalichni(p, p));
+    // Една функция (24.11.2026): новото ПВА само вика кухнята, не брои свое.
+    const yadro = fs.readFileSync(path.join(__dirname, '..', 'akt', 'yadro.js'), 'utf8');
+    const telo = yadro.slice(yadro.indexOf('function aktNalichni'), yadro.indexOf('// Същото стои и в `_nadzorPriznaci`'));
+    t('aktNalichni само вика _nadzorNalichni — без своя сметка',
+      /_nadzorNalichni\(st, p\)/.test(telo) && !/nadzor_otmetnati|cheklist_red|nalichniOtSkladove/.test(telo), telo);
     t('без грешка', a.greshki.length === 0, a.greshki);
 
     // ── вратата към стойността ──────────────────────────────────────────────
