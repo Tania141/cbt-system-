@@ -906,3 +906,9 @@ body {
 /* Твой ред в „Липсва ми“ (25.11.2026) */
 .lipsva-red-svoy { border-left: 3px solid var(--gold); padding-left: 10px; }
 .lipsva-svoy { color: var(--zhalto); }
+/* 4в — законовият под */
+.podoben-pod { margin: 8px 0 2px 30px; padding: 8px 12px; border-radius: var(--r-sm); background: var(--surface); font-size: 12.5px; }
+.podoben-pod-glava { font-weight: 700; color: var(--ink-2); margin-bottom: 4px; }
+.podoben-pod-red { margin: 4px 0; }
+.podoben-pod-lipsva { color: var(--red); }
+.podoben-pod-mozhe { color: var(--zhalto); }

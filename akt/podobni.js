@@ -33,6 +33,81 @@ let podobniOtg = null;          // { 'вид|ключ': {...} } — от сър�
 let podobniRedoveChek = null;   // [{dokument, otkade}] — за „същото като…“
 let podobniBira = '';           // ключът, за който е отворен изборът „същото като…“
 let podobniOtgGreshka = '';
+let podobniPod = {};            // id на обекта → { klyuch, rez | greshka | zarezhda }
+
+// ── 4в: законовият под (25.11.2026) ──────────────────────────────────────────
+// Подобният акт казва какво Е СЪБРАНО там, не какво е трябвало. Под него стои
+// нормата за категорията му (`cbt-api/rules/zakonov_pod.py`, с цитатите).
+// Разминаването е ПРЕДУПРЕЖДЕНИЕ, не въпрос: „в този акт липсва нещо, което
+// нормата изисква — пропуск там, не правило“. Не се учи и не се маха.
+//
+// Категорията е поле на ръка (сбъркана — сменя пода и не личи). От текста на
+// акта идва само ПРЕДЛОЖЕНИЕ с изречението, което се приема с един клик.
+
+function podobniKategoriaHtml(ob, i) {
+    const vTeksta = (ob.fajlove || []).map(f => f.kategoria_v_teksta).find(Boolean);
+    const dumi = ['', 'първа', 'втора', 'трета', 'четвърта', 'пета'];
+    return `<div class="podoben-fajl"><span class="podoben-vid">категория</span>
+        <select class="podoben-vid-izbor${ob.kategoria ? '' : ' podoben-vid-prazen'}" onchange="podobniSmeniKategoria(${i}, this.value)">
+            <option value="">— каква категория? —</option>
+            ${[1, 2, 3, 4, 5].map(k => `<option value="${k}"${String(ob.kategoria) === String(k) ? ' selected' : ''}>${dumi[k]}</option>`).join('')}
+        </select>
+        ${ob.kategoria ? '<span class="tiho">казано от теб</span>'
+            : vTeksta ? `<span class="tiho">в акта пише: „${_e(vTeksta.izrechenie)}“</span>
+                <button class="bt bt-tih" onclick="podobniSmeniKategoria(${i}, '${vTeksta.cifra}')">✔ ${dumi[vTeksta.cifra]}, както пише</button>`
+            : '<span class="greshka">без категория не се сверява с нормата</span>'}
+    </div>`;
+}
+
+function _podobniPodKlyuch(ob) {
+    return `${ob.kategoria}|${(ob.fajlove || []).map(f => f.fajl + '@' + (f.procheten_koga || '')).join(',')}`;
+}
+
+async function podobniPodZaredi(ob) {
+    const klyuch = _podobniPodKlyuch(ob);
+    podobniPod[ob.id] = { klyuch, zarezhda: true };
+    try {
+        const redove = podobniRedoveNaObekta(ob).map(r => ({ ime: r.ime, dosloven: r.dosloven }));
+        const rez = await aktApi('/api/podoben/pod', 'POST', { kategoria: ob.kategoria, redove,
+            ima_akt15: (ob.fajlove || []).some(f => f.vid === 'Акт 15') });
+        podobniPod[ob.id] = rez.greshka ? { klyuch, greshka: rez.greshka } : { klyuch, rez };
+    } catch (e) {
+        podobniPod[ob.id] = { klyuch, greshka: e.message };
+    }
+    podobniRisuvai();
+}
+
+function podobniPodHtml(ob) {
+    if (!ob.kategoria) return '';
+    const s = podobniPod[ob.id];
+    if (!s || s.klyuch !== _podobniPodKlyuch(ob)) {
+        setTimeout(() => podobniPodZaredi(ob), 0);
+        return '<div class="podoben-pod tiho">Законовият под — сверявам с нормата…</div>';
+    }
+    if (s.zarezhda) return '<div class="podoben-pod tiho">Законовият под — сверявам с нормата…</div>';
+    if (s.greshka) return `<div class="podoben-pod greshka">Законовият под не се сравни: ${_e(s.greshka)}</div>`;
+    const { namereni, lipsvat } = s.rez;
+    const tvardi = lipsvat.filter(x => x.tvardo), mozhe = lipsvat.filter(x => !x.tvardo);
+    const vsichki = namereni.length + lipsvat.length;
+    return `<div class="podoben-pod">
+        <div class="podoben-pod-glava">Законовият под · ${s.rez.kategoria} категория · ${namereni.length} от ${vsichki} са в акта${
+            tvardi.length ? ` · <span class="greshka">${tvardi.length} ${tvardi.length === 1 ? 'липсва' : 'липсват'}</span>` : ''}</div>
+        ${tvardi.map(x => `<div class="podoben-pod-red podoben-pod-lipsva">⚠ <b>${_e(x.ime)}</b> — нормата го иска, в този акт го няма.
+            Пропуск там, не правило.<span class="otkade">${_e(x.osnovanie)}${x.belezhka ? ' · ' + _e(x.belezhka) : ''}</span></div>`).join('')}
+        ${mozhe.map(x => `<div class="podoben-pod-red podoben-pod-mozhe"><b>${_e(x.ime)}</b> — го няма${x.belezhka ? ` (${_e(x.belezhka)})` : '; иска се, когато е приложимо'}.
+            <span class="otkade">${_e(x.osnovanie)}</span></div>`).join('')}
+        ${namereni.length ? `<details class="podoben-dosl"><summary>в акта са · ${namereni.length}</summary><ul>${
+            namereni.map(x => `<li>${_e(x.ime)} ← „${_e(x.namereno_kato)}“ <span class="otkade">${_e(x.osnovanie)}</span></li>`).join('')}</ul></details>` : ''}
+    </div>`;
+}
+
+function podobniSmeniKategoria(i, k) {
+    const ob = podobniSpisak()[i];
+    if (!ob) return;
+    ob.kategoria = /^[1-5]$/.test(String(k)) ? String(k) : '';
+    aktZapishi();
+    podobniRisuvai();
+}
 
 function podobniSpisak() {
     return (aktDanni.podobni = Array.isArray(aktDanni.podobni) ? aktDanni.podobni : []);
@@ -209,7 +284,9 @@ function podobniRisuvai() {
                 </select>
                 ${ob.vid ? '<span class="tiho">казано от теб</span>' : '<span class="greshka">без вид отговорите не се пазят — профилът е по вид</span>'}
             </div>
+            ${podobniKategoriaHtml(ob, i)}
             ${fajlove}
+            ${podobniPodHtml(ob)}
         </div>`;
     }).join('');
 

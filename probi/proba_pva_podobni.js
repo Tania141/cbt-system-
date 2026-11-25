@@ -23,6 +23,7 @@ function stranica() {
 // Какво връща сървърът за двата обекта — по образа на Денка и Петракиев.
 const OTGOVOR = {
     'denka_akt15.docx': { fajl: 'denka_akt15.docx', vid: 'Акт 15', stroezh: 'Жилищна сграда — Овча купел', godina: 2025,
+        kategoria_v_teksta: { cifra: 3, izrechenie: 'Трета категория съгласно чл.6, ал.3, т.2 от Наредба №1' },
         chetec: 'кодът — .docx има текст, без АИ', redove: [
             { ime: 'Акт обр. 7', klyuch: 'акт обр. 7', razdel: '1.3. Актове и протоколи', broy: 24, ot: '24.05.2022', do: '29.12.2022',
               dosloven: ['Акт Образец 7 от 24.05.2022г. до 29.12.2022г — 24 броя;'], cheklist_red: 'Акт 7 и обр. 12 по част архитектура',
@@ -47,6 +48,7 @@ const OTGOVOR = {
 // Сървърът — „базата“ на пробата. Един собствен ред вече има (от „Видени, но
 // неописани“) — той не бива да изчезне при запис оттук.
 const SARVAR = { cheklist_sobstveni: [{ dokument: 'Удостоверение за кадастъра', etap: 'подпис', uslovie: 'sast_ktp' }] };
+const POD_ZAIAVKI = [];
 const CHEKLIST = ['Разрешение за строеж', 'Акт 7 и обр. 12 по част архитектура', 'Заповедна книга на строежа'];
 
 (async () => {
@@ -66,6 +68,14 @@ const CHEKLIST = ['Разрешение за строеж', 'Акт 7 и обр.
                 let r = {};
                 if (/\/api\/podoben\/chete/.test(u)) { zaiavki.push(telo.fajl.ime); r = { podoben: OTGOVOR[telo.fajl.ime] }; }
                 else if (/\/api\/podoben\/redove/.test(u)) r = { redove: CHEKLIST.map(d => ({ dokument: d, otkade: 'чеклистът' })) };
+                else if (/\/api\/podoben\/pod/.test(u)) {
+                    POD_ZAIAVKI.push(telo);
+                    r = { kategoria: Number(telo.kategoria),
+                          namereni: [{ kod: 'rs', ime: 'Разрешение за строеж', osnovanie: 'Наредба № 2, чл. 4, ал. 2, т. 2.1', tvardo: true, namereno_kato: 'Разрешение за строеж' }],
+                          lipsvat: [{ kod: 'akt6', ime: 'Акт обр. 6', osnovanie: 'таблицата на оператора — само 1–3 категория', tvardo: true, belezhka: '' },
+                                    { kod: 'tehpasport', ime: 'Технически паспорт', osnovanie: 'Наредба № 2, чл. 14, т. 9', tvardo: false,
+                                      belezhka: 'съставя се накрая — Акт 15 може да не го изрежда' }] };
+                }
                 else if (/\/api\/danni\/(\w+)/.test(u)) {
                     const k = /\/api\/danni\/(\w+)/.exec(u)[1];
                     if (metod === 'POST') SARVAR[k] = JSON.parse(JSON.stringify(telo.stoynost));
@@ -209,6 +219,32 @@ const CHEKLIST = ['Разрешение за строеж', 'Акт 7 и обр.
       && !p.neotnasya, p);
     t('в кода няма запис по обекта (отметнато, „не се отнася“)', !/nadzor_otmetnati|neotnasya/.test(
       fs.readFileSync(path.join(PAPKA, 'podobni.js'), 'utf8').replace(/\/\/.*$/gm, '')));
+
+    // ── 4в: законовият под ──────────────────────────────────────────────────
+    const ob1 = () => d.querySelectorAll('.podoben-obekt')[0];
+    t('4в: без категория — казва, че не се сверява', /без категория не се сверява с нормата/.test(tx(d.querySelectorAll('.podoben-obekt')[1])),
+      tx(d.querySelectorAll('.podoben-obekt')[1]));
+    w.podobniSmeniKategoria(0, '');
+    t('4в: категорията от текста е само предложение — с изречението', /в акта пише: „Трета категория съгласно чл\.6/.test(tx(ob1()))
+      && /✔ трета, както пише/.test(tx(ob1())), tx(ob1()));
+    t('4в: и не е избрана сама', !JSON.parse(w.localStorage.getItem('akt_v5')).podobni[0].kategoria);
+    w.podobniSmeniKategoria(0, '3');
+    await new Promise(r => setTimeout(r, 50));
+    t('4в: категорията е записана', JSON.parse(w.localStorage.getItem('akt_v5')).podobni[0].kategoria === '3');
+    t('4в: към сървъра отиват категорията, редовете на обекта и че има Акт 15',
+      POD_ZAIAVKI.length && POD_ZAIAVKI[POD_ZAIAVKI.length - 1].kategoria === '3'
+      && POD_ZAIAVKI[POD_ZAIAVKI.length - 1].ima_akt15 === true
+      && POD_ZAIAVKI[POD_ZAIAVKI.length - 1].redove.some(r => r.ime === 'Акт обр. 7'), POD_ZAIAVKI.slice(-1));
+    const pod = tx(ob1().querySelector('.podoben-pod'));
+    t('4в: „1 от 3 са в акта · 1 липсва“', /3 категория · 1 от 3 са в акта · 1 липсва/.test(pod), pod);
+    t('4в: твърдото — червено, „пропуск там, не правило“, с основанието',
+      /⚠ Акт обр\. 6 — нормата го иска, в този акт го няма\. Пропуск там, не правило\./.test(pod) && /само 1–3 категория/.test(pod), pod);
+    t('4в: „когато се изисква“ — без ⚠, с бележката', /Технически паспорт — го няма \(съставя се накрая — Акт 15 може да не го изрежда\)/.test(pod)
+      && !/⚠ Технически паспорт/.test(pod), pod);
+    t('4в: намереното — свито, с какво е намерено', /в акта са · 1/.test(pod), pod);
+    const predi4v = POD_ZAIAVKI.length;
+    w.podobniRisuvai(); await new Promise(r => setTimeout(r, 50));
+    t('4в: при прерисуване не пита пак сървъра', POD_ZAIAVKI.length === predi4v, POD_ZAIAVKI.length);
 
     // ── махни ───────────────────────────────────────────────────────────────
     w.podobniMahni(1);
