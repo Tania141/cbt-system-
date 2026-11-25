@@ -50,6 +50,8 @@
         </a>
     </nav>
     <nav class="bledi">
+            <!-- Речникът (25.11.2026): един документ — всичките му имена. -->
+            <a class="bled" data-plochka="rechnik" href="#/rechnik" title="Речник на документите"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM9 8h6M9 12h6"/></svg><span>Речник</span></a>
             <a class="bled" data-plochka="normi" href="#/normativna" title="Нормативна уредба"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-3 6a3 3 0 0 0 6 0zM19 8l-3 6a3 3 0 0 0 6 0z"/></svg><span>Нормативна уредба</span></a>
             <a class="bled" data-plochka="istoria" href="#/istoria" title="История"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>История</span></a>
             <a class="bled" data-plochka="kopie" href="#/danni" title="Резервно копие"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v12H4zM3 4h18v4H3zM10 12h4"/></svg><span>Резервно копие</span></a>
@@ -111,6 +113,12 @@
     <section id="ekran-dokumenti" hidden>
         <h1 class="moment-ime">Документите</h1>
         <div id="dokumenti-telo"></div>
+    </section>
+
+    <!-- Речникът — един документ, всичките му имена (rechnik.js) -->
+    <section id="ekran-rechnik" hidden>
+        <h1 class="moment-ime">Речник на документите</h1>
+        <div id="rechnik-telo"></div>
     </section>
 
     <!-- Подобни обекти — какво изрежда завършеният Акт 15 и ОД (podobni.js) -->
@@ -460,6 +468,7 @@
 <script src="pasport.js"></script>
 <script src="stai.js"></script>
 <script src="podobni.js"></script>
+<script src="rechnik.js"></script>
 
 <script>
 // Къде сме:
@@ -486,6 +495,7 @@ function aktPokazhi() {
     const k = aktKade();
     const ekran = staiEStaya(k.ekran, k.id) ? k.ekran
         : k.ekran === 'podobni' ? 'podobni'
+        : k.ekran === 'rechnik' ? 'rechnik'
         : !k.id ? 'plot'
         : k.ekran === 'moment' && k.moment ? 'moment'
         : k.ekran === 'proekt' ? 'proekt'
@@ -496,7 +506,7 @@ function aktPokazhi() {
         : k.ekran === 'pasport' ? 'pasport'
         : k.ekran === 'obekt' ? 'obekt' : 'plot';
     for (const x of ['plot', 'obekt', 'moment', 'proekt', 'sobstvenost', 'dosie', 'znaem', 'dokumenti', 'pasport',
-                     'konsultanti', 'zk', 'osip', 'proverki', 'normativna', 'istoria', 'danni', 'podobni'])
+                     'konsultanti', 'zk', 'osip', 'proverki', 'normativna', 'istoria', 'danni', 'podobni', 'rechnik'])
         document.getElementById('ekran-' + x).hidden = x !== ekran;
     document.getElementById('shapka-plot').hidden = ekran !== 'plot';
     aktRamka(ekran);
@@ -512,6 +522,7 @@ function aktPokazhi() {
         ? '← обектът' : '← плотът';
     if (staiEStaya(ekran, k.id)) staiOtvori(ekran, k.id, k.i);
     else if (ekran === 'podobni') podobniOtvori();
+    else if (ekran === 'rechnik') rechnikOtvori();
     else if (ekran === 'plot') plotRisuvai();
     else if (ekran === 'obekt') obektOtvori(k.id, k.i, k.chislo);
     else if (ekran === 'proekt') proektOtvori(k.id, k.i);

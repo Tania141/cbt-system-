@@ -376,7 +376,7 @@ t('и всички връзки са вътре в новото',
 const html = fs.readFileSync(path.join(PAPKA, 'index.html'), 'utf8');
 const vklyucheni = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
 t('новата повърхност включва само своите файлове и прочетената кухня',
-  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti|pasport|stai|podobni)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
+  vklyucheni.every(s => /^(yadro|most|plot|obekt|moment|proekt|sobstvenost|dosie|znaem|dokumenti|pasport|stai|podobni|rechnik)\.js$/.test(s) || ['../js/05-proverki.js', '../js/01-osnova.js', '../js/04-vhodni-dokumenti.js',
      '../js/04b-spisak.js', '../js/04c-sabitia.js',
      '../js/03-obshti.js', '../js/10-obekti.js', '../js/08-momenti.js',
      '../js/09-akt15.js',

@@ -919,3 +919,12 @@ body {
     background: var(--white); border: 1px solid var(--border); font-family: var(--f-doc); }
 .lipsva-red-podoben { border-left: 3px solid var(--blue); padding-left: 10px; }
 .lipsva-podoben { color: var(--blue); }
+/* Речникът (25.11.2026) */
+.rk-red { padding: 10px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
+.rk-red:last-child { border-bottom: none; }
+.rk-ime { font-family: var(--f-doc); margin: 2px 0; }
+.rk-izbor { margin: 3px 0 3px 12px; }
+.rk-zhestove { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.rk-zhestove .bt, .rk-izbor .bt { font-size: 12px; padding: 3px 9px; }
+.rk-otg { color: var(--green); font-weight: 600; margin-top: 4px; }
+.rk-reshen { opacity: .85; }
