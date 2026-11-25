@@ -518,7 +518,14 @@ function dosieSledPotvardzhdenie() {
 
 // ── Видени, но неописани ─────────────────────────────────────────────────────
 // Документи, които четецът е срещал, а чеклистът не ги знае. Нищо не влиза
-// само: питат се, чак когато се повторят достатъчно пъти.
+// само — но и не чака праг.
+//
+// Операторът, 25.11.2026: „нямам никакви опции… Няма как да се повторят 3 пъти
+// в едно досие — това значи да ги чета 3 пъти. По-добре приеми и отхвърли.“
+// Прагът (`_KAND_PRAG`, три различни файла) на практика не се стигаше и
+// списъкът стоеше без бутони. Сега бутоните са винаги; броят е сведение.
+
+let dosieKandEtap = {};     // ключ → 'начало' | 'подпис'; предложено е „подпис“
 
 async function dosieZarediKandidati() {
     if (dosieKandidati) return;
@@ -534,34 +541,41 @@ async function dosieZarediKandidati() {
 function dosieKandidatiHtml() {
     const spisak = dosieKandidati;
     if (!spisak || !spisak.length) return '';
-    const pitat = typeof kandZaPitane === 'function' ? kandZaPitane() : [];
     const imeSast = kod => (typeof _SASTAVKI !== 'undefined'
         ? (_SASTAVKI.find(x => x.kod === kod) || {}).ime || kod : kod);
     return `
     <div class="kutiya-razdel">
         <div class="nadpis">Видени, но неописани · ${spisak.length}</div>
-        <p class="poyasnenie">Документи, които четецът е срещал, а чеклистът не ги знае.
-           Нищо не влиза само — питам те чак когато се повтори достатъчно пъти.</p>
+        <p class="poyasnenie">Документи, които четецът е срещал, а чеклистът не ги знае. Нищо не влиза само.
+           <b>Приеми</b> — става твой ред в чеклиста, „за преценка“, при строежи със същите съставки.
+           <b>Отхвърли</b> — не пита повече. В „Липсва ми“ на моментите приетият ред още не излиза.</p>
         ${spisak.map(e => {
-            const pita = pitat.some(x => x.klyuch === e.klyuch);
+            const k = encodeURIComponent(e.klyuch);
+            const etap = dosieKandEtap[e.klyuch] || 'подпис';
+            const obekti = (e.obekti || []).length;
             return `
-            <div class="kandidat ${pita ? 'kandidat-pita' : ''}">
+            <div class="kandidat">
                 <div class="kandidat-ime">${_e(e.ime)}
-                    <span class="otkade">срещан ${e.broy} ${e.broy === 1 ? 'път' : 'пъти'}</span></div>
+                    <span class="otkade">срещан ${e.broy} ${e.broy === 1 ? 'път' : 'пъти'}${obekti
+                        ? ` · при ${obekti} ${obekti === 1 ? 'обект' : 'обекта'}` : ''}</span></div>
                 ${(e.sastavki || []).length ? `<div class="otkade">при строежи с: ${
                     _e((e.sastavki || []).map(imeSast).join(' · '))}</div>` : ''}
-                ${pita ? `
-                    <div class="kandidat-zhestove">
-                        <button class="bt" onclick="dosieIzisquay('${_e(e.klyuch)}','начало')">
-                            изисквай — за да започна</button>
-                        <button class="bt" onclick="dosieIzisquay('${_e(e.klyuch)}','подпис')">
-                            изисквай — за да подпиша</button>
-                        <button class="bt bt-tih" onclick="dosieNeEZaCheklista('${_e(e.klyuch)}')">
-                            не е за чеклиста</button>
-                    </div>` : ''}
+                <div class="kandidat-zhestove">
+                    <button class="bt bt-glaven" onclick="dosieIzisquay(decodeURIComponent('${k}'),'${etap}')">
+                        ✔ приеми — ${etap === 'начало' ? 'за да започна' : 'за да подпиша'}</button>
+                    <button class="bt bt-tih" onclick="dosieKandSmeniEtap(decodeURIComponent('${k}'))">
+                        смени на „${etap === 'начало' ? 'за да подпиша' : 'за да започна'}“</button>
+                    <button class="bt" onclick="dosieNeEZaCheklista(decodeURIComponent('${k}'))">
+                        ✕ отхвърли</button>
+                </div>
             </div>`;
         }).join('')}
     </div>`;
+}
+
+function dosieKandSmeniEtap(klyuch) {
+    dosieKandEtap[klyuch] = (dosieKandEtap[klyuch] || 'подпис') === 'подпис' ? 'начало' : 'подпис';
+    dosieRisuvai();
 }
 
 async function dosieIzisquay(klyuch, etap) {

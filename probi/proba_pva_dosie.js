@@ -194,14 +194,21 @@ t('видените, но неописани излизат', /Видени, н�
 t('с брояча на срещанията', /срещан 4 пъти/.test(telo), telo.slice(-400));
 t('казва, че нищо не влиза само', /Нищо не влиза само/.test(telo));
 
+// ОБЪРНАТО 25.11.2026: дотук пробата пазеше, че срещаният веднъж НЕ пита.
+// Операторът: „нямам никакви опции… няма как да се повторят 3 пъти в едно
+// досие“ — прагът не се стигаше и списъкът стоеше без бутони. Сега пита всеки.
 const kandidati = [...a.d.querySelectorAll('.kandidat')];
-t('срещаният достатъчно пъти ПИТА',
-  kandidati[0].classList.contains('kandidat-pita'), tekst(kandidati[0]));
-t('и дава трите отговора',
-  /за да започна/.test(tekst(kandidati[0])) && /за да подпиша/.test(tekst(kandidati[0]))
-  && /не е за чеклиста/.test(tekst(kandidati[0])), tekst(kandidati[0]));
-t('срещаният веднъж НЕ пита още',
-  !kandidati[1].classList.contains('kandidat-pita'), tekst(kandidati[1]));
+const butoni = el => [...el.querySelectorAll('button')].map(tekst);
+t('срещаният 4 пъти: приеми — за да подпиша · смени · отхвърли',
+  /^✔ приеми — за да подпиша$/.test(butoni(kandidati[0])[0]) && /смени на „за да започна“/.test(butoni(kandidati[0])[1])
+  && /✕ отхвърли/.test(butoni(kandidati[0])[2]), butoni(kandidati[0]));
+t('и срещаният ВЕДНЪЖ също има приеми и отхвърли (няма праг)',
+  butoni(kandidati[1]).some(b => /приеми/.test(b)) && butoni(kandidati[1]).some(b => /отхвърли/.test(b)), butoni(kandidati[1]));
+t('броят е сведение — и при колко обекта', /срещан 4 пъти · при 1 обект/.test(tekst(kandidati[0])), tekst(kandidati[0]));
+a.w.dosieKandSmeniEtap('протокол 19');
+const k2 = [...a.d.querySelectorAll('.kandidat')][1];
+t('„смени“ обръща етапа с един клик', /^✔ приеми — за да започна$/.test(butoni(k2)[0]), butoni(k2));
+t('честно: в „Липсва ми“ приетият ред още не излиза', /в „Липсва ми“ на моментите приетият ред още не излиза/i.test(telo), telo.slice(-500));
 
 // ── какво НЕ прави този екран ───────────────────────────────────────────────
 t('няма качване на файлове',
