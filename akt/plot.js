@@ -85,7 +85,7 @@ function plotRedHtml(r) {
 // Лявата е фирмата и стои на всеки екран; дясната е обектът. Рамката само
 // казва кой екран е отворен — видът (свита, скрита) е в stil.css.
 
-const RAMKA_PLOCHKA = { zk: 'knigi', podobni: 'podobni', rechnik: 'rechnik', konsultanti: 'konsult', normativna: 'normi', istoria: 'istoria', danni: 'kopie' };
+const RAMKA_PLOCHKA = { zk: 'knigi', podobni: 'podobni', konsultanti: 'konsult', normativna: 'normi', istoria: 'istoria', danni: 'kopie' };
 
 function aktRamka(ekran) {
     const ramka = document.getElementById('ramka');

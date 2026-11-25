@@ -1,10 +1,15 @@
-// РЕЧНИКЪТ — един документ, всичките му имена (25.11.2026).
+// РЕЧНИКЪТ — без стая; учи се сам и на място (25.11.2026).
 //
-// Мярката от същия ден: договорът с ЕРМ Запад стои в досието, вързан към
-// „Становище за присъединяване — електроснабдяване“, а „Липсва ми“ го иска като
-// „Договор за присъединяване от електроразпределителното дружество“ — два
-// файла, две имена. Пробата пази: какво се пита, че решението се помни на
-// сървъра и че след него „Липсва ми“ го вижда.
+// `ДА ПРОЧЕТА/ЗАДАНИЕ-ЕДИН-ЗАПИС.md`, стъпка 1. Случаят от същия ден: договорът
+// с ЕРМ Запад е в досието, вързан към „Становище за присъединяване —
+// електроснабдяване“, а „Липсва ми“ го иска като „Договор за присъединяване от
+// електроразпределителното дружество“. Пробата пази:
+//   · няма стая „Речник“;
+//   · на реда — „в досието има „…“ — ✔ това е · не е“ (само предлага);
+//   · „✔ това е“ затваря реда и в „Имам“ пише „казано от теб“ + „не е това“;
+//   · наученото по броене (от сървъра) личи „научено от N обекта“;
+//   · „не е“ забранява двойката и не пита пак;
+//   · обобщението към сървъра — без лични данни.
 const fs = require('fs');
 const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
@@ -21,44 +26,38 @@ function stranica() {
     return html;
 }
 
-const CHEKLIST = ['Разрешение за строеж', 'Становище за присъединяване — електроснабдяване',
-                  'Документи от електроразпределителното дружество', 'Декларации за експлоатационни показатели на бетона и армировката',
-                  'Сертификати и протоколи за влаганите материали', 'Оценка от техническия контрол по част „Конструктивна“'];
-const MOMENTI = ['Разрешение за строеж', 'Становище за присъединяване — електроснабдяване',
-                 'Договор за присъединяване  от електроразпределителното дружество',
-                 'Декларации за експлоатационни показатели на бетона и армировката', 'Сертификати и протоколи за влаганите материали'];
-const ERM = { id: 'erm.pdf', fajl: 'erm.pdf', vid: 'Договор за присъединяване на обекти на клиенти към разпределителната мрежа',
-              cheklist_red: 'Документи от електроразпределителното дружество', nomer: { stoynost: '1205463907' }, data: { stoynost: '13.06.2024' } };
-const ERM2 = { ...ERM, id: 'erm2.pdf', fajl: 'erm2.pdf', cheklist_red: 'Становище за присъединяване — електроснабдяване' };
-const DEK = n => ({ id: `d${n}.pdf`, fajl: `d${n}.pdf`, vid: 'Декларация за характеристиките на строителен продукт',
-                    cheklist_red: n % 2 ? 'Декларации за експлоатационни показатели на бетона и армировката' : 'Сертификати и протоколи за влаганите материали' });
-const OTK = { id: 'tk.pdf', fajl: 'tk.pdf', vid: 'Оценка за съответствие — конструктивна', cheklist_red: 'Оценка от техническия контрол по част „Конструктивна“' };
+const ERMRED = 'Договор за присъединяване от електроразпределителното дружество';
+const ZK = 'Заповедна книга на строежа';
+const ERM = { id: 'erm.pdf', fajl: 'erm.pdf', vid: 'Договор за присъединяване на обекти на клиенти към разпределителната мрежа на „Електроразпределителни мрежи Запад“ ЕАД',
+              cheklist_red: 'Становище за присъединяване — електроснабдяване', nomer: { stoynost: '1205463907' }, data: { stoynost: '13.06.2024' } };
+const KNIGA = { id: 'zk.pdf', fajl: 'zk.pdf', vid: 'ЗАПОВЕДНА КНИГА', cheklist_red: 'Договори за строителство и строителен надзор' };
 const OB = { id: 'rad', pi: '68134.4083.1', nik: 'Радулов', vid: 'sgrada', tekusht_moment: 'Акт 15',
-             sloy2: { od: { dokumenti: [ERM, DEK(1), DEK(2), OTK], potvardeni: {} } } };
-const OB2 = { id: 'drug', pi: '1.2.3', nik: 'Друг', vid: 'sgrada', sloy2: { od: { dokumenti: [ERM2], potvardeni: {} } } };
-
+             sloy2: { od: { dokumenti: [ERM, KNIGA], potvardeni: {} } }, egn_vazlozhitel: '0000000000' };
 const SARVAR = {};
-let nalichniKamSarvara = null;
+let obobshtenie = null;
 
 (async () => {
     const vc = new VirtualConsole(), greshki = [];
     vc.on('jsdomError', e => greshki.push(String(e.message || e)));
-    const dom = new JSDOM(stranica(), { runScripts: 'dangerously', url: 'http://localhost/akt/#/rechnik',
-        pretendToBeVisual: true, virtualConsole: vc,
+    const dom = new JSDOM(stranica(), { runScripts: 'dangerously',
+        url: 'http://localhost/akt/#/moment/rad/0/' + encodeURIComponent('Акт 15'), pretendToBeVisual: true, virtualConsole: vc,
         beforeParse(w) {
-            w.localStorage.setItem('akt_v5', JSON.stringify({ projects: [OB, OB2], consultants: [] }));
+            w.localStorage.setItem('akt_v5', JSON.stringify({ projects: [OB], consultants: [] }));
             w.localStorage.setItem('akt_token', 'proba');
             w.fetch = async (url, o) => {
                 const u = String(url), telo = JSON.parse((o && o.body) || '{}'), metod = (o && o.method) || 'GET';
                 let r = {};
-                if (/\/api\/rechnik\/izvori/.test(u)) r = { cheklist: CHEKLIST, momenti: MOMENTI };
-                else if (/\/api\/danni\/(\w+)/.test(u)) {
+                if (/\/api\/rechnik\/uchi/.test(u)) {
+                    obobshtenie = telo.obobshtenie;
+                    // сървърът „е научил“: заповедната книга при 4 обекта
+                    r = { nauchen: { 'заповедна книга': { red: ZK, obekti: 4, dyal: 1 } } };
+                } else if (/\/api\/danni\/(\w+)/.test(u)) {
                     const k = /\/api\/danni\/(\w+)/.exec(u)[1];
                     if (metod === 'POST') SARVAR[k] = JSON.parse(JSON.stringify(telo.stoynost));
                     r = { stoynost: SARVAR[k] ? JSON.parse(JSON.stringify(SARVAR[k])) : null };
                 } else if (/\/api\/nadzor/.test(u)) {
-                    nalichniKamSarvara = telo.nalichni;
-                    r = { red: ['Акт 15'], grupi: [{ moment: 'Акт 15', minal: true, dokumenti: MOMENTI.map(d => ({ dokument: d, etap: 'подпис',
+                    const DOK = [ERMRED, ZK, 'Становище за присъединяване — електроснабдяване', 'Договори за строителство и строителен надзор'];
+                    r = { red: ['Акт 15'], grupi: [{ moment: 'Акт 15', minal: true, dokumenti: DOK.map(d => ({ dokument: d, etap: 'подпис',
                         sastoyanie: (telo.nalichni || []).includes(d) ? 'налично' : 'очаква се' })) }] };
                 }
                 return { ok: true, status: 200, json: async () => r, text: async () => '{}', headers: { get: () => 'application/json' } };
@@ -66,67 +65,48 @@ let nalichniKamSarvara = null;
         } });
     const w = dom.window, d = w.document;
     w.confirm = () => true; w.alert = () => {}; w.scrollTo = () => {};
-    await new Promise(r => setTimeout(r, 400));
-    const telo = () => tx(d.getElementById('rechnik-telo'));
+    await new Promise(r => setTimeout(r, 600));
+    const red = ime => d.querySelector(`.lipsva-red[data-dokument="${ime}"]`);
 
-    t('стаята „Речник“ е в лявата колона и се отваря', !!d.querySelector('#lyava [data-plochka="rechnik"]')
-      && !d.getElementById('ekran-rechnik').hidden);
-    const r = w.rechnikResheniya();
-    const f = r.find(x => x.tip === 'faylove');
-    t('1. двата файла: „Договор за присъединяване от ЕРМ“ ↔ най-близкото в чеклиста',
-      f && /от електроразпределителното дружество/.test(f.momenti) && f.predlozhenie === 'Документи от електроразпределителното дружество', f);
-    const c = r.filter(x => x.tip === 'chetec');
-    t('2. четецът: договорът с ЕРМ — към два различни реда, с броевете', c.some(x => /Договор за присъединяване/.test(x.ime)
-      && x.redove.length === 2), c);
-    t('2. декларациите — към два реда (1 и 1)', c.some(x => /Декларация/.test(x.ime) && x.redove.every(y => y.broy === 1)), c);
-    const s = r.filter(x => x.tip === 'samo_cheklist');
-    t('3. ред само в чеклиста — „Оценка от техническия контрол“ (не се пита два пъти „Документи от ЕРМ“)',
-      s.length === 1 && /Оценка/.test(s[0].red), s);
-    t('казва колко чакат', /Чакат 4 от 4\./.test(telo()), telo().slice(0, 200));
+    t('няма стая „Речник“ в лявата колона', !d.querySelector('#lyava [data-plochka="rechnik"]') && !d.getElementById('ekran-rechnik'));
+    t('ученето прати обобщение — само вид, ред, сверен, ПИ', obobshtenie && obobshtenie.length === 2
+      && Object.keys(obobshtenie[0]).sort().join(',') === 'pi,red,sveren,vid', obobshtenie);
+    t('без лични данни в обобщението', !JSON.stringify(obobshtenie).includes('0000000000'));
+    t('наученото е записано в речника на сървъра', SARVAR.rechnik && SARVAR.rechnik.nauchen['заповедна книга'].red === ZK, SARVAR.rechnik);
+    await new Promise(r => setTimeout(r, 300));
 
-    // преди решението: досието има договора, „Липсва ми“ не
-    const z = { p: w.aktObekt('rad') }; z.st = z.p;
-    let res = await w.aktNadzor(z.p, z.st);
-    const st = (ime) => res.grupi[0].dokumenti.find(x => x.dokument === ime).sastoyanie;
-    const ERMRED = 'Договор за присъединяване  от електроразпределителното дружество';
-    t('преди: „Договор … от ЕРМ“ липсва, макар да е в досието', st(ERMRED) === 'очаква се', res.grupi[0].dokumenti);
+    // предложение на място
+    const p = tx(red(ERMRED));
+    t('„Липсва ми“: „в досието има „Договор … ЕРМ Запад“ — ✔ това е · не е“',
+      /в досието има „Договор за присъединяване на обекти/.test(p) && /✔ това е/.test(p) && /не е/.test(p), p);
+    t('и показва номера и датата', /1205463907 · 13\.06\.2024/.test(p), p);
+    t('само предлага — редът още липсва', !!red(ERMRED));
 
-    // решение 1: един документ
-    await w.rechnikSashto(encodeURIComponent(f.momenti), encodeURIComponent(f.predlozhenie));
-    t('„✔ един документ“ се записва на сървъра като група', SARVAR.rechnik && SARVAR.rechnik.grupi.length === 1
-      && SARVAR.rechnik.grupi[0].imena.includes('Документи от електроразпределителното дружество'), SARVAR.rechnik);
-    res = await w.aktNadzor(z.p, z.st);
-    t('след: „Липсва ми“ вижда договора — налично', st(ERMRED) === 'налично', nalichniKamSarvara);
+    // ✔ това е
+    await w.rechnikTovaE(encodeURIComponent(ERM.vid), encodeURIComponent(ERMRED));
+    await new Promise(r => setTimeout(r, 300));
+    t('„✔ това е“ се записва — казано от теб', SARVAR.rechnik.chetec[w.eval('_rk')(ERM.vid)].red === ERMRED, SARVAR.rechnik.chetec);
+    t('и редът излиза от „Липсва ми“', !red(ERMRED), tx(d.querySelector('.razdel-telo')));
+    w.momentOtvoriRazdel('imam');
+    const imam = tx(d.querySelector('.razdel-telo'));
+    t('в „Имам“: „затворено от досието: „…“ · казано от теб“', /затворено от досието: „Договор за присъединяване на обекти.*ЕАД“ · казано от теб/.test(imam), imam);
+    t('научената заповедна книга: „научено от 4 обекта“', /затворено от досието: „ЗАПОВЕДНА КНИГА“ · научено от 4 обекта/.test(imam), imam);
+    t('до тях — „не е това“', /не е това/.test(imam));
 
-    // решение 2: вид от четеца → ред
-    const ermVid = c.find(x => /Договор/.test(x.ime)).klyuch.slice(2);
-    await w.rechnikChetec(encodeURIComponent(ermVid), encodeURIComponent('Становище за присъединяване — електроснабдяване'));
-    t('„✔ това е редът“ се записва', SARVAR.rechnik.chetec[ermVid] && SARVAR.rechnik.chetec[ermVid].red === 'Становище за присъединяване — електроснабдяване');
-    res = await w.aktNadzor(z.p, z.st);
-    t('прочетеният вид затваря решения ред, макар четецът да го е вързал другаде', st('Становище за присъединяване — електроснабдяване') === 'налично');
-    const dekVid = c.find(x => /Декларация/.test(x.ime)).klyuch.slice(2);
-    await w.rechnikChetec(encodeURIComponent(dekVid), '', true);
-    t('„и двата са верни — зависи“ спира питането, без да слива', SARVAR.rechnik.chetec[dekVid].zavisi === true
-      && !SARVAR.rechnik.grupi.some(g => g.imena.some(i => /Декларации/.test(i))));
+    // не е това → забранено, връща се в „Липсва ми“ и не предлага пак
+    await w.rechnikNeE(encodeURIComponent(ERM.vid), encodeURIComponent(ERMRED));
+    await new Promise(r => setTimeout(r, 300));
+    w.momentOtvoriRazdel('lipsva');
+    t('„не е това“ връща реда в „Липсва ми“', !!red(ERMRED));
+    t('и не предлага пак същия документ', !/в досието има/.test(tx(red(ERMRED))), tx(red(ERMRED)));
+    t('двойката е забранена в речника', (SARVAR.rechnik.ne || []).length === 1 && !SARVAR.rechnik.chetec[w.eval('_rk')(ERM.vid)], SARVAR.rechnik);
 
-    // решение 3: няма го в моментите
-    await w.rechnikNyama(encodeURIComponent(s[0].red));
-    t('„няма го в моментите“ се помни', SARVAR.rechnik.nyama.length === 1);
-    w.rechnikRisuvai();
-    t('всички решени — казва го', /Всичките 4 са решени\./.test(telo()), telo().slice(0, 200));
-
-    // ново отваряне — от сървъра
-    await w.rechnikOtvori();
-    t('след ново отваряне решенията стоят', /Всичките 4 са решени\./.test(telo()));
-    // върни
-    await w.rechnikVarni(encodeURIComponent(f.momenti), encodeURIComponent(f.predlozhenie));
-    t('„върни“ маха групата и пита пак', !SARVAR.rechnik.grupi.length && /Чакат 1 от 4\./.test(telo()), telo().slice(0, 200));
-    t('двата заключени файла не се пипат — речникът е отделен ключ',
-      !/cheklist_sobstveni|nadzor_otmetnati/.test(fs.readFileSync(path.join(PAPKA, 'rechnik.js'), 'utf8').replace(/\/\/.*$/gm, '')));
+    // образците
+    t('обр. 7 никога не се предлага за обр. 14', w.eval('_rkRazlichniObrazci')('Акт обр. 7 за приемане', 'Акт обр. 14'));
     t('без грешки', !greshki.length, greshki.slice(0, 3));
 
     dobri.forEach(x => console.log('  ok  ' + x));
     loshi.forEach(x => console.log('  ЛО  ' + x));
-    console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — речникът`);
+    console.log(loshi.length ? `\n${loshi.length} проблема` : `\n${dobri.length} проверки — речникът без стая`);
     process.exit(loshi.length ? 1 : 0);
 })();

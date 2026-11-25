@@ -67,6 +67,8 @@ async function momentZaredi() {
     const z = momentZhiv();
     if (!z) return;
     try {
+        // Речникът се учи сам най-много веднъж на ден (`akt/rechnik.js`).
+        if (typeof rechnikUchi === 'function') rechnikUchi().then(n => { if (n) momentZaredi(); });
         const r = await aktNadzor(z.p, z.st);
         if (r.greshka) throw new Error(r.greshka);
         momentGrupa = (r.grupi || []).find(g => g.moment === momentIme)
@@ -570,6 +572,8 @@ function momentChZapishi(id64) {
     const { z, id, d } = _momentCh(id64);
     if (!d) return;
     const r = aktZapishiProveren(z.st, id);
+    // Сверен документ — доказателство за речника; учи се веднага, не след ден.
+    if (r && typeof rechnikUchi === 'function') rechnikUchi(true);
     if (!r) return;
     const s2 = z.st.sloy2.od;
     if (typeof _dokVpishiSverenite === 'function')
@@ -705,6 +709,19 @@ function momentPodobenHtml(r) {
     return '';
 }
 
+// „В досието има „…“ — ✔ това е · не е“ (речникът, 25.11.2026). Само предлага.
+function momentRechnikHtml(r) {
+    const z = momentZhiv();
+    if (!z || typeof rechnikPredlozhenie !== 'function') return '';
+    const p = rechnikPredlozhenie(z.st, r.dokument);
+    if (!p) return '';
+    const v = encodeURIComponent(p.dok.vid), red = encodeURIComponent(r.dokument);
+    const nd = [p.dok.nomer, p.dok.data].map(x => (x && typeof x === 'object') ? x.stoynost : x).filter(Boolean).join(' · ');
+    return `<div class="rk-predlozhenie">в досието има „${_e(p.dok.vid)}“${nd ? ` <span class="otkade">${_e(nd)}</span>` : ''}
+        <button class="bt bt-glaven" onclick="rechnikTovaE('${v}','${red}')">✔ това е</button>
+        <button class="bt bt-tih" onclick="rechnikNeE('${v}','${red}')">не е</button></div>`;
+}
+
 function momentLipsvashtRed(r) {
     const k = encodeURIComponent(r.dokument);
     const hod = momentHod[r.dokument];
@@ -713,6 +730,7 @@ function momentLipsvashtRed(r) {
     <div class="lipsva-red lipsva-prashta${r.ot_podoben ? ' lipsva-red-podoben' : ''}" data-dokument="${_e(r.dokument)}">
         <div class="lipsva-ime">${_e(r.dokument)}${momentPodobenHtml(r)}</div>
         <a class="kam" href="${kade.href}">към ${_e(kade.ime)} →</a>
+        ${momentRechnikHtml(r)}
         ${momentSverkaZaLipsva(r.dokument)}
     </div>`;
     // Твой ред (от „Подобни обекти“ или „Видени, но неописани“, 25.11.2026) —
@@ -729,6 +747,7 @@ function momentLipsvashtRed(r) {
             <button class="bt" onclick="momentVpishi('${k}')">✍ впиши</button>
             <button class="bt bt-tih" onclick="momentNeSeOtnasya('${k}')">— не се отнася</button>
         </div>
+        ${momentRechnikHtml(r)}
         ${momentSverkaZaLipsva(r.dokument)}
         ${hod ? `<div class="lipsva-hod">${hod}</div>` : ''}
     </div>`;
@@ -838,6 +857,9 @@ function momentImamHtml() {
     const nalichni = momentRedove().filter(r => momentImam(r));
     if (!nalichni.length) return `<div class="kutiya-razdel razdel-telo"><p>Още нищо.</p></div>`;
     const kade = ime => {
+        // Затворено през речника — казва откъде е научено (25.11.2026).
+        const rk = typeof rechnikZatvorenoOt === 'function' ? rechnikZatvorenoOt(ime) : null;
+        if (rk) return `затворено от досието: „${rk.vid}“ · ${rk.kak}`;
         const v = vpisani.find(d => String(d.ime).toLowerCase() === String(ime).toLowerCase());
         if (v) return [v.nomer, v.ot].filter(Boolean).join(' · ');
         if ((z.st.neotnasya || []).includes(ime))
@@ -865,7 +887,9 @@ function momentImamHtml() {
                 ${momentSverkaZa('broiNePishe', r.dokument) ? `<div class="sverka-red">Актът не го изрежда — ${
                     _e(momentSverkaZa('broiNePishe', r.dokument).zashto)}. <a class="kam" href="#/dosie/${
                     encodeURIComponent(momentId)}/${momentIndeks}">свери в досието →</a></div>` : ''}
-                <button class="bt bt-tih" onclick="momentVarni('${encodeURIComponent(r.dokument)}')">върни</button>
+                ${typeof rechnikZatvorenoOt === 'function' && rechnikZatvorenoOt(r.dokument)
+                    ? `<button class="bt bt-tih" onclick="rechnikNeE('${encodeURIComponent(rechnikZatvorenoOt(r.dokument).vid)}','${encodeURIComponent(r.dokument)}')">не е това</button>`
+                    : `<button class="bt bt-tih" onclick="momentVarni('${encodeURIComponent(r.dokument)}')">върни</button>`}
             </li>`).join('')}
         </ul>
     </div>`;

@@ -1,50 +1,68 @@
 // АКТ СИСТЕМ · новото ПВА · rechnik.js
-// РЕЧНИКЪТ — един документ, всичките му имена (25.11.2026)
+// РЕЧНИКЪТ — един документ, всичките му имена (`ДА ПРОЧЕТА/ЗАДАНИЕ-ЕДИН-ЗАПИС.md`)
 //
-// Операторът: „защо има моменти.md и чеклист документи.md… системата не е
-// предполагаема, тя е реална — редно е да създаде речник след прочитането на
-// безброй примери“. Мярката от същия ден (13 досиета, 242 прочетени документа):
-//   · двата файла се разминават само в четири реда — и точно те не стигат
-//     „Липсва ми“ (договорът с ЕРМ, договорът с ВиК, становищата за СВО/СКО);
-//   · четецът не е последователен: един вид документ — към различни редове
-//     (договорът с ЕРМ — към три различни реда при различни обекти);
-//   · редове само в чеклиста, към които четецът връзва — моментите не ги виждат.
+// БЕЗ СТАЯ (25.11.2026). Операторът: „сега си създадохме още една стая… по-лесно
+// е системата да се обучи от прочетените документи и сама да създаде речник“.
+// Механизмът е отдолу; наученото личи там, където се работи — в момента.
 //
-// Тук операторът решава ВЕДНЪЖ; речникът е на сървъра (`/api/danni/rechnik`),
-// важи за всички обекти. Двата заключени файла не се пипат — речникът стои до
-// тях. Нищо не се слива само: системата показва броевете, операторът казва.
+// Как се учи:
+//   · СИСТЕМАТА брои (сървърът, `rules/rechnik_uchene.py`): вид документ → ред,
+//     когато е видян при поне 3 обекта и 90 % сочат един ред (прагът на
+//     оператора). Учи само от сверени документи.
+//   · ТИ казваш на място: на ред в „Липсва ми“ — „в досието има „…“ — ✔ това е ·
+//     не е“. Твоето е научено веднага, за всички обекти, и бие броенето.
+//   · Наученото личи: в „Имам“ пише „затворено от досието · научено от N обекта“
+//     или „· казано от теб“, с „не е това“.
 //
-// Как се прилага: „Липсва ми“ пита за ДОКУМЕНТА, не за името —
-//   · ред от досието, вързан към едно име, затваря и другите имена от групата;
-//   · вид документ, решен „това е редът“, затваря решения ред;
-//   · подобният обект не дублира ред, чието име е в една група с негов.
+// Забрани: различни образци никога не са едно; само сходство никога не затваря
+// ред тихо — предлага; научено никога не се прилага скрито.
+//
+// Речникът е на сървъра (`/api/danni/rechnik`) и важи за всички обекти. Двата
+// заключени файла (чеклист, моменти) не се пипат.
 
 'use strict';
 
-let _rechnik = null;          // { grupi: [{imena, koga, koy}], chetec: {нормализирано: {red, zavisi}}, razlichni: [], nyama: [] }
-let _rechnikIzvori = null;    // { cheklist: [...], momenti: [...] }
+// { grupi: [{imena}], chetec: {вид: {red, ot, koga}} — казаното от теб,
+//   nauchen: {вид: {red, obekti, dyal}} — наученото по броене, ne: ['вид|ред'] }
+let _rechnik = null;
 let _rechnikZarezhda = null;
-let rechnikHod = '';
+let _rkZatvoreni = {};        // ред → {vid, kak} — затвореното през речника в последния момент
 
+// Сходство за „в досието има … — ✔ това е“ (25.11.2026, пробвано на истинските
+// данни — първата версия предлагаше „Договор за строителство“ ⇐ „Акт № 3 за …
+// СМР“). Правилата:
+//   · ВИДЪТ на документа е един и същ — първото родово име в двете (договор с
+//     договор, становище със становище, протокол с протокол); иначе — нищо;
+//   · от ОСТАНАЛИТЕ думи (по корен — първите 6 букви) съвпадат поне две (една —
+//     само ако и двете имена имат по една); и поне 60 % от по-краткото.
+const RK_PRAG_PREDLOZHENIE = 0.6;
+const RK_UCHI_NAI_CHESTO = 24 * 3600 * 1000;   // ученето по броене — най-много веднъж на ден
 const _rk = s => String(s || '').toLowerCase().replace(/[„“”"«»()\.,;:—–-]/g, ' ').replace(/\s+/g, ' ').trim();
 const _RK_STOP = new Set(['на', 'за', 'и', 'в', 'от', 'с', 'по', 'към', 'или', 'при', 'се', 'до', 'със', 'не', 'е']);
-const _rkDumi = s => new Set(_rk(s).split(' ').filter(w => w.length > 2 && !_RK_STOP.has(w)));
+const _RK_ROD = ['догово', 'станов', 'акт', 'проток', 'скица', 'нотари', 'удосто', 'разреш', 'запове', 'деклар', 'сертиф',
+                 'писмо', 'проект', 'план', 'виза', 'книга', 'диплом', 'застра', 'полица', 'списък', 'оценка', 'доклад',
+                 'паспор', 'заснем', 'решени', 'гаранц', 'ревизи', 'дневни', 'съглас'];
+const _rkDumi = s => _rk(s).split(' ').filter(w => w.length > 2 && !_RK_STOP.has(w)).map(w => w.slice(0, 6));
+function _rkRazlozhi(s) {
+    const d = _rkDumi(s);
+    const rod = d.find(w => _RK_ROD.some(r => w.startsWith(r.slice(0, Math.min(r.length, w.length)))) && w.length >= 3);
+    return { rod: rod ? rod.slice(0, 5) : '', drugi: new Set(d.filter(w => w !== rod && w !== 'обр')) };
+}
 function _rkShodstvo(a, b) {
-    const A = _rkDumi(a), B = _rkDumi(b);
-    const obshto = [...A].filter(x => B.has(x)).length;
-    return obshto / Math.max(1, new Set([...A, ...B]).size);
+    const A = _rkRazlozhi(a), B = _rkRazlozhi(b);
+    if (!A.rod || A.rod !== B.rod) return 0;
+    const krat = Math.min(A.drugi.size, B.drugi.size);
+    if (!krat) return 0;
+    const obshto = [...A.drugi].filter(x => B.drugi.has(x)).length;
+    // Поне две общи думи; една стига само ако и двете имена имат по една —
+    // иначе „строителен надзор“ ~ „строителство“ (общ корен „строит“).
+    const tryabva = A.drugi.size === 1 && B.drugi.size === 1 ? 1 : 2;
+    return obshto < tryabva ? 0 : obshto / krat;
 }
+const _rkObrazec = s => { const m = _rk(s).replace(/образец/g, 'обр').match(/обр\s*(\d+)/); return m ? m[1] : null; };
+const _rkRazlichniObrazci = (a, b) => { const x = _rkObrazec(a), y = _rkObrazec(b); return !!(x && y && x !== y); };
 
-// Под този праг на сходство системата НЕ предлага ред — по-добре празно и
-// избор, отколкото „Оценка от техническия контрол“ → „Решение по екологична
-// оценка“ (видяно на истинските данни, 25.11.2026).
-const RK_PRAG = 0.28;
-function _rkNaiBlizko(ime, spisak) {
-    const b = spisak.slice().sort((x, y) => _rkShodstvo(ime, y) - _rkShodstvo(ime, x))[0] || '';
-    return b && _rkShodstvo(ime, b) >= RK_PRAG ? b : '';
-}
-
-function _rechnikPrazen() { return { grupi: [], chetec: {}, razlichni: [], nyama: [] }; }
+function _rechnikPrazen() { return { grupi: [], chetec: {}, nauchen: {}, ne: [] }; }
 
 async function rechnikZaredi(nanovo) {
     if (_rechnik && !nanovo) return _rechnik;
@@ -54,7 +72,6 @@ async function rechnikZaredi(nanovo) {
             const r = await aktApi('/api/danni/rechnik');
             _rechnik = Object.assign(_rechnikPrazen(), (r && r.stoynost) || {});
         } catch (e) {
-            // Без речника всичко работи както преди — но се казва.
             _rechnik = Object.assign(_rechnikPrazen(), { _greshka: e.message });
         }
         return _rechnik;
@@ -67,6 +84,44 @@ async function rechnikZaredi(nanovo) {
 async function _rechnikZapishi() {
     const { _greshka, ...chist } = _rechnik;
     await aktApi('/api/danni/rechnik', 'POST', { stoynost: chist });
+}
+
+// ── Ученето по броене (сървърът смята, тук се записва) ───────────────────────
+
+function _rkObobshtenie() {
+    const izhod = [];
+    for (const p of (aktDanni.projects || [])) {
+        const stroezhi = typeof aktStroezhi === 'function' ? aktStroezhi(p) : [p];
+        stroezhi.forEach((st, i) => {
+            const s2 = (st.sloy2 && st.sloy2.od) || {};
+            for (const d of (s2.dokumenti || [])) {
+                let sveren = false;
+                try { sveren = typeof _s2Sveren === 'function' && !!_s2Sveren(d, s2.potvardeni || {}); } catch (e) { sveren = false; }
+                // Само вид, ред, сверен ли и кой обект — без лични данни, без файлове.
+                izhod.push({ pi: `${p.pi || p.id}/${i}`, vid: d.vid || '', red: d.cheklist_red || '', sveren });
+            }
+        });
+    }
+    return izhod;
+}
+
+async function rechnikUchi(nasila) {
+    const posledno = Number(localStorage.getItem('rechnik_uchi_koga') || 0);
+    if (!nasila && Date.now() - posledno < RK_UCHI_NAI_CHESTO) return false;
+    try {
+        await rechnikZaredi();
+        const r = await aktApi('/api/rechnik/uchi', 'POST', { obobshtenie: _rkObobshtenie(),
+            rechnik: { chetec: _rechnik.chetec, ne: _rechnik.ne } });
+        localStorage.setItem('rechnik_uchi_koga', String(Date.now()));
+        const novo = (r && r.nauchen) || {};
+        if (JSON.stringify(novo) === JSON.stringify(_rechnik.nauchen || {})) return false;
+        _rechnik.nauchen = novo;
+        await _rechnikZapishi();
+        return true;
+    } catch (e) {
+        console.warn('речникът не се научи:', e.message);
+        return false;
+    }
 }
 
 // ── Прилагането (синхронно — речникът е зареден преди моментите) ─────────────
@@ -83,217 +138,85 @@ function rechnikEdnoLi(a, b) {
     return rechnikSashti(a).some(x => _rk(x) === _rk(b));
 }
 
-// Наличното, видяно през речника: каквото е налично под едно име, е налично и
-// под другите му имена; прочетен документ от решен вид затваря решения ред.
-// Само ДОБАВЯ към преброеното от кухнята — правилото кое се брои (сверено и
-// пр.) остава нейно: вид се прилага само за документ, който тя вече е броила.
+// Към кой ред сочи този вид документ — казаното от теб бие наученото.
+function rechnikRedZaVid(vid) {
+    if (!_rechnik) return null;
+    const k = _rk(vid);
+    const kazano = (_rechnik.chetec || {})[k];
+    if (kazano && kazano.red) return { red: kazano.red, kak: 'казано от теб' };
+    const n = (_rechnik.nauchen || {})[k];
+    if (n && n.red && !(_rechnik.ne || []).includes(k + '|' + _rk(n.red)))
+        return { red: n.red, kak: `научено от ${n.obekti} обекта` };
+    return null;
+}
+
+// Наличното, видяно през речника. Само ДОБАВЯ към преброеното от кухнята —
+// правилото кое се брои (сверено и пр.) остава нейно: вид се прилага само за
+// документ, който тя вече е броила. Записва какво е затворено — за „Имам“.
 function rechnikRazshiri(nalichni, st) {
+    _rkZatvoreni = {};
     if (!_rechnik) return nalichni;
     const izhod = new Set(nalichni || []);
     for (const ime of nalichni || []) for (const x of rechnikSashti(ime)) izhod.add(x);
     const dok = ((st && st.sloy2 && st.sloy2.od && st.sloy2.od.dokumenti) || []);
     for (const d of dok) {
         if (!d.cheklist_red || !izhod.has(d.cheklist_red)) continue;
-        const resh = (_rechnik.chetec || {})[_rk(d.vid)];
-        if (resh && resh.red && !resh.zavisi) for (const x of rechnikSashti(resh.red)) izhod.add(x);
+        const kam = rechnikRedZaVid(d.vid);
+        if (!kam || _rkRazlichniObrazci(d.vid, kam.red)) continue;
+        for (const x of rechnikSashti(kam.red)) {
+            if (izhod.has(x)) continue;
+            izhod.add(x);
+            _rkZatvoreni[x] = { vid: d.vid, kak: kam.kak };
+        }
     }
     return [...izhod];
 }
 
-// ── Какво чака решение (смята се от живите данни) ────────────────────────────
-
-function _rkVsichkiDosieta() {
-    const docs = [];
-    for (const p of (aktDanni.projects || []))
-        for (const st of (typeof aktStroezhi === 'function' ? aktStroezhi(p) : [p]))
-            for (const d of ((st.sloy2 && st.sloy2.od && st.sloy2.od.dokumenti) || [])) docs.push(d);
-    return docs;
+function rechnikZatvorenoOt(red) {
+    return _rkZatvoreni[red] || null;
 }
 
-function rechnikResheniya() {
-    const iz = _rechnikIzvori || { cheklist: [], momenti: [] };
-    const ch = new Map(iz.cheklist.map(x => [_rk(x), x])), mo = new Map(iz.momenti.map(x => [_rk(x), x]));
-    const r = _rechnik || _rechnikPrazen();
-    const razlichni = new Set(r.razlichni || []);
-    const izhod = [];
-
-    // 1. Двата файла: ред в моментите, чието име го няма в чеклиста.
-    const samoCh = iz.cheklist.filter(x => !mo.has(_rk(x)));
-    for (const m of iz.momenti.filter(x => !ch.has(_rk(x)))) {
-        const pred = _rkNaiBlizko(m, samoCh);
-        izhod.push({ tip: 'faylove', klyuch: 'f|' + _rk(m), momenti: m, predlozhenie: pred,
-            reshen: rechnikSashti(m).some(x => ch.has(_rk(x))) || razlichni.has(_rk(m) + '|' + _rk(pred)) || (r.nyama || []).includes(_rk(m)) });
+// „В досието има „…“ — ✔ това е · не е“: документ от досието на ТОЗИ строеж,
+// чието име прилича на реда. Само предлага — не затваря.
+function rechnikPredlozhenie(st, red) {
+    if (!_rechnik) return null;
+    const ne = new Set(_rechnik.ne || []);
+    const imena = rechnikSashti(red);
+    let nai = null;
+    for (const d of ((st && st.sloy2 && st.sloy2.od && st.sloy2.od.dokumenti) || [])) {
+        if (!d.vid || _rkRazlichniObrazci(d.vid, red)) continue;
+        if (ne.has(_rk(d.vid) + '|' + _rk(red))) continue;
+        if (imena.some(i => _rk(i) === _rk(d.cheklist_red))) continue;
+        const s = Math.max(...imena.map(i => _rkShodstvo(d.vid, i)));
+        if (s >= RK_PRAG_PREDLOZHENIE && (!nai || s > nai.shodstvo)) nai = { dok: d, shodstvo: s };
     }
-
-    // 2. Четецът: един вид документ — към различни редове.
-    const dok = _rkVsichkiDosieta();
-    const poVid = new Map();
-    for (const d of dok) {
-        if (!d.cheklist_red || !d.vid) continue;
-        const k = _rk(d.vid);
-        if (!poVid.has(k)) poVid.set(k, { ime: d.vid, redove: new Map() });
-        const e = poVid.get(k);
-        e.redove.set(d.cheklist_red, (e.redove.get(d.cheklist_red) || 0) + 1);
-    }
-    for (const [k, e] of poVid) {
-        if (e.redove.size < 2) continue;
-        const redove = [...e.redove].map(([red, broy]) => ({ red, broy, vMomentite: mo.has(_rk(red)) }))
-            .sort((a, b) => b.broy - a.broy);
-        izhod.push({ tip: 'chetec', klyuch: 'c|' + k, ime: e.ime, redove, reshen: !!(r.chetec || {})[k] });
-    }
-
-    // 3. Редове само в чеклиста, към които четецът връзва — моментите не ги виждат.
-    const broi = new Map();
-    for (const d of dok) if (d.cheklist_red && !mo.has(_rk(d.cheklist_red)))
-        broi.set(d.cheklist_red, (broi.get(d.cheklist_red) || 0) + 1);
-    for (const [red, broy] of broi) {
-        const vecheVA = izhod.some(x => x.tip === 'faylove' && _rk(x.predlozhenie) === _rk(red));
-        if (vecheVA) continue;     // решава се в т. 1 — не се пита два пъти
-        const pred = _rkNaiBlizko(red, iz.momenti);
-        izhod.push({ tip: 'samo_cheklist', klyuch: 's|' + _rk(red), red, broy, predlozhenie: pred,
-            reshen: rechnikSashti(red).some(x => mo.has(_rk(x))) || (r.nyama || []).includes(_rk(red)) });
-    }
-    return izhod;
+    return nai;
 }
 
-// ── Стаята ───────────────────────────────────────────────────────────────────
-
-async function rechnikOtvori() {
-    rechnikHod = '';
-    const t = document.getElementById('rechnik-telo');
-    if (t) t.innerHTML = '<div class="chaka">Чета речника…</div>';
-    try {
-        await rechnikZaredi(true);
-        if (!_rechnikIzvori) _rechnikIzvori = await aktApi('/api/rechnik/izvori');
-    } catch (e) {
-        rechnikHod = `❌ ${_e(e.message)}`;
-    }
-    rechnikRisuvai();
-}
-
-function _rkOpcii(spisak, izbran) {
-    return spisak.map(x => `<option value="${_e(x)}"${x === izbran ? ' selected' : ''}>${_e(x)}</option>`).join('');
-}
-
-function rechnikRisuvai() {
-    const t = document.getElementById('rechnik-telo');
-    if (!t) return;
-    const vsichki = rechnikResheniya();
-    const chakat = vsichki.filter(x => !x.reshen);
-    const k = x => encodeURIComponent(x);
-    const red = x => {
-        if (x.tip === 'faylove') return `<div class="rk-red${x.reshen ? ' rk-reshen' : ''}">
-            <div class="rk-ime">„${_e(x.momenti)}“ <span class="otkade">в моментите</span></div>
-            ${x.predlozhenie ? `<div class="rk-ime">„${_e(x.predlozhenie)}“ <span class="otkade">в чеклиста — най-близкото</span></div>` : ''}
-            ${x.reshen ? `<div class="rk-otg">${rechnikEdnoLi(x.momenti, x.predlozhenie) ? '✔ един документ' : '✕ различни'}
-                <button class="bt bt-tih" onclick="rechnikVarni('${k(x.momenti)}','${k(x.predlozhenie)}')">върни</button></div>`
-            : `<div class="rk-zhestove">
-                ${x.predlozhenie ? `<button class="bt bt-glaven" onclick="rechnikSashto('${k(x.momenti)}','${k(x.predlozhenie)}')">✔ един документ</button>
-                <button class="bt" onclick="rechnikRazlichni('${k(x.momenti)}','${k(x.predlozhenie)}')">✕ различни</button>` : ''}
-                <select class="podoben-vid-izbor" onchange="this.value && rechnikSashto('${k(x.momenti)}', encodeURIComponent(this.value))">
-                    <option value="">друг ред от чеклиста…</option>${_rkOpcii((_rechnikIzvori || {}).cheklist || [])}</select></div>`}
-        </div>`;
-        if (x.tip === 'chetec') {
-            const resh = ((_rechnik || {}).chetec || {})[x.klyuch.slice(2)];
-            return `<div class="rk-red${x.reshen ? ' rk-reshen' : ''}">
-            <div class="rk-ime">четецът чете „${_e(x.ime)}“ и го връзва към:</div>
-            ${x.redove.map(r => `<div class="rk-izbor">${r.broy} × „${_e(r.red)}“${r.vMomentite ? '' : ' <span class="greshka">— няма го в моментите</span>'}
-                ${x.reshen ? (resh && resh.red === r.red ? ' <b class="rk-otg">✔ това е редът</b>' : '')
-                : ` <button class="bt" onclick="rechnikChetec('${k(x.klyuch.slice(2))}','${k(r.red)}')">✔ това е редът</button>`}</div>`).join('')}
-            ${x.reshen ? `<div class="rk-otg">${resh && resh.zavisi ? 'и двата са верни — зависи от документа' : ''}
-                <button class="bt bt-tih" onclick="rechnikChetecVarni('${k(x.klyuch.slice(2))}')">върни</button></div>`
-            : `<div class="rk-zhestove"><button class="bt bt-tih" onclick="rechnikChetec('${k(x.klyuch.slice(2))}','', true)">и двата са верни — зависи от документа</button></div>`}
-        </div>`;
-        }
-        return `<div class="rk-red${x.reshen ? ' rk-reshen' : ''}">
-            <div class="rk-ime">„${_e(x.red)}“ <span class="otkade">само в чеклиста · четецът е вързал ${x.broy} ${x.broy === 1 ? 'документ' : 'документа'} към него</span></div>
-            ${x.reshen ? `<div class="rk-otg">${((_rechnik || {}).nyama || []).includes(_rk(x.red)) ? 'няма го в моментите — не е за тях'
-                : '✔ ' + _e(rechnikSashti(x.red).filter(i => _rk(i) !== _rk(x.red)).join(' · '))}
-                <button class="bt bt-tih" onclick="rechnikVarni('${k(x.red)}','')">върни</button></div>`
-            : `<div class="rk-zhestove">
-                ${x.predlozhenie ? `<button class="bt" onclick="rechnikSashto('${k(x.red)}','${k(x.predlozhenie)}')">✔ същото като „${_e(x.predlozhenie)}“</button>` : ''}
-                <select class="podoben-vid-izbor" onchange="this.value && rechnikSashto('${k(x.red)}', encodeURIComponent(this.value))">
-                    <option value="">друг ред от моментите…</option>${_rkOpcii((_rechnikIzvori || {}).momenti || [])}</select>
-                <button class="bt bt-tih" onclick="rechnikNyama('${k(x.red)}')">няма го в моментите</button></div>`}
-        </div>`;
-    };
-    const razdel = (tip, nadpis, poyasnenie) => {
-        const s = vsichki.filter(x => x.tip === tip);
-        if (!s.length) return '';
-        const ch = s.filter(x => !x.reshen), re = s.filter(x => x.reshen);
-        return `<div class="kutiya-razdel">
-            <div class="nadpis">${nadpis} · ${ch.length ? `${ch.length} чакат` : 'решени'}</div>
-            <p class="poyasnenie">${poyasnenie}</p>
-            ${ch.map(red).join('')}
-            ${re.length ? `<details class="podoben-ne"><summary>решени · ${re.length}</summary>${re.map(red).join('')}</details>` : ''}
-        </div>`;
-    };
-    t.innerHTML = `
-        <p class="poyasnenie">Един документ — всичките му имена. Решаваш веднъж, важи за всички обекти. Двата ти файла не се пипат.
-            <b>${chakat.length ? `Чакат ${chakat.length} от ${vsichki.length}.` : `Всичките ${vsichki.length} са решени.`}</b></p>
-        ${rechnikHod ? `<div class="podsetka">${rechnikHod}</div>` : ''}
-        ${(_rechnik || {})._greshka ? `<div class="greshka">Речникът не се прочете от сървъра: ${_e(_rechnik._greshka)}</div>` : ''}
-        ${razdel('faylove', 'Двата файла казват различно', 'Ред в моментите, чието име го няма в чеклиста. Затова прочетеното в досието не го затваря.')}
-        ${razdel('chetec', 'Четецът връзва един документ към различни редове', 'Броевете са от досиетата на всичките ти обекти.')}
-        ${razdel('samo_cheklist', 'Редове само в чеклиста', 'Четецът връзва към тях, а „Липсва ми“ не ги вижда — моментите ги нямат.')}`;
-}
-
-// ── Жестовете ────────────────────────────────────────────────────────────────
+// ── Жестовете — на място ─────────────────────────────────────────────────────
 
 async function _rkSled(fn) {
-    try {
-        await rechnikZaredi();
-        fn(_rechnik);
-        await _rechnikZapishi();
-        rechnikHod = '';
-    } catch (e) {
-        rechnikHod = `❌ Не се записа: ${_e(e.message)}`;
-    }
-    rechnikRisuvai();
+    await rechnikZaredi();
+    fn(_rechnik);
+    await _rechnikZapishi();
+    if (typeof momentZaredi === 'function') momentZaredi();
 }
 
-const _rkMeta = () => ({ koga: new Date().toISOString(), koy: typeof _s2Koy === 'function' ? _s2Koy() : '' });
-
-function rechnikSashto(a, b) {
-    a = decodeURIComponent(a); b = decodeURIComponent(b);
+// „✔ това е“ — този вид документ доказва този ред, за всички обекти.
+function rechnikTovaE(vid, red) {
+    vid = decodeURIComponent(vid); red = decodeURIComponent(red);
     return _rkSled(r => {
-        const ga = r.grupi.find(g => g.imena.some(i => _rk(i) === _rk(a)));
-        const gb = r.grupi.find(g => g.imena.some(i => _rk(i) === _rk(b)));
-        if (ga && gb && ga !== gb) { ga.imena = [...new Set([...ga.imena, ...gb.imena])]; r.grupi = r.grupi.filter(g => g !== gb); }
-        else if (ga) { if (!ga.imena.some(i => _rk(i) === _rk(b))) ga.imena.push(b); }
-        else if (gb) { if (!gb.imena.some(i => _rk(i) === _rk(a))) gb.imena.push(a); }
-        else r.grupi.push({ imena: [a, b], ..._rkMeta() });
-        r.razlichni = (r.razlichni || []).filter(x => x !== _rk(a) + '|' + _rk(b));
+        r.chetec = { ...(r.chetec || {}), [_rk(vid)]: { red, ot: 'оператор', ime: vid, koga: new Date().toISOString() } };
+        r.ne = (r.ne || []).filter(x => x !== _rk(vid) + '|' + _rk(red));
     });
 }
 
-function rechnikRazlichni(a, b) {
-    a = decodeURIComponent(a); b = decodeURIComponent(b);
-    return _rkSled(r => { r.razlichni = [...new Set([...(r.razlichni || []), _rk(a) + '|' + _rk(b)])]; });
-}
-
-function rechnikNyama(red) {
-    red = decodeURIComponent(red);
-    return _rkSled(r => { r.nyama = [...new Set([...(r.nyama || []), _rk(red)])]; });
-}
-
-// Връща: маха името от групата му (групата от две изчезва), „различни“ и „няма“.
-function rechnikVarni(a, b) {
-    a = decodeURIComponent(a); b = decodeURIComponent(b || '');
+// „не е“ / „не е това“ — двойката се забранява; казаното за нея пада.
+function rechnikNeE(vid, red) {
+    vid = decodeURIComponent(vid); red = decodeURIComponent(red);
     return _rkSled(r => {
-        for (const g of r.grupi) g.imena = g.imena.filter(i => _rk(i) !== _rk(a));
-        r.grupi = r.grupi.filter(g => g.imena.length > 1);
-        r.razlichni = (r.razlichni || []).filter(x => x !== _rk(a) + '|' + _rk(b));
-        r.nyama = (r.nyama || []).filter(x => x !== _rk(a));
+        r.ne = [...new Set([...(r.ne || []), _rk(vid) + '|' + _rk(red)])];
+        const k = _rk(vid);
+        if (r.chetec && r.chetec[k] && _rk(r.chetec[k].red) === _rk(red)) delete r.chetec[k];
     });
-}
-
-function rechnikChetec(vid, red, zavisi) {
-    vid = decodeURIComponent(vid); red = decodeURIComponent(red || '');
-    return _rkSled(r => { r.chetec = { ...(r.chetec || {}), [vid]: { red, zavisi: !!zavisi, ..._rkMeta() } }; });
-}
-
-function rechnikChetecVarni(vid) {
-    vid = decodeURIComponent(vid);
-    return _rkSled(r => { delete r.chetec[vid]; });
 }
