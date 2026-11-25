@@ -912,3 +912,10 @@ body {
 .podoben-pod-red { margin: 4px 0; }
 .podoben-pod-lipsva { color: var(--red); }
 .podoben-pod-mozhe { color: var(--zhalto); }
+/* Подобният обект в момента (25.11.2026) */
+.podoben-vrazka { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; font-size: 12.5px; }
+.podoben-vrazka-etiket { color: var(--muted); font-weight: 600; }
+.podoben-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 10px; border-radius: 14px;
+    background: var(--white); border: 1px solid var(--border); font-family: var(--f-doc); }
+.lipsva-red-podoben { border-left: 3px solid var(--blue); padding-left: 10px; }
+.lipsva-podoben { color: var(--blue); }

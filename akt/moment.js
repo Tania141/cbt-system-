@@ -97,6 +97,7 @@ function momentRisuvai() {
     const imaDn = tabl7 && ((z.st.akt7_dnevnik || {}).aktove || []).length;
     kutiya.innerHTML =
         (tabl7 ? momentDnevnikHtml(z.st) : '')
+        + (typeof podobniVrazkaHtml === 'function' ? podobniVrazkaHtml(z) : '')
         + momentRazdeliHtml(z, dve)
         + momentOstatakHtml(z.st)
         + (imaDn ? '' : momentSastaviHtml(dve))
@@ -696,13 +697,21 @@ function momentSverkaZaLipsva(red) {
         <button class="bt" onclick="momentSverkaOtmetni('${encodeURIComponent(red)}')">✔ имам го — отметни</button></div>` : '';
 }
 
+// От подобния обект (25.11.2026): редът казва при кого го е имало и колко.
+function momentPodobenHtml(r) {
+    if (typeof podobniOpisPri !== 'function') return '';
+    if (r.ot_podoben) return `<span class="otkade lipsva-podoben">от подобния · ${_e(podobniOpisPri(r.ot_podoben))}</span>`;
+    if (r.pri_podoben) return `<span class="otkade lipsva-podoben">и ${_e(podobniOpisPri(r.pri_podoben))}</span>`;
+    return '';
+}
+
 function momentLipsvashtRed(r) {
     const k = encodeURIComponent(r.dokument);
     const hod = momentHod[r.dokument];
     const kade = momentKadeSeRazhda(r.dokument);
     if (kade) return `
-    <div class="lipsva-red lipsva-prashta" data-dokument="${_e(r.dokument)}">
-        <div class="lipsva-ime">${_e(r.dokument)}</div>
+    <div class="lipsva-red lipsva-prashta${r.ot_podoben ? ' lipsva-red-podoben' : ''}" data-dokument="${_e(r.dokument)}">
+        <div class="lipsva-ime">${_e(r.dokument)}${momentPodobenHtml(r)}</div>
         <a class="kam" href="${kade.href}">към ${_e(kade.ime)} →</a>
         ${momentSverkaZaLipsva(r.dokument)}
     </div>`;
@@ -711,10 +720,10 @@ function momentLipsvashtRed(r) {
     const svoy = r.sobstven ? `<span class="otkade lipsva-svoy">твой ред${r.za_precenka
         ? ' · за преценка — „не се отнася“, ако не важи' : ''} · ${_e(r.osnovanie || 'добавен от теб')}</span>` : '';
     return `
-    <div class="lipsva-red${r.sobstven ? ' lipsva-red-svoy' : ''}" data-dokument="${_e(r.dokument)}">
+    <div class="lipsva-red${r.sobstven ? ' lipsva-red-svoy' : ''}${r.ot_podoben ? ' lipsva-red-podoben' : ''}" data-dokument="${_e(r.dokument)}">
         <div class="lipsva-ime">${_e(r.dokument)}
             ${r.uslovie && r.uslovie !== 'винаги'
-                ? `<span class="otkade">${_e(r.uslovie)}</span>` : ''}${svoy}</div>
+                ? `<span class="otkade">${_e(r.uslovie)}</span>` : ''}${svoy}${momentPodobenHtml(r)}</div>
         <div class="lipsva-zhestove">
             <button class="bt" onclick="momentKachi('${k}')">📎 качи</button>
             <button class="bt" onclick="momentVpishi('${k}')">✍ впиши</button>

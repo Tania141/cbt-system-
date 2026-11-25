@@ -801,13 +801,18 @@ function aktPriznaci(p, st) {
 }
 
 async function aktNadzor(p, st) {
-    return aktApi('/api/nadzor', 'POST', {
+    const r = await aktApi('/api/nadzor', 'POST', {
         pi: p.pi, faza: 'nadzor',
         nalichni: aktNalichni(st, p),
         tekusht: st.tekusht_moment || '',
         priznaci: aktPriznaci(p, st),
         izklyucheni: st.izklyucheni_momenti || [],
     });
+    // Свързаният подобен обект пълни моментите (`akt/podobni.js`, 25.11.2026) —
+    // тук, за да броят еднакво и моментът, и обектът, и плотът.
+    if (r && Array.isArray(r.grupi) && typeof podobniVMomentite === 'function')
+        r.podobni = podobniVMomentite(p, st, r.grupi);
+    return r;
 }
 
 // Броеното се оставя при строежа, за да може Екран 1 да покаже числата, без да
