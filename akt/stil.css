@@ -903,3 +903,6 @@ body {
 .podoben-otg-ne { color: var(--muted); font-weight: 500; }
 .podoben-red-otg { opacity: .9; }
 .podoben-ne > summary { cursor: pointer; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+/* Твой ред в „Липсва ми“ (25.11.2026) */
+.lipsva-red-svoy { border-left: 3px solid var(--gold); padding-left: 10px; }
+.lipsva-svoy { color: var(--zhalto); }

@@ -706,11 +706,15 @@ function momentLipsvashtRed(r) {
         <a class="kam" href="${kade.href}">към ${_e(kade.ime)} →</a>
         ${momentSverkaZaLipsva(r.dokument)}
     </div>`;
+    // Твой ред (от „Подобни обекти“ или „Видени, но неописани“, 25.11.2026) —
+    // казва, че е твой и откъде; „за преценка“ не се брои за липсващ.
+    const svoy = r.sobstven ? `<span class="otkade lipsva-svoy">твой ред${r.za_precenka
+        ? ' · за преценка — „не се отнася“, ако не важи' : ''} · ${_e(r.osnovanie || 'добавен от теб')}</span>` : '';
     return `
-    <div class="lipsva-red" data-dokument="${_e(r.dokument)}">
+    <div class="lipsva-red${r.sobstven ? ' lipsva-red-svoy' : ''}" data-dokument="${_e(r.dokument)}">
         <div class="lipsva-ime">${_e(r.dokument)}
             ${r.uslovie && r.uslovie !== 'винаги'
-                ? `<span class="otkade">${_e(r.uslovie)}</span>` : ''}</div>
+                ? `<span class="otkade">${_e(r.uslovie)}</span>` : ''}${svoy}</div>
         <div class="lipsva-zhestove">
             <button class="bt" onclick="momentKachi('${k}')">📎 качи</button>
             <button class="bt" onclick="momentVpishi('${k}')">✍ впиши</button>

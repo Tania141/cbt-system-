@@ -570,9 +570,11 @@ const AKT_IMAM = 'налично';
 const AKT_NE_MU_E_VREMETO = 'не му е времето';
 
 function aktDveChisla(grupa, neotnasya) {
-    const redove = (grupa && grupa.dokumenti) || [];
     const mahnati = new Set(neotnasya || []);
     const imam = r => r.sastoyanie === AKT_IMAM || mahnati.has(r.dokument);
+    // Твой ред „за преценка“ (приет от „Видени, но неописани“) не сваля процента,
+    // докато не решиш: имаш го → брои се; „не се отнася“ → брои се като имаш.
+    const redove = ((grupa && grupa.dokumenti) || []).filter(r => !r.za_precenka || imam(r));
     const vezna = spisak => ({
         imam: spisak.filter(imam).length,
         ot: spisak.length,
