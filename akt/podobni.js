@@ -328,7 +328,6 @@ function podobniVMomentite(p, st, grupi) {
     const vsichkiRedove = grupi.flatMap(g => g.dokumenti || []);
     let nalichni = [];
     try { nalichni = aktNalichni(st, p) || []; } catch (e) { nalichni = []; }
-    if (typeof rechnikRazshiri === 'function') nalichni = rechnikRazshiri(nalichni, st);
     const edno = (a, b) => typeof rechnikEdnoLi === 'function' ? rechnikEdnoLi(a, b) : kl(a) === kl(b);
     let dobaveni = 0, bez_myasto = 0;
     for (const r of po.values()) {

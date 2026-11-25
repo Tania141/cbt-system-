@@ -421,7 +421,11 @@ function _nadzorNalichni(st, p) {
     const otChetene = (st.sloy2?.od?.dokumenti || [])
         .map(d => (d.cheklist_red || '').trim()).filter(Boolean);
     const otSkladove = nalichniOtSkladove(p, st).map(x => x.red);
-    return [...new Set([...(st.nadzor_otmetnati || []), ...otChetene, ...otSkladove])];
+    const nalichni = [...new Set([...(st.nadzor_otmetnati || []), ...otChetene, ...otSkladove])];
+    // Речникът (`akt/rechnik.js`, 25.11.2026): наличното под едно име е налично
+    // и под другите му имена. Тук — в самата врата, за да го виждат всички, които
+    // питат (моментите, сверката, числата). Без речника — както преди.
+    return typeof rechnikRazshiri === 'function' ? rechnikRazshiri(nalichni, st) : nalichni;
 }
 
 const _NADZOR_CVYAT = { 'налично': 'var(--green,#2e7d32)', 'очаква се': 'var(--ink)',

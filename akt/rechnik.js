@@ -26,7 +26,7 @@
 //   nauchen: {вид: {red, obekti, dyal}} — наученото по броене, ne: ['вид|ред'] }
 let _rechnik = null;
 let _rechnikZarezhda = null;
-let _rkZatvoreni = {};        // ред → {vid, kak} — затвореното през речника в последния момент
+const _rkZatvoreni = new WeakMap();   // строеж → {ред: {vid, kak}} — затвореното през речника
 
 // Сходство за „в досието има … — ✔ това е“ (25.11.2026, пробвано на истинските
 // данни — първата версия предлагаше „Договор за строителство“ ⇐ „Акт № 3 за …
@@ -154,8 +154,9 @@ function rechnikRedZaVid(vid) {
 // правилото кое се брои (сверено и пр.) остава нейно: вид се прилага само за
 // документ, който тя вече е броила. Записва какво е затворено — за „Имам“.
 function rechnikRazshiri(nalichni, st) {
-    _rkZatvoreni = {};
     if (!_rechnik) return nalichni;
+    const zatv = {};
+    if (st && typeof st === 'object') _rkZatvoreni.set(st, zatv);
     const izhod = new Set(nalichni || []);
     for (const ime of nalichni || []) for (const x of rechnikSashti(ime)) izhod.add(x);
     const dok = ((st && st.sloy2 && st.sloy2.od && st.sloy2.od.dokumenti) || []);
@@ -166,14 +167,16 @@ function rechnikRazshiri(nalichni, st) {
         for (const x of rechnikSashti(kam.red)) {
             if (izhod.has(x)) continue;
             izhod.add(x);
-            _rkZatvoreni[x] = { vid: d.vid, kak: kam.kak };
+            zatv[x] = { vid: d.vid, kak: kam.kak };
         }
     }
     return [...izhod];
 }
 
-function rechnikZatvorenoOt(red) {
-    return _rkZatvoreni[red] || null;
+function rechnikZatvorenoOt(red, st) {
+    if (!st && typeof momentZhiv === 'function') { const z = momentZhiv(); st = z && z.st; }
+    const m = st && _rkZatvoreni.get(st);
+    return (m && m[red]) || null;
 }
 
 // „В досието има „…“ — ✔ това е · не е“: документ от досието на ТОЗИ строеж,

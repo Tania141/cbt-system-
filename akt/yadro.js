@@ -804,7 +804,7 @@ async function aktNadzor(p, st) {
     // Речникът (`akt/rechnik.js`, 25.11.2026): наличното под едно име е налично
     // и под другите му имена. Чете се веднъж; без него — както преди.
     if (typeof rechnikZaredi === 'function') await rechnikZaredi();
-    const nalichni = typeof rechnikRazshiri === 'function' ? rechnikRazshiri(aktNalichni(st, p), st) : aktNalichni(st, p);
+    const nalichni = aktNalichni(st, p);     // вратата прилага и речника (js/08)
     const r = await aktApi('/api/nadzor', 'POST', {
         pi: p.pi, faza: 'nadzor',
         nalichni,

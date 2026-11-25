@@ -87,6 +87,12 @@ let obobshtenie = null;
     await new Promise(r => setTimeout(r, 300));
     t('„✔ това е“ се записва — казано от теб', SARVAR.rechnik.chetec[w.eval('_rk')(ERM.vid)].red === ERMRED, SARVAR.rechnik.chetec);
     t('и редът излиза от „Липсва ми“', !red(ERMRED), tx(d.querySelector('.razdel-telo')));
+    const zz = w.momentZhiv();
+    t('стъпка 2: вратата на кухнята (_nadzorNalichni) вижда речника — сверката и числата питат нея',
+      w._nadzorNalichni(zz.st, zz.p).includes(ERMRED), w._nadzorNalichni(zz.st, zz.p));
+    const sv = w.dokSverkaSCheklista(zz.p, zz.st, [ERMRED]);
+    t('стъпка 2: и сверката Акт 15 ↔ чеклист не казва „липсва“ за затвореното през речника',
+      !(sv.pisheNeBroi || []).some(x => x.red === ERMRED), sv);
     w.momentOtvoriRazdel('imam');
     const imam = tx(d.querySelector('.razdel-telo'));
     t('в „Имам“: „затворено от досието: „…“ · казано от теб“', /затворено от досието: „Договор за присъединяване на обекти.*ЕАД“ · казано от теб/.test(imam), imam);
