@@ -142,7 +142,7 @@ async function pusni() {
         // (Пробата с нарочно счупване, 13.10.2026: не хвана нищо.)
         const tekst = kutiya ? kutiya.textContent : '';
         const chervenoto = kutiya && kutiya.querySelector('.alert-error');
-        const sledi = tekst.match(/is not defined|is not a function|Cannot read|TypeError|ReferenceError|undefined/);
+        const sledi = tekst.match(/is not defined|is not a function|Cannot read|\bTypeError\b|\bReferenceError\b|undefined/);
         if (padna) loshi.push([str, padna]);
         else if (novi.length) loshi.push([str, novi[0]]);
         else if (prazna) loshi.push([str, 'страницата остава празна']);

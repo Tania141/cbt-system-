@@ -64,7 +64,7 @@ const smeseni = [];
 for (const f of vklyucheni) {
     const telo = fs.readFileSync(path.join(JS, f), 'utf8');
     // имена на променливи и функции
-    for (const m of telo.matchAll(/(?:function|const|let|var)\s+([A-Za-z_$][\w$А-Яа-я]*)/g))
+    for (const m of telo.matchAll(/\b(?:function|const|let|var)\s+([A-Za-z_$][\w$А-Яа-я]*)/g))
         if (/[А-Яа-я]/.test(m[1]) && /[A-Za-z]/.test(m[1])) smeseni.push(f + ': ' + m[1]);
     // кратки низове-ключове в единични кавички
     for (const m of telo.matchAll(/'([A-Za-zА-Яа-я_-]{3,24})'/g))
