@@ -925,8 +925,8 @@ function momentImamHtml() {
         // Прочетено в досието.
         const prochet = ((z.st.sloy2 && z.st.sloy2.od && z.st.sloy2.od.dokumenti) || [])
             .find(d => String(d.cheklist_red || '').trim() === ime);
-        if (prochet) return 'Досието · ' + [prochet.nomer, prochet.data].filter(Boolean)
-            .map(v => typeof v === 'object' ? v.stoynost : v).filter(Boolean).join(' · ');
+        if (prochet) return 'Досието · ' + [prochet.vid ? `„${String(prochet.vid).slice(0, 60)}“` : '', prochet.nomer, prochet.data]
+            .map(v => (v && typeof v === 'object') ? v.stoynost : v).filter(Boolean).join(' · ');
         return 'отметнато';
     };
     return `
@@ -939,10 +939,41 @@ function momentImamHtml() {
                     encodeURIComponent(momentId)}/${momentIndeks}">свери в досието →</a></div>` : ''}
                 ${typeof rechnikZatvorenoOt === 'function' && rechnikZatvorenoOt(r.dokument)
                     ? `<button class="bt bt-tih" onclick="rechnikNeE('${encodeURIComponent(rechnikZatvorenoOt(r.dokument).vid)}','${encodeURIComponent(r.dokument)}')">не е това</button>`
+                    : momentDokZaRed(z, r.dokument)
+                    ? `<button class="bt bt-tih" onclick="momentNeEToziDokument('${encodeURIComponent(r.dokument)}')">не е това</button>`
                     : `<button class="bt bt-tih" onclick="momentVarni('${encodeURIComponent(r.dokument)}')">върни</button>`}
             </li>`).join('')}
         </ul>
     </div>`;
+}
+
+// „НЕ Е ТОВА“ НА РЕД, ЗАТВОРЕН ОТ ДОКУМЕНТ В ДОСИЕТО (26.11.2026). Операторът:
+// „Договори за строителство и строителен надзор — Досието · 1156/07.12.2023 — е
+// всъщност заповедна книга“. Четецът беше вързал книгата към чужд ред.
+//   · връзката на документа се маха (старата се пази в `cheklist_red_chetec`) —
+//     редът се връща в „Липсва ми“;
+//   · в речника — „този вид НЕ е този ред“, за да не се повтори при друг обект;
+//   · правилният ред ще получи „в досието има „…“ — ✔ това е“.
+function momentDokZaRed(z, red) {
+    return ((z && z.st.sloy2 && z.st.sloy2.od && z.st.sloy2.od.dokumenti) || [])
+        .find(d => String(d.cheklist_red || '').trim() === red) || null;
+}
+
+async function momentNeEToziDokument(k) {
+    const z = momentZhiv();
+    if (!z) return;
+    const red = decodeURIComponent(k);
+    const d = momentDokZaRed(z, red);
+    if (!d) return;
+    d.cheklist_red_chetec = d.cheklist_red;
+    d.cheklist_red = '';
+    d.red_ot = `операторът: не е „${red}“`;
+    // Отметнатото на ръка за този ред (ако го е имало заради документа) остава твое.
+    aktZapishi();
+    if (typeof addHistory === 'function')
+        addHistory('edit', z.p.pi || null, `Досие: „${d.vid || d.fajl}“ не е „${red}“`);
+    if (typeof rechnikNeE === 'function' && d.vid) await rechnikNeE(encodeURIComponent(d.vid), encodeURIComponent(red));
+    else momentZaredi();
 }
 
 // ── 5. Остатъкът ─────────────────────────────────────────────────────────────

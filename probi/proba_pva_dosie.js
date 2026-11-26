@@ -211,6 +211,28 @@ t('„смени“ обръща етапа с един клик', /^✔ при�
 // 25.11.2026: приетият ред вече стига моментите — текстът казва къде.
 t('казва къде излиза приетият — Акт 15 / Протокол 2', /Приетият излиза в „Липсва ми“ — на Акт 15/.test(telo), telo.slice(-500));
 
+// ── изчисти прочетеното (26.11.2026) ────────────────────────────────────────
+{
+    const zz = a.w.dosieZhiv();
+    zz.st.dokumenti = [{ ime: 'Разрешение за строеж', nomer: '№ 1', ot: 'прочетен' }, { ime: 'Виза', nomer: '№ 2', ot: 'вписан на ръка' }];
+    zz.st.nadzor_otmetnati = ['Разрешение за строеж', 'Виза', 'Отметнато на ръка'];
+    let pitano = '';
+    a.w.confirm = s => { pitano = s; return false; };
+    const predi = (zz.s2.dokumenti || []).length;
+    a.w.dosieIzchisti();
+    t('„изчисти“ пита: колко, кое остава и за копието', /прочетени документа/.test(pitano) && /Остават: вписаното и отметнатото на ръка/.test(pitano)
+      && /резервно копие/.test(pitano), pitano);
+    t('„не“ — нищо не се маха', (zz.s2.dokumenti || []).length === predi && predi > 0);
+    a.w.confirm = () => true;
+    a.w.dosieIzchisti();
+    const zz2 = a.w.dosieZhiv();
+    t('„да“ — досието е празно, сверките също', !(zz2.s2.dokumenti || []).length && !Object.keys(zz2.s2.potvardeni || {}).length);
+    t('махнати са и отметките, дошли от прочетено', !zz2.st.nadzor_otmetnati.includes('Разрешение за строеж')
+      && !zz2.st.dokumenti.some(d => d.ot === 'прочетен'), [zz2.st.nadzor_otmetnati, zz2.st.dokumenti]);
+    t('вписаното и отметнатото на ръка — остават', zz2.st.nadzor_otmetnati.includes('Виза') && zz2.st.nadzor_otmetnati.includes('Отметнато на ръка')
+      && zz2.st.dokumenti.some(d => d.ot === 'вписан на ръка'), [zz2.st.nadzor_otmetnati, zz2.st.dokumenti]);
+}
+
 // ── какво НЕ прави този екран ───────────────────────────────────────────────
 t('няма качване на файлове',
   !a.d.querySelector('#dosie-telo input[type="file"]'));

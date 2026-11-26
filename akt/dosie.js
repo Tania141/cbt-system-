@@ -195,7 +195,41 @@ function dosieSpisakHtml(z) {
         <p class="poyasnenie">Файловете не се пазят — пазят се прочетените факти, с цитат
            и страница. Клик отваря какво е разбрал четецът.</p>
         ${redove.map(d => dosieRedHtml(d, potv)).join('')}
+        <div class="redica" style="margin-top:12px">
+            <button class="bt bt-tih" onclick="dosieIzchisti()">изчисти прочетеното на този строеж · ${(z.s2.dokumenti || []).length}</button>
+        </div>
     </div>`;
+}
+
+// ИЗЧИСТИ ПРОЧЕТЕНОТО (26.11.2026). Операторът: „да прочета отново всички
+// документи на Радулов, за да видим как се държи системата… като преди това
+// премахна прочетените“. По един — 52 пъти — е мъчение.
+//   · махат се: прочетените документи, сверките им, чакащите проверка и
+//     отметките, които са дошли от прочетено („✔ запиши в досието“);
+//   · остават: вписаното и отметнатото на ръка, паспортът, собствеността,
+//     заповедната книга от регистъра, връзката с подобния;
+//   · файловете на диска не се пипат; връщане — само от резервно копие.
+function dosieIzchisti() {
+    const z = dosieZhiv();
+    if (!z) return;
+    const n = (z.s2.dokumenti || []).length, ch = (z.s2.chakat || []).length;
+    if (!n && !ch) return;
+    const ot = (z.st.dokumenti || []).filter(d => d.ot === 'прочетен');
+    const NR = String.fromCharCode(10);
+    if (!confirm(`Да изчистя ли прочетеното на „${z.p.nik || z.p.pi}“?` + NR + NR
+        + `Махат се: ${n} прочетени документа, сверките им${ch ? `, ${ch} чакащи проверка` : ''}`
+        + `${ot.length ? ` и ${ot.length} отметки, дошли от прочетено` : ''}.` + NR
+        + 'Остават: вписаното и отметнатото на ръка, паспортът, собствеността, връзката с подобния.' + NR + NR
+        + 'Връщане няма — само от резервно копие. Свалила ли си копие (плочка „Резервно копие“)?')) return;
+    const imena = new Set(ot.map(d => d.ime));
+    z.st.dokumenti = (z.st.dokumenti || []).filter(d => d.ot !== 'прочетен');
+    z.st.nadzor_otmetnati = (z.st.nadzor_otmetnati || []).filter(x => !imena.has(x));
+    z.s2.dokumenti = [];
+    z.s2.potvardeni = {};
+    z.s2.chakat = [];
+    aktZapishi();
+    if (typeof addHistory === 'function') addHistory('delete', z.p.pi || null, `Досие: изчистени ${n} прочетени документа`);
+    dosieRisuvai();
 }
 
 function dosieRedHtml(d, potv) {
