@@ -9,6 +9,8 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'akt', 'moment.js'), 'utf
 const grab = ime => { const m = new RegExp('^(async )?function ' + ime + '\\b[\\s\\S]*?\\n}', 'm').exec(src); return m ? m[0] : ''; };
 
 global.momentFajlove = {};
+// Нивата от Протокол 2 (26.11.2026) — тук не се изпитват; виж proba_pva_niva_dosie.js.
+global.momentNivaOtProcheten = async () => {};
 const dobri = [], loshi = [];
 const t = (ime, verno, kak) => (verno ? dobri : loshi).push(ime + (verno ? '' : '  → ' + JSON.stringify(kak)));
 

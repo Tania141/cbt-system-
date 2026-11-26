@@ -374,18 +374,50 @@ async function momentChetiFajl(z, fajl, ime, kazhi, po) {
         if (r.greshka) throw new Error(r.greshka);
         const novi = r.dokumenti || [r.dokument].filter(Boolean);
         novi.razdelyane = razdelyane;
+        await momentNivaOtProcheten(z, osnova, novi.map(d => [d, null]), kazhi);
         return novi;
     }
     let novi = [];
+    const sStranici = [];
     for (let k = 0; k < chasti.length; k++) {
         kazhi(`„${ime}“ — чета документ ${k + 1} от ${chasti.length} (стр. ${chasti[k].stranici})…`);
         const r = await aktApi('/api/sloy2/chete', 'POST',
             { ...osnova, stranici: chasti[k].stranici, edin: true });
         if (r.greshka) throw new Error(`документ ${k + 1} (стр. ${chasti[k].stranici}): ${r.greshka}`);
-        novi = novi.concat(r.dokumenti || [r.dokument].filter(Boolean));
+        const tezi = r.dokumenti || [r.dokument].filter(Boolean);
+        tezi.forEach(d => sStranici.push([d, chasti[k].stranici]));
+        novi = novi.concat(tezi);
     }
     novi.razdelyane = razdelyane;
+    await momentNivaOtProcheten(z, osnova, sStranici, kazhi);
     return novi;
+}
+
+// ПРОТОКОЛ 2 ОТ ДОСИЕТО — И НИВАТА (26.11.2026).
+// Операторът качи подписания Протокол 2 на Радулов; общият четец взе шапката
+// (дата, участници, РС) и мълчеше за раздел III. Четецът на нивата беше вързан
+// само за полето в Протокол 2. Сега: прочетен ли е Протокол 2, със същия файл
+// (и същите страници) се пуска и четецът на нивата; прочетеното чака в
+// Протокол 2 — „Приеми датите“ — и казва от кой файл е. Не се вписва само.
+const _M_P2 = /откриване\s+на\s+строителна\s+площадка/i;
+function momentEP2(d) {
+    const t = v => String((v && typeof v === 'object' ? v.stoynost : v) || '');
+    return d && (d.vid_kod === 'PROTOKOL2' || _M_P2.test(t(d.vid)) || _M_P2.test(t(d.naimenovanie)));
+}
+async function momentNivaOtProcheten(z, osnova, dvoiki, kazhi) {
+    const p2 = (dvoiki || []).find(([d]) => momentEP2(d));
+    if (!p2) return;
+    if (kazhi) kazhi(`„${osnova.fajl.ime}“ е Протокол 2 — чета и заверките на нивата…`);
+    try {
+        const r = await aktApi('/api/p2/niva/chete', 'POST',
+            { fajl: osnova.fajl, chetec: osnova.chetec, ...(p2[1] ? { stranici: p2[1] } : {}) });
+        z.st.niva_predlozhenie = r.greshka
+            ? { fajl: osnova.fajl.ime, proverki: [], greshka: r.greshka }
+            : { ...r.niva, fajl: osnova.fajl.ime, ot_dosie: true };
+    } catch (e) {
+        z.st.niva_predlozhenie = { fajl: osnova.fajl.ime, proverki: [], greshka: e.message };
+    }
+    aktZapishi();
 }
 
 // Как е разделен файлът — с думи. Един документ от много страници не е
@@ -1223,7 +1255,18 @@ function momentNivaOtDnevnikPriemi() {
 }
 
 function momentNivaHtml() {
-    const ch = momentNivaProcheteno;
+    const z = momentZhiv();
+    const ch = momentNivaProcheteno || (z && z.st.niva_predlozhenie) || null;
+    if (ch && !(ch.proverki || []).length) return `
+        <div class="redica" style="margin:6px 0">
+            <input type="file" id="moment-niva-fajl" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff"
+                   onchange="momentNivaCheti()">
+            <span class="tiho">прочети заверките на нивата от сканирания Протокол 2</span>
+        </div>
+        <div id="moment-niva-hod"></div>
+        <p class="predupr">„${_e(ch.fajl || '')}“ е Протокол 2, но заверките на нивата не се прочетоха${ch.greshka ? ': ' + _e(ch.greshka) : ''}.
+           Впиши датите на ръка или качи сканираните проверки отделно.
+           <button class="bt bt-tih" onclick="momentNivaOtkazhi()">разбрах</button></p>`;
     return `
         <div class="redica" style="margin:6px 0">
             <input type="file" id="moment-niva-fajl" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff"
@@ -1232,7 +1275,7 @@ function momentNivaHtml() {
         </div>
         <div id="moment-niva-hod"></div>
         ${ch ? `<div class="kutiya-razdel" style="border-color:var(--gold)">
-            <p class="tiho">Прочетено от „${_e(ch.fajl || '')}“ — датите са на ръка, свери ги.</p>
+            <p class="tiho">Прочетено от „${_e(ch.fajl || '')}“${ch.ot_dosie ? ' (качен в досието)' : ''} — датите са на ръка, свери ги.</p>
             ${ch.proverki.map((p, i) => `
                 <label class="ostatak-red"><span>Ниво ${_e(p.nivo)}${p.kota ? ', кота ' + _e(p.kota) : ''}</span>
                     <input type="text" class="tarsene" value="${_e(p.data || '')}" placeholder="дд.мм.гггг"
@@ -1260,14 +1303,26 @@ async function momentNivaCheti() {
     }
 }
 
-function momentNivaPoprav(i, v) {
-    if (momentNivaProcheteno) momentNivaProcheteno.proverki[i].data = String(v || '').trim();
+function momentNivaSega() {
+    const z = momentZhiv();
+    return momentNivaProcheteno || (z && z.st.niva_predlozhenie) || null;
 }
 
-function momentNivaOtkazhi() { momentNivaProcheteno = null; momentRisuvai(); }
+function momentNivaPoprav(i, v) {
+    const ch = momentNivaSega();
+    if (ch && ch.proverki[i]) ch.proverki[i].data = String(v || '').trim();
+    if (ch && ch === (momentZhiv() || {}).st?.niva_predlozhenie) aktZapishi();
+}
+
+function momentNivaOtkazhi() {
+    momentNivaProcheteno = null;
+    const z = momentZhiv();
+    if (z && z.st.niva_predlozhenie) { delete z.st.niva_predlozhenie; aktZapishi(); }
+    momentRisuvai();
+}
 
 function momentNivaPriemi() {
-    const z = momentZhiv(); const ch = momentNivaProcheteno;
+    const z = momentZhiv(); const ch = momentNivaSega();
     if (!z || !ch) return;
     const o = (z.st.ostatak = z.st.ostatak || {});
     for (const p of ch.proverki) {
@@ -1277,6 +1332,7 @@ function momentNivaPriemi() {
         if (p.kota) o[k + '_kota'] = p.kota;
     }
     momentNivaProcheteno = null;
+    delete z.st.niva_predlozhenie;
     aktZapishi();
     momentRisuvai();
 }
