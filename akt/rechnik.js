@@ -208,6 +208,22 @@ async function _rkSled(fn) {
 // „✔ това е“ — този вид документ доказва този ред, за всички обекти.
 function rechnikTovaE(vid, red) {
     vid = decodeURIComponent(vid); red = decodeURIComponent(red);
+    // „✔ ТОВА Е“ ВРЪЗВА И ДОКУМЕНТА (26.11.2026). Радулов, обр. 3: документът
+    // в досието беше без ред („няма ред в чеклиста“); „✔ това е“ учеше речника,
+    // а редът не се затваряше — `rechnikRazshiri` затваря само от документ,
+    // който вече доказва ред. Сега документът без ред от ТОЗИ строеж получава
+    // реда, както ако четецът го беше вързал; вързан към друг ред — не се пипа
+    // (тогава затваря речникът).
+    const z = typeof momentZhiv === 'function' ? momentZhiv() : null;
+    const t = v => (v && typeof v === 'object' ? v.stoynost : v) || '';
+    let varzani = 0;
+    for (const d of ((z && z.st && z.st.sloy2 && z.st.sloy2.od && z.st.sloy2.od.dokumenti) || [])) {
+        if (String(d.cheklist_red || '').trim() || _rk(t(d.vid)) !== _rk(vid)) continue;
+        d.cheklist_red = red;
+        d.red_ot = 'операторът: ✔ това е';
+        varzani++;
+    }
+    if (varzani && typeof aktZapishi === 'function') aktZapishi();
     return _rkSled(r => {
         r.chetec = { ...(r.chetec || {}), [_rk(vid)]: { red, ot: 'оператор', ime: vid, koga: new Date().toISOString() } };
         r.ne = (r.ne || []).filter(x => x !== _rk(vid) + '|' + _rk(red));

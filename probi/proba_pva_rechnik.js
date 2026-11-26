@@ -31,8 +31,10 @@ const ZK = 'Заповедна книга на строежа';
 const ERM = { id: 'erm.pdf', fajl: 'erm.pdf', vid: 'Договор за присъединяване на обекти на клиенти към разпределителната мрежа на „Електроразпределителни мрежи Запад“ ЕАД',
               cheklist_red: 'Становище за присъединяване — електроснабдяване', nomer: { stoynost: '1205463907' }, data: { stoynost: '13.06.2024' } };
 const KNIGA = { id: 'zk.pdf', fajl: 'zk.pdf', vid: 'ЗАПОВЕДНА КНИГА', cheklist_red: 'Договори за строителство и строителен надзор' };
+const OBR3RED = 'Констативен акт обр.3 за установяване съответствието на строежа';
+const OBR3 = { id: 'pr3.pdf', fajl: 'pr3.pdf', vid: 'Констативен акт за установяване съответствието на строежа с издадените строителни книжа', cheklist_red: '', data: { stoynost: '17.07.2024' } };
 const OB = { id: 'rad', pi: '68134.4083.1', nik: 'Радулов', vid: 'sgrada', tekusht_moment: 'Акт 15',
-             sloy2: { od: { dokumenti: [ERM, KNIGA], potvardeni: {} } }, egn_vazlozhitel: '0000000000' };
+             sloy2: { od: { dokumenti: [ERM, KNIGA, OBR3], potvardeni: {} } }, egn_vazlozhitel: '0000000000' };
 const SARVAR = {};
 let obobshtenie = null;
 
@@ -56,7 +58,7 @@ let obobshtenie = null;
                     if (metod === 'POST') SARVAR[k] = JSON.parse(JSON.stringify(telo.stoynost));
                     r = { stoynost: SARVAR[k] ? JSON.parse(JSON.stringify(SARVAR[k])) : null };
                 } else if (/\/api\/nadzor/.test(u)) {
-                    const DOK = [ERMRED, ZK, 'Становище за присъединяване — електроснабдяване', 'Договори за строителство и строителен надзор'];
+                    const DOK = [ERMRED, ZK, 'Становище за присъединяване — електроснабдяване', 'Договори за строителство и строителен надзор', OBR3RED];
                     r = { red: ['Акт 15'], grupi: [{ moment: 'Акт 15', minal: true, dokumenti: DOK.map(d => ({ dokument: d, etap: 'подпис',
                         sastoyanie: (telo.nalichni || []).includes(d) ? 'налично' : 'очаква се' })) }] };
                 }
@@ -69,7 +71,7 @@ let obobshtenie = null;
     const red = ime => d.querySelector(`.lipsva-red[data-dokument="${ime}"]`);
 
     t('няма стая „Речник“ в лявата колона', !d.querySelector('#lyava [data-plochka="rechnik"]') && !d.getElementById('ekran-rechnik'));
-    t('ученето прати обобщение — само вид, ред, сверен, ПИ', obobshtenie && obobshtenie.length === 2
+    t('ученето прати обобщение — само вид, ред, сверен, ПИ', obobshtenie && obobshtenie.length === 3
       && Object.keys(obobshtenie[0]).sort().join(',') === 'pi,red,sveren,vid', obobshtenie);
     t('без лични данни в обобщението', !JSON.stringify(obobshtenie).includes('0000000000'));
     t('наученото е записано в речника на сървъра', SARVAR.rechnik && SARVAR.rechnik.nauchen['заповедна книга'].red === ZK, SARVAR.rechnik);
@@ -124,6 +126,17 @@ let obobshtenie = null;
       SARVAR.rechnik.ne);
     w.momentOtvoriRazdel('lipsva');
     t('редът се връща в „Липсва ми“', !!red('Договори за строителство и строителен надзор'));
+
+    // ── „✔ това е“ за документ БЕЗ ред (обр. 3 на Радулов, 26.11.2026) ────────
+    // Документът беше „няма ред в чеклиста“; „✔ това е“ учеше речника, а
+    // редът не се затваряше.
+    t('обр. 3: редът липсва и има предложение', !!red(OBR3RED) && /в досието има/.test(tx(red(OBR3RED))), tx(red(OBR3RED)));
+    await w.rechnikTovaE(encodeURIComponent(OBR3.vid), encodeURIComponent(OBR3RED));
+    await new Promise(r => setTimeout(r, 300));
+    const o3 = w.momentZhiv().st.sloy2.od.dokumenti.find(x => x.id === 'pr3.pdf');
+    t('„✔ това е“ връзва документа без ред към реда — досието и чеклистът казват едно', o3.cheklist_red === OBR3RED && /✔ това е/.test(o3.red_ot), o3);
+    t('и редът излиза от „Липсва ми“', !red(OBR3RED));
+    t('документ, вързан към ДРУГ ред, не се превързва', w.momentZhiv().st.sloy2.od.dokumenti.find(x => x.id === 'erm.pdf').cheklist_red === 'Становище за присъединяване — електроснабдяване');
 
     // ── стъпка 3 (26.11.2026): общите редове на чеклиста ──────────────────────
     const blizak = (ime, redove) => (w.eval('rechnikNaiBlizakRed')(ime, redove) || {}).red || '';
