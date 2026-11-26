@@ -2188,6 +2188,34 @@ function _a15Vpisan(p, kak) {
     return red ? String(red.nomer || '').trim() : '';
 }
 
+// ДОКУМЕНТЪТ СЕ ПОЗНАВА ПО НАЧАЛОТО НА СВОЕТО ИМЕ (26.11.2026).
+//
+// Акт 15 на Радулов излезе с „Договор за строителство № 1156/07.12.2023“ —
+// номерът на заповедната книга, защото четецът я беше вързал към реда
+// „Договори за строителство и строителен надзор“, а `_a15Vpisan` търси и по
+// реда. И с „Одобрените на 27.08.2026 г. проекти“ — датата на заповедта по
+// чл. 154, чието име е „Заповед … изменение в одобрения инвестиционен проект“.
+// Затова договорът и одобреният проект се търсят само по ИМЕТО на документа,
+// закотвено в началото (`kak` е с ^): заповедната книга не е договор,
+// заповедта не е проект. Първо в описа на обекта, после в досието; без
+// намерено — празно и сървърът оставя точки.
+function _a15PoIme(p, st, kak) {
+    const t = v => String(v || '').trim();
+    const izvadi = (nomer, data) => {
+        const nd = _a15NomerData(nomer);
+        return { nomer: nd.nomer || (/№/.test(t(nomer)) ? '' : t(nomer).replace(/\s+от\s+.*$/i, '')),
+                 data: t(data) || nd.data };
+    };
+    const d = ((p && p.dokumenti) || []).find(x => kak.test(t(x.ime)));
+    if (d) return izvadi(d.nomer, d.data);
+    const redove = typeof dokTetradka === 'function' ? dokTetradka(p, st) : [];
+    const e = x => kak.test(t(x.ime)) || kak.test(t(x.vid));
+    const r = redove.find(x => x.sveren && e(x)) || redove.find(e);
+    return r ? izvadi(r.nomer, r.data) : { nomer: '', data: '' };
+}
+const _a15NomerOt = x => [x.nomer ? '№ ' + x.nomer : '', x.data ? 'от ' + x.data + ' г.' : '']
+    .filter(Boolean).join(' ');
+
 // ДАТАТА СЕ ТЪРСИ НАВСЯКЪДЕ, КЪДЕТО Е ЗНАЙНА.
 //
 // Операторът, 29.10.2026: „когато генерирам 15 с питон, там не се записва
@@ -2725,20 +2753,23 @@ function _a15Redove(project, st) {
     // кръщава както му дойде: „Договор за СМР“, „Договор за строителство“,
     // „Договор строително-монтажни работи“. Тесният израз не го хващаше и
     // точка 3 на акта излизаше [___].
-    const DOGOVOR = /договор.*(смр|строите|монтаж)/i;
-    const dogovor = _a15NomerData(_a15Vpisan(project, DOGOVOR));
+    // 26.11.2026: само по началото на ИМЕТО — виж `_a15PoIme`. „Строителен
+    // надзор“ не минава за строителство.
+    const DOGOVOR = /^договор(?=\s).*(смр|строителств|строително|монтаж)/i;
+    const PROEKT = /^(одобрен\S*\s.*проект|инвестиционен\s+проект|технически\s+.*проект)/i;
+    const dogovor = _a15PoIme(project, st, DOGOVOR);
+    const proekt = _a15PoIme(project, st, PROEKT);
     // Протокол 2 при сграда, 2а при линеен — датата е една и съща в чеклиста,
     // а шаблонът има два реда и вторият изчезва, когато не му е мястото.
     const lineen = String(st.vid || '') === 'lineen';
     const redove = [
         ['Дата_Акт', o.data_akt],
-        ['Проекти_Одобрени', _a15NomerData(_a15Vpisan(project, /одобрен.*проект|проект.*одобрен/i)).data
-            || _a15OtTetradka(project, st, /одобрен.*проект|проект.*одобрен/i).data],
+        ['Проекти_Одобрени', proekt.data],
         // 1.2 по истинския Акт 15 (операторът, 06.11.2026): виза, издател на
         // проекта, частите, заверките на нивата.
         ['Виза_Дата', _a15OtTetradka(project, st, /виза/i).data],
         ['Виза_Издател', _a15OtTetradka(project, st, /виза/i).izdatel],
-        ['Проект_Издател', _a15OtTetradka(project, st, /одобрен.*проект|проект.*одобрен/i).izdatel],
+        ['Проект_Издател', _a15OtTetradka(project, st, PROEKT).izdatel],
         ['Проект_Части', _a15ChastiProekt(project)],
         ['Нива_Заверки', _a15Niva(st).join('\n')],
         // Същите дати — в „Днес, …“ на раздел III на Протокол 2 (10.11.2026).
@@ -2754,7 +2785,7 @@ function _a15Redove(project, st) {
             const zk = _a15OtTetradka(project, st, /заповедна\s+книга/i);
             return [['ЗК_Номер', zk.nomer], ['ЗК_Дата', zk.data], ['ЗК_Заверител', zk.izdatel]];
         })(),
-        ['Договори_Списък', _a15Vpisan(project, DOGOVOR)],
+        ['Договори_Списък', _a15NomerOt(dogovor)],
         ['Договор_СМР_Номер', dogovor.nomer],
         ['Договор_СМР_Дата', dogovor.data],
         [lineen ? 'Протокол_2а_Дата' : 'Протокол_2_Дата',
