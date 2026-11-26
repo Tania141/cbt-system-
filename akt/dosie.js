@@ -198,6 +198,9 @@ function dosieSpisakHtml(z) {
         <p class="poyasnenie">Файловете не се пазят — пазят се прочетените факти, с цитат
            и страница. Клик отваря какво е разбрал четецът.</p>
         ${redove.map(d => dosieRedHtml(d, potv)).join('')}
+        ${(() => { const dv = dosieDvoinici(z.st, z.s2); return dv.length ? `<p class="predupr">В описа има
+            ${dv.length} записа, които повтарят документ от досието или са от файл, който вече не е тук —
+            те излизат по два пъти в акта. <button class="bt" onclick="dosieMahniDvoinici()">покажи и махни</button></p>` : ''; })()}
         <div class="redica" style="margin-top:12px">
             <button class="bt bt-tih" onclick="dosieIzchisti()">изчисти прочетеното на този строеж · ${(z.s2.dokumenti || []).length}</button>
         </div>
@@ -206,6 +209,39 @@ function dosieSpisakHtml(z) {
 
 function dosieOtProcheteno(st) {
     return (st.dokumenti || []).filter(d => d.ot && d.ot !== 'вписан на ръка');
+}
+
+// ДВОЙНИЦИТЕ И СИРАЦИТЕ В ОПИСА (26.11.2026). Радулов: договорът с ЕРМ
+// № 1205463907 — четири записа в описа, два реда в 1.5 на Акт 15:
+//   · сирак — записан от файл, който вече не е в досието (прочетен преди
+//     изчистването; „изчисти и тях“ се виждаше само при празно досие);
+//   · двойник — записан от „✔ запиши“ с името на реда („прочетен“), а същият
+//     номер вече стои от прочетения файл.
+// Махат се само записите в описа; отметките в чеклиста остават.
+function dosieDvoinici(st, s2) {
+    const fajlove = new Set((s2.dokumenti || []).flatMap(d => [d.fajl, d.id]).filter(Boolean)
+        .map(x => String(x).split('#')[0]));
+    const otFajl = d => d.ot && d.ot !== 'вписан на ръка' && d.ot !== 'прочетен';
+    const k = n => String(n || '').replace(/[№\s]/g, '').toLowerCase();
+    const nomera = new Set((st.dokumenti || []).filter(d => otFajl(d) && fajlove.has(String(d.ot).split('#')[0]))
+        .map(d => k(d.nomer)).filter(Boolean));
+    return (st.dokumenti || []).filter(d =>
+        (otFajl(d) && !fajlove.has(String(d.ot).split('#')[0]))
+        || (d.ot === 'прочетен' && k(d.nomer) && nomera.has(k(d.nomer))));
+}
+
+function dosieMahniDvoinici() {
+    const z = dosieZhiv();
+    if (!z) return;
+    const dv = dosieDvoinici(z.st, z.s2);
+    if (!dv.length) return;
+    const NR = String.fromCharCode(10);
+    if (!confirm(`Да махна ли ${dv.length} записа от описа?` + NR + NR
+        + dv.map(d => '· ' + d.ime + (d.nomer ? ' — ' + d.nomer : '')).join(NR) + NR + NR
+        + 'Документите в досието и отметките в чеклиста остават.')) return;
+    z.st.dokumenti = (z.st.dokumenti || []).filter(d => !dv.includes(d));
+    aktZapishi();
+    dosieRisuvai();
 }
 
 // ИЗЧИСТИ ПРОЧЕТЕНОТО (26.11.2026). Операторът: „да прочета отново всички

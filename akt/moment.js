@@ -749,6 +749,20 @@ function momentChZapishi(id64) {
     momentSaobshtenie = `<div>„${_e(r.dokument.vid || r.dokument.fajl)}“ е в досието · сверени ${r.svereni}.</div>`;
     if (!aktChakat(z.st).length) momentRazdel = 'lipsva';
     if (r.zaRed) {
+        // ЕДИН ДОКУМЕНТ — ЕДИН ЗАПИС В ОПИСА (26.11.2026). Документът вече е
+        // вписан с истинското си име (`_dokVpishiSverenite`, ot = файлът).
+        // Дотук `momentZatvoriRed` добавяше ВТОРИ запис с името на реда — при
+        // Радулов договорът с ЕРМ № 1205463907 излезе четири пъти в описа на
+        // Акт 15. Сега редът само се отмята, а вписаният документ го помни.
+        const vpisan = (z.st.dokumenti || []).find(x => x.ot === id);
+        if (vpisan) {
+            if (!vpisan.red) vpisan.red = r.zaRed;
+            z.st.nadzor_otmetnati = [...new Set([...(z.st.nadzor_otmetnati || []), r.zaRed])];
+            delete momentHod[r.zaRed];
+            aktZapishi();
+            momentZaredi();
+            return;
+        }
         const v = k => (s2.potvardeni[`${id}::${k}`] || {}).stoynost || (r.dokument[k] || {}).stoynost || '';
         momentZatvoriRed(r.zaRed, [v('nomer') && '№ ' + v('nomer'), v('data') && 'от ' + v('data')]
             .filter(Boolean).join(' '));
