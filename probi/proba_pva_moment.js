@@ -331,14 +331,15 @@ t('прочетеното се отваря в „Чака проверка · 1
   && /Чака проверка · 1/.test(tekst(a.d.querySelector('.razdel-bt-otvoren'))),
   tekst(a.d.getElementById('moment-telo')).slice(0, 300));
 t('и казва за кой ред е качено', /качено за реда „Договор за СМР“/.test(hod), hod);
-t('прочетеното се ПОКАЗВА, преди да влезе', /Прочетох/.test(hod), hod);
+// 26.11.2026: картата е ЕДИН РЕД, както ще влезе в акта (ЗАДАНИЕ-ЕДИН-ЗАПИС) — не „Прочетох:“ + 12 полета.
+t('прочетеното се ПОКАЗВА, преди да влезе — като един ред', /Договор за строителство № 12\/2026 от 01\.03\.2026/.test(hod), hod);
 t('показва номера и датата, които е разбрал',
   /12\/2026/.test(hod) && /01\.03\.2026/.test(hod), hod);
 t('името на файла е само подсказка, не данна', /не влиза никъде/.test(hod), hod);
 t('фактите са под реда — с поле и ✔', !!karta.querySelector('.fakt input.fakt-pole')
   && /✔ вярно е/.test(hod), hod);
 t('документът без ПИ го казва', /не назовава ПИ/.test(hod), hod);
-t('записва се с „✔ запиши“', /✔ запиши в досието/.test(hod), hod);
+t('записва се с един жест „✔ вярно е — запиши“', /✔ вярно е — запиши в досието/.test(hod), hod);
 zapis = JSON.parse(a.w.localStorage.getItem('akt_v5')).projects[0];
 t('нищо не е влязло в чеклиста без ✔',
   !(zapis.nadzor_otmetnati || []).includes('Договор за СМР'), zapis.nadzor_otmetnati);
@@ -354,7 +355,7 @@ a.w.momentChPole(id64, encodeURIComponent('data'), '02.03.2026');
 const sled = tekst(a.d.querySelector('.chakat-proverka .chakasht'));
 t('сверено и поправено се казват', /✓ сверено/.test(sled) && /✓ поправено/.test(sled)
   && /четецът беше прочел „01\.03\.2026“/.test(sled), sled);
-t('бутонът брои сверените', /сверени 2 от/.test(sled), sled);
+t('„подробно“ казва кое е сверено и кое поправено', /✓ сверено/.test(sled) && /✓ поправено/.test(sled), sled);
 
 a.w.momentChZapishi(id64);
 await new Promise(r => setTimeout(r, 200));

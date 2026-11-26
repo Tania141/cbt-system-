@@ -440,14 +440,66 @@ function momentChakatHtml(z) {
     </div>`;
 }
 
+// КАРТАТА — ЕДИН РЕД (26.11.2026). Заданието (ЗАДАНИЕ-ЕДИН-ЗАПИС, обсъдено 25.11):
+// документът става един ред, както ще влезе в акта — едно поле за поправка и
+// един „✔ вярно е“. Номерът и датата се взимат от реда и се показват дребно;
+// не се намерят ли — казва се. УПИ, адрес, възложител — един ред за проверка.
+// Слепени два документа — „да ги разделя?“. Отделните полета — свити в
+// „подробно“, за редките случаи. Операторът, 26.11: „това също не е поправено“.
+const _M_REDNI = ['naimenovanie', 'nomer', 'data', 'material', 'proizvoditel', 'izdatel',
+                  'nt_tom', 'nt_reg', 'nt_delo'];
+const _M_OBEKTNI = k => /^obekt\./.test(k) || /^u\d+\.ime$/.test(k);
+
+function _mStoynost(d, k) {
+    const v = (d._potv || {})[k];
+    if (v) return String(v.stoynost || '');
+    const f = (typeof _s2Fakti === 'function' ? _s2Fakti(d) : []).find(x => x.k === k);
+    return f ? String(f.obj.stoynost || '') : '';
+}
+
+// Редът, както ще влезе в акта: наименование № номер от дата — материал — производител/издател.
+function momentChRed(d) {
+    if (d._red) return d._red;
+    const v = k => _mStoynost(d, k).trim();
+    let ime = v('naimenovanie') || d.vid || '';
+    const nomer = v('nomer'), data = v('data');
+    const nt = [v('nt_tom') && `том ${v('nt_tom')}`, v('nt_reg') && `рег. № ${v('nt_reg')}`, v('nt_delo') && `дело № ${v('nt_delo')}`].filter(Boolean);
+    let red = ime;
+    if (nomer && !ime.includes(nomer)) red += ` № ${nomer}`;
+    if (nt.length) red += `, ${nt.join(', ')}`;
+    if (data && !ime.includes(data)) red += ` от ${data}`;
+    const mat = v('material'), izd = v('proizvoditel') || v('izdatel');
+    if (mat && !red.includes(mat)) red += ` — ${mat}`;
+    if (izd && !red.includes(izd)) red += ` — ${izd}`;
+    return red.trim();
+}
+
+// От реда — обратно номер, дата, наименование, материал, производител.
+function _mRazberiRed(red) {
+    const chasti = String(red || '').split(/\s+—\s+/);
+    const glava = chasti[0];
+    const data = (glava.match(/\d{1,2}\.\d{1,2}\.\d{4}/) || [''])[0];
+    const nm = glava.match(/№\s*([^,]+?)(?=\s+от\s+\d|\s*,|$)/);
+    const nomer = nm ? nm[1].trim() : '';
+    const ime = glava.split(/\s+№|\s+от\s+\d{1,2}\./)[0].replace(/[\s,.;]+$/, '').trim();
+    return { ime, nomer, data, material: chasti[1] || '', proizvoditel: chasti[2] || '' };
+}
+
+// Слепени ли са два документа: „… СЕРТИФИКАТ … . Декларация за …“ / „… и Протокол …“.
+const _M_ROD = '(?:сертификат|декларация|протокол|удостоверение|договор|становище|писмо|заповед)';
+function _mSlepeni(d) {
+    const t = _mStoynost(d, 'naimenovanie') || d.vid || '';
+    const m = t.match(new RegExp(`^(.{8,}?)(?:[.;]\\s+|\\s+и\\s+)(${_M_ROD}.{5,})$`, 'i'));
+    if (!m || !new RegExp(`^${_M_ROD}`, 'i').test(m[1].trim())) return null;
+    return [m[1].trim().replace(/[.;]+$/, ''), m[2].trim()];
+}
+
 function momentChakashtHtml(z, d) {
     const id64 = encodeURIComponent(_mId(d));
     const potv = d._potv || {};
     const fakti = typeof _s2Fakti === 'function' ? _s2Fakti(d) : [];
     if (!fakti.some(x => x.k === 'naimenovanie'))
         fakti.unshift({ k: 'naimenovanie', etiket: 'наименование', obj: { stoynost: '' } });
-    const svereni = fakti.filter(x => potv[x.k]).length;
-    const nomer = (d.nomer && d.nomer.stoynost) || '', data = (d.data && d.data.stoynost) || '';
     const pi = aktPiNaDokumenta(d, z.p.pi);
     const piHtml = pi.status === 'razlichen'
         ? `<div class="predupr chakasht-pi"><strong>Не е за този обект?</strong> ПИ в документа е
@@ -456,24 +508,104 @@ function momentChakashtHtml(z, d) {
         : pi.status === 'savpada'
         ? `<div class="otkade">ПИ съвпада с обекта · <span class="mono">${_e(pi.dok)}</span></div>`
         : `<div class="otkade">документът не назовава ПИ${pi.dok ? ` („${_e(pi.dok)}“)` : ''} — провери на хартията</div>`;
-    const chakat = fakti.filter(x => !potv[x.k] && String(x.obj.stoynost || '').trim());
+    const red = momentChRed(d);
+    const r = _mRazberiRed(red);
+    const nomer = _mStoynost(d, 'nomer') || r.nomer, data = _mStoynost(d, 'data') || r.data;
+    const otReda = d._red ? r : { nomer, data };
+    const vzeti = [otReda.nomer ? `номер: ${otReda.nomer}` : 'в реда няма номер',
+                   otReda.data ? `дата: ${otReda.data}` : 'няма дата'].join(' · ');
+    // За обекта — един ред: УПИ · адрес · възложител (каквото документът казва).
+    const ob = fakti.filter(x => _M_OBEKTNI(x.k)).map(x => {
+        const et = x.k === 'obekt.upi' ? 'УПИ' : x.k === 'obekt.adres' ? 'адрес' : x.k === 'obekt.identifikator' ? 'идентификатор' : x.etiket;
+        return `${et} ${x.obj.stoynost}`;
+    });
+    const slepeni = _mSlepeni(d);
+    const ostanali = fakti.filter(x => !_M_REDNI.includes(x.k) && !_M_OBEKTNI(x.k));
     return `
     <div class="chakasht" data-id="${_e(_mId(d))}">
         ${d._za_red ? `<div class="otkade">качено за реда „${_e(d._za_red)}“</div>` : ''}
-        <div class="chakasht-glava">Прочетох: <strong>${_e(d.vid || aktPodskazkaOtIme(d.fajl))}</strong>
-            ${nomer ? ` · № ${_e(nomer)}` : ''}${data ? ` · от ${_e(data)}` : ''}</div>
-        <div class="otkade">файл „${_e(d.fajl)}“${d.id && d.id !== d.fajl ? ` · ${_e(d.id.slice(d.fajl.length).replace(/^#/, ''))}` : ''}
-            · името на файла не влиза никъде</div>
+        <div class="otkade">файл „${_e(d.fajl)}“ · името на файла не влиза никъде</div>
+        ${slepeni ? `<div class="predupr">Тук изглежда има два документа: „${_e(slepeni[0].slice(0, 60))}“ и „${_e(slepeni[1].slice(0, 60))}“ —
+            <button class="bt" onclick="momentChRazdeli('${id64}')">да ги разделя?</button></div>` : ''}
+        <textarea class="fakt-pole karta-red" rows="${Math.min(5, Math.ceil(red.length / 80) + 1)}"
+            onchange="momentChRedPromeni('${id64}', this.value)">${_e(red)}</textarea>
+        <div class="otkade">${_e(vzeti)} — взети от реда</div>
+        ${ob.length ? `<div class="otkade karta-obekt">За обекта: ${_e(ob.join(' · '))} — свери с хартията</div>` : ''}
         ${piHtml}
-        <div class="chakasht-fakti">
-            ${fakti.map(x => momentChFaktHtml(id64, x, potv[x.k])).join('')}
-        </div>
         <div class="chakasht-zhestove">
-            <button class="bt bt-glaven" onclick="momentChZapishi('${id64}')">✔ запиши в досието · сверени ${svereni} от ${fakti.length}</button>
-            ${chakat.length > 1 ? `<button class="bt" onclick="momentChVsichki('${id64}')">✔ вярно е — всички ${chakat.length}</button>` : ''}
+            <button class="bt bt-glaven" onclick="momentChVyarnoE('${id64}')">✔ вярно е — запиши в досието</button>
             <button class="bt bt-tih" onclick="momentChMahni('${id64}')">махни</button>
         </div>
+        <details class="karta-podrobno"><summary>подробно — всички прочетени полета · ${fakti.length}${ostanali.length ? ` (още ${ostanali.length} извън реда)` : ''}</summary>
+            <div class="chakasht-fakti">${fakti.map(x => momentChFaktHtml(id64, x, potv[x.k])).join('')}</div>
+        </details>
     </div>`;
+}
+
+// Поправка в реда: написаното бие прочетеното; номерът, датата и
+// наименованието се взимат от реда.
+function momentChRedPromeni(id64, nov) {
+    const { d } = _momentCh(id64);
+    if (!d) return;
+    const red = String(nov || '').trim();
+    if (!red) { delete d._red; aktZapishi(); momentRisuvai(); return; }
+    d._red = red;
+    const r = _mRazberiRed(red);
+    const prochetena = k => { const f = _momentChFakt(d, k); return f ? String(f.obj.stoynost || '') : ''; };
+    for (const [k, v] of [['naimenovanie', r.ime], ['nomer', r.nomer], ['data', r.data], ['material', r.material], ['proizvoditel', r.proizvoditel]]) {
+        if (v) _momentChSlozhi(d, k, v, prochetena(k));
+        else if (k === 'nomer' || k === 'data') delete (d._potv || {})[k];
+    }
+    aktZapishi();
+    momentRisuvai();
+}
+
+// „✔ вярно е“ — един жест: редът и каквото е в него са потвърдени, документът
+// влиза в досието. Полетата извън реда (участници, позовавания) остават
+// несверени — личи в досието („сверени N от M“), не се потвърждават наум.
+function momentChVyarnoE(id64) {
+    const { d } = _momentCh(id64);
+    if (!d) return;
+    const red = momentChRed(d);
+    for (const f of (typeof _s2Fakti === 'function' ? _s2Fakti(d) : [])) {
+        if ((d._potv || {})[f.k]) continue;
+        const st = String(f.obj.stoynost || '');
+        if (st.trim() && (_M_REDNI.includes(f.k) || _M_OBEKTNI(f.k)) && (red.includes(st) || _M_OBEKTNI(f.k) || f.k === 'naimenovanie'))
+            _momentChSlozhi(d, f.k, st, st);
+    }
+    aktZapishi();
+    momentChZapishi(id64);
+}
+
+// „Да ги разделя?“ — слепените стават два чакащи документа, всеки със своя ред.
+function momentChRazdeli(id64) {
+    const { z, d } = _momentCh(id64);
+    if (!d) return;
+    const dve = _mSlepeni(d);
+    if (!dve) return;
+    const chast = (t, star) => {
+        const nm = t.match(/№\s*([^,]+?)(?=\s+от\s+\d|\s*,|$)/), dt = t.match(/\d{1,2}\.\d{1,2}\.\d{4}/);
+        return { stoynost: t, citat: t, stranica: star && star.stranica, _nomer: nm ? nm[1].trim() : '', _data: dt ? dt[0] : '' };
+    };
+    const a = chast(dve[0], d.naimenovanie), b = chast(dve[1], d.naimenovanie);
+    const vtori = JSON.parse(JSON.stringify(d));
+    vtori.id = _mId(d) + '~2';
+    vtori.naimenovanie = { stoynost: b.stoynost, citat: b.citat, stranica: b.stranica };
+    vtori.vid = b.stoynost.split(/\s+№/)[0].slice(0, 120);
+    if (b._nomer) vtori.nomer = { stoynost: b._nomer };
+    if (b._data) vtori.data = { stoynost: b._data };
+    delete vtori._potv; delete vtori._red;
+    d.naimenovanie = { stoynost: a.stoynost, citat: a.citat, stranica: a.stranica };
+    d.vid = a.stoynost.split(/\s+№|\s+\w*\d/)[0].slice(0, 120);
+    d.nomer = a._nomer ? { stoynost: a._nomer } : { stoynost: '' };
+    d.data = a._data ? { stoynost: a._data } : { stoynost: '' };
+    delete d._potv; delete d._red;
+    // Материалът е на декларацията (втората част), не на сертификата.
+    if (/деклараци/i.test(b.stoynost) && !/деклараци/i.test(a.stoynost)) delete d.material;
+    const s2 = z.st.sloy2.od;
+    s2.chakat.splice(s2.chakat.indexOf(d) + 1, 0, vtori);
+    aktZapishi();
+    momentRisuvai();
 }
 
 function momentChFaktHtml(id64, x, v) {
