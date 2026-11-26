@@ -260,6 +260,7 @@ function loadData() {
         localStorage.removeItem('cbt_v5');
     }
     const saved = localStorage.getItem('akt_v5');
+    globalThis._aktKoga = localStorage.getItem('akt_v5_koga') || '';
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
@@ -390,12 +391,25 @@ function nomeraNaObekti(spisak) {
     });
 }
 
+// Печатът срещу два раздела — виж `akt/yadro.js` (26.11.2026). Тук само се
+// ползва, ако го има (в новото ПВА), иначе — същото, написано наново.
+function _osChuzhdZapis() {
+    if (typeof _aktChuzhdZapis === 'function') return _aktChuzhdZapis();
+    try { const k = localStorage.getItem('akt_v5_koga'); return !!k && k !== (globalThis._aktKoga || ''); }
+    catch (e) { return false; }
+}
 function saveData() {
+    if (_osChuzhdZapis()) {
+        showAlert('error', '⛔ НЕ Е ЗАПИСАНО: друг раздел е записал по-ново. Презареди страницата (F5) и направи промяната пак.');
+        return false;
+    }
     const predi = appData.savedAt;
     appData.savedAt = new Date().toISOString();
     try {
         const tekst = JSON.stringify(appData);
         localStorage.setItem('akt_v5', tekst);
+        try { localStorage.setItem('akt_v5_koga', appData.savedAt); } catch (e) {}
+        globalThis._aktKoga = appData.savedAt;
         // Предупреждение ПРЕДИ да свърши мястото — след като е свършило е късно.
         if (tekst.length > 4 * 1024 * 1024) _predupredizaMyasto(tekst.length);
         return true;

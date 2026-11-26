@@ -54,7 +54,7 @@ function dosieRisuvai() {
         + dosieIstoriyaHtml(z)
         + dosieSpisakHtml(z)
         + dosieSobstvenostHtml(z)
-        + dosieKandidatiHtml();
+        + dosieKandidatiHtml(z);
 }
 
 // ── Прочетеното в Собствеността ──────────────────────────────────────────────
@@ -620,8 +620,22 @@ async function dosieZarediKandidati() {
     dosieRisuvai();
 }
 
-function dosieKandidatiHtml() {
-    const spisak = dosieKandidati;
+// ЕДНО ТВЪРДЕНИЕ, НЕ ДВЕ (26.11.2026). Операторът: „Има ли ги или ги няма —
+// 2 различни твърдения.“ Кандидатът се записва веднъж, когато документът е
+// прочетен без ред; после редът идва (четецът, речникът, „✔ това е“), а
+// кандидатът стоеше. Сега: документ от това досие, който вече доказва ред,
+// не стои във „Видени, но неописани“.
+function dosieKandOpisani(s2) {
+    const k = typeof _kandKlyuch === 'function' ? _kandKlyuch
+        : x => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/[„“"»«]/g, '');
+    const t = v => (v && typeof v === 'object' ? v.stoynost : v) || '';
+    return new Set(((s2 && s2.dokumenti) || []).filter(d => String(d.cheklist_red || '').trim())
+        .map(d => k(t(d.vid))).filter(Boolean));
+}
+
+function dosieKandidatiHtml(z) {
+    const opisani = dosieKandOpisani(z && z.s2);
+    const spisak = (dosieKandidati || []).filter(c => !opisani.has(c.klyuch));
     if (!spisak || !spisak.length) return '';
     const imeSast = kod => (typeof _SASTAVKI !== 'undefined'
         ? (_SASTAVKI.find(x => x.kod === kod) || {}).ime || kod : kod);

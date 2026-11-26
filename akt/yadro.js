@@ -30,6 +30,30 @@ let aktDanni = { projects: [], consultants: [], history: [] };
 // (23.10.2026)
 let aktProcheteno = false;
 
+// ДВА РАЗДЕЛА — ПОСЛЕДНИЯТ НЕ ТРИЕ ТИХО (26.11.2026). Всеки отворен раздел
+// държи всичко в паметта и при запис пише ЦЯЛОТО в `akt_v5`. Отворен ли е
+// друг раздел (старото ПВА, второ копие на новото), записът му връща
+// по-старото — библиотеката с подобни, вписани дати. Сега всеки запис оставя
+// печат (`akt_v5_koga`); раздел, който не е видял последния печат, НЕ пише и
+// казва „презареди“.
+function _aktChuzhdZapis() {
+    try {
+        const k = localStorage.getItem('akt_v5_koga');
+        return !!k && k !== (globalThis._aktKoga || '');
+    } catch (e) { return false; }
+}
+function _aktPechat(koga) {
+    try { localStorage.setItem('akt_v5_koga', koga); } catch (e) {}
+    globalThis._aktKoga = koga;
+}
+const _AKT_CHUZHD = 'НЕ Е ЗАПИСАНО: друг раздел (или старото ПВА) е записал по-ново. '
+    + 'Презареди тази страница (F5) и направи промяната пак. Затвори излишните раздели.';
+
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', e => {
+    if (e.key === 'akt_v5_koga' && e.newValue && e.newValue !== globalThis._aktKoga)
+        aktKazhiZapis('Друг раздел току-що записа. Презареди тази страница (F5), преди да пишеш тук.', true);
+});
+
 function aktZaredi() {
     try {
         const t = localStorage.getItem(AKT_KLYUCH);
@@ -39,6 +63,7 @@ function aktZaredi() {
         // празния и мълчаливо не вижда нищо: при Екран 6 кандидатите не се
         // четяха, защото `appData.apiUrl` беше празно. (27.10.2026)
         if (t) Object.assign(aktDanni, JSON.parse(t));
+        globalThis._aktKoga = localStorage.getItem('akt_v5_koga') || '';
         aktProcheteno = true;
     } catch (e) {
         console.warn('akt_v5 не се чете:', e);
@@ -53,11 +78,16 @@ function aktZapishi() {
         console.error('aktZapishi: данните не са прочетени — НЕ пиша, за да не изтрия.');
         return false;
     }
+    if (_aktChuzhdZapis()) {
+        aktKazhiZapis(_AKT_CHUZHD, true);
+        return false;
+    }
     const predi = aktDanni.savedAt;
     try {
         aktDanni.savedAt = new Date().toISOString();
         const tekst = JSON.stringify(aktDanni);
         localStorage.setItem(AKT_KLYUCH, tekst);
+        _aktPechat(aktDanni.savedAt);
         // Предупреждение ПРЕДИ мястото да свърши (около 5 MB за браузъра).
         if (tekst.length > 4 * 1024 * 1024)
             aktKazhiZapis(`Мястото в браузъра свършва: ${(tekst.length / 1048576).toFixed(1)} MB от около 5. `
