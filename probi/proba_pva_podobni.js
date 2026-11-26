@@ -158,8 +158,19 @@ const GRUPI = () => [
     const p2 = r2.grupi.find(g => g.moment === 'Протокол 2');
     t('Протокол 2 получава „Виза за проектиране“, етап „начало“',
       p2.dokumenti.some(x => x.dokument === 'Виза за проектиране' && x.etap === 'начало' && x.ot_podoben), p2.dokumenti);
-    t('броят се: процентът на Акт 15 вече брои и редовете от подобния',
-      w.aktDveChisla(r2.grupi.find(g => g.moment === 'Акт 15'), []).podpis.ot === 4, w.aktDveChisla(r2.grupi.find(g => g.moment === 'Акт 15'), []).podpis);
+    // ОБЪРНАТО 26.11.2026: редовете от подобния са „за свързване“ — свити долу и
+    // НЕ се броят, докато не кажеш (операторът: „затрупахме с инфо“). „Искам го“
+    // ги прави истински ред — тогава се броят.
+    t('нерешените редове от подобния НЕ свалят процента', w.aktDveChisla(r2.grupi.find(g => g.moment === 'Акт 15'), []).podpis.ot === 2,
+      w.aktDveChisla(r2.grupi.find(g => g.moment === 'Акт 15'), []).podpis);
+    t('и стоят в свитата група „от подобния — за свързване“', /от подобния \(Жилищна сграда — Овча купел\) · \d+ — за свързване/.test(tx(d.querySelector('.za-svarzvane summary'))),
+      tx(d.querySelector('.za-svarzvane summary')));
+    t('бутонът казва колко са отделно', /Липсва ми · 2 · \d+ от подобния/.test(tx(d.querySelector('.razdel-bt'))), tx(d.querySelector('.razdel-bt')));
+    z.st.podobni_iskani = ['Акт обр. 12 по част ВиК'];
+    const r2b = await w.aktNadzor(z.p, z.st);
+    t('„искам го“ → истински ред, брои се', w.aktDveChisla(r2b.grupi.find(g => g.moment === 'Акт 15'), []).podpis.ot === 3,
+      w.aktDveChisla(r2b.grupi.find(g => g.moment === 'Акт 15'), []).podpis);
+    z.st.podobni_iskani = [];
     z.st.nadzor_otmetnati = [...(z.st.nadzor_otmetnati || []), 'Акт обр. 12 по част ВиК'];
     const r3 = await w.aktNadzor(z.p, z.st);
     t('отметнатият ред от подобния става „налично“',

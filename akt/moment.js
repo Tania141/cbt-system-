@@ -112,7 +112,9 @@ function momentRisuvai() {
 // момент. „Чака проверка“ излиза само когато има прочетено, което чака.
 // Разминаването от сверката личи и върху затворения бутон.
 function momentRazdeliHtml(z, dve) {
-    const lipsvat = momentRedove().filter(r => !momentImam(r) && r.sastoyanie !== 'не му е времето');
+    const lipsvatVsichki = momentRedove().filter(r => !momentImam(r) && r.sastoyanie !== 'не му е времето');
+    const lipsvat = lipsvatVsichki.filter(r => !r.za_svarzvane);
+    const zaSv = lipsvatVsichki.length - lipsvat.length;
     const imam = momentRedove().filter(r => momentImam(r));
     const chakat = aktChakat(z.st);
     if (momentRazdel === 'chakat' && !chakat.length) momentRazdel = 'lipsva';
@@ -126,7 +128,7 @@ function momentRazdeliHtml(z, dve) {
         : momentLipsvaHtml(dve);
     return `
     <div class="razdeli-prevkl">
-        ${buton('lipsva', `Липсва ми · ${lipsvat.length}${lipsvaSv
+        ${buton('lipsva', `Липсва ми · ${lipsvat.length}${zaSv ? ` <span class="razdel-sivo-broy">· ${zaSv} от подобния</span>` : ''}${lipsvaSv
             ? ` <span class="razdel-cherveno-broy">· ${lipsvaSv} актът вече ${lipsvaSv === 1 ? 'го изрежда' : 'ги изрежда'}</span>` : ''}`)}
         ${buton('imam', `Имам · ${imam.length}${cherveno(sv.broiNePishe.length)}`)}
         ${chakat.length ? buton('chakat', `Чака проверка · ${chakat.length}`, 'razdel-bt-zlato') : ''}
@@ -631,22 +633,54 @@ function momentSverkaOtmetni(k) {
 // ЕДИН ЖЕСТ ЗАТВАРЯ ЕДИН РЕД — няма „Впиши“ + „Запази“ + „Провери“.
 
 function momentLipsvaHtml(dve) {
-    const lipsvat = momentRedove().filter(r => !momentImam(r)
+    const vsichkiLipsvat = momentRedove().filter(r => !momentImam(r)
         && r.sastoyanie !== 'не му е времето');
+    // Редовете от подобния „за свързване“ — отделно, свити долу (26.11.2026).
+    const zaSvarzvane = vsichkiLipsvat.filter(r => r.za_svarzvane);
+    const lipsvat = vsichkiLipsvat.filter(r => !r.za_svarzvane);
     const neEVremeto = momentRedove().filter(r => r.sastoyanie === 'не му е времето').length;
+    const grupa = momentZaSvarzvaneHtml(zaSvarzvane);
     if (!lipsvat.length) {
         // „Нищо“ значи нищо, на което МУ Е ВРЕМЕТО. Редовете, чийто ред още не
         // е дошъл, се броят в подписа и затова се казват отделно — иначе
         // екранът би обещавал повече, отколкото знае.
         return `<div class="kutiya-razdel razdel-telo">
             <p>Нищо, на което му е времето.${neEVremeto
-                ? ` ${neEVremeto} чака${neEVremeto === 1 ? '' : 'т'} реда си.` : ''}</p></div>`;
+                ? ` ${neEVremeto} чака${neEVremeto === 1 ? '' : 'т'} реда си.` : ''}</p>${grupa}</div>`;
     }
     return `
     <div class="kutiya-razdel razdel-telo">
         ${lipsvat.map(r => momentLipsvashtRed(r)).join('')}
         ${neEVremeto ? `<p class="poyasnenie">${neEVremeto} още — не им е времето.</p>` : ''}
+        ${grupa}
     </div>`;
+}
+
+// ОТ ПОДОБНИЯ — ЗА СВЪРЗВАНЕ (26.11.2026). Каквото подобният е имал, а то не
+// намира ред в чеклиста: свито долу, не сваля процента. Всеки ред се топи с
+// едно: ✔ това е (предложеното) · същото като… (избираш ред) · искам го (става
+// истински ред) · не се отнася. Каквото свържеш — речникът го помни за всички.
+function momentZaSvarzvaneHtml(redove) {
+    if (!redove.length) return '';
+    const obshti = momentRedove().filter(r => !r.ot_podoben).map(r => r.dokument);
+    const opcii = obshti.map(x => `<option value="${_e(x)}">${_e(x)}</option>`).join('');
+    const ime = (redove[0].ot_podoben[0] || {}).obekt_ime || 'подобния';
+    return `<details class="za-svarzvane"><summary>от подобния (${_e(String(ime).slice(0, 40))}) · ${redove.length} — за свързване</summary>
+        <p class="poyasnenie">Каквото подобният е имал, а чеклистът го няма с това име. Не сваля процента, докато не кажеш.</p>
+        ${redove.map(r => {
+            const k = encodeURIComponent(r.dokument);
+            return `<div class="lipsva-red lipsva-red-podoben" data-dokument="${_e(r.dokument)}">
+                <div class="lipsva-ime">${_e(r.dokument)}${momentPodobenHtml(r)}</div>
+                ${momentRechnikHtml(r)}
+                <div class="lipsva-zhestove">
+                    <select class="podoben-vid-izbor" onchange="this.value && rechnikTovaE('${k}', encodeURIComponent(this.value))">
+                        <option value="">същото като…</option>${opcii}</select>
+                    <button class="bt" onclick="podobniIskamGo('${k}')">искам го</button>
+                    <button class="bt bt-tih" onclick="momentNeSeOtnasya('${k}')">— не се отнася</button>
+                </div>
+            </div>`;
+        }).join('')}
+    </details>`;
 }
 
 // „ЛИПСВА МИ“ ПРАЩА, НЕ ЧЕТЕ (кройката от 17.11.2026). Фактът се ражда на едно
@@ -712,6 +746,13 @@ function momentPodobenHtml(r) {
 // „В досието има „…“ — ✔ това е · не е“ (речникът, 25.11.2026). Само предлага.
 function momentRechnikHtml(r) {
     const z = momentZhiv();
+    // Ред от подобния, който прилича на ред от чеклиста — „същото като …?“ (стъпка 3).
+    if (r.ot_podoben && r.predlozhenie_red && typeof rechnikTovaE === 'function') {
+        const v = encodeURIComponent(r.dokument), red = encodeURIComponent(r.predlozhenie_red);
+        return `<div class="rk-predlozhenie">същото като „${_e(r.predlozhenie_red)}“?
+            <button class="bt bt-glaven" onclick="rechnikTovaE('${v}','${red}')">✔ това е</button>
+            <button class="bt bt-tih" onclick="rechnikNeE('${v}','${red}')">не е</button></div>`;
+    }
     if (!z || typeof rechnikPredlozhenie !== 'function') return '';
     const p = rechnikPredlozhenie(z.st, r.dokument);
     if (!p) return '';

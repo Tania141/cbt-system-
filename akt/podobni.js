@@ -300,10 +300,28 @@ function podobniMomentZaRed(r) {
     return /започване|законосъобразн/i.test(razdeli) ? 'Протокол 2' : 'Акт 15';
 }
 
+// Декларация или сертификат за вложен материал — техният ред е таблицата.
+function podobniEMaterial(ime) {
+    const s = String(ime || '').toLowerCase();
+    return /деклараци/.test(s) || /\(таблица\)/.test(s)
+        || (/сертификат.{0,40}(качеств|съответств|материал|продукт)/.test(s) && !/асансьор|подемник/.test(s));
+}
+
+// „Искам го“ — ред от подобния става истински ред за този строеж.
+function podobniIskamGo(k) {
+    const z = typeof momentZhiv === 'function' ? momentZhiv() : null;
+    if (!z) return;
+    z.st.podobni_iskani = [...new Set([...(z.st.podobni_iskani || []), decodeURIComponent(k)])];
+    aktZapishi();
+    momentZaredi();
+}
+
 function podobniOpisPri(pri) {
     return pri.map(x => {
         const broy = podobniBroyHtml(x);
-        return `при ${String(x.obekt_ime || '').slice(0, 40)}${String(x.obekt_ime || '').length > 40 ? '…' : ''}${broy ? ': ' + broy : ''}`;
+        // Слято през речника — казва под какво име е било при подобния и кой го е слял.
+        const kak = x.prez_rechnik ? ` („${x.ime}“ — ${x.prez_rechnik})` : '';
+        return `при ${String(x.obekt_ime || '').slice(0, 40)}${String(x.obekt_ime || '').length > 40 ? '…' : ''}${broy ? ': ' + broy : ''}${kak}`;
     }).join(' · ');
 }
 
@@ -330,16 +348,33 @@ function podobniVMomentite(p, st, grupi) {
     try { nalichni = aktNalichni(st, p) || []; } catch (e) { nalichni = []; }
     const edno = (a, b) => typeof rechnikEdnoLi === 'function' ? rechnikEdnoLi(a, b) : kl(a) === kl(b);
     let dobaveni = 0, bez_myasto = 0;
+    // Редовете на чеклиста (не на подобния) — срещу тях се търси „същото като…“.
+    const redoveNaCheklista = vsichkiRedove.map(d => d.dokument);
+    const iskani = new Set((st.podobni_iskani || []).map(kl));
     for (const r of po.values()) {
-        const sashtiyat = vsichkiRedove.find(d => (r.cheklist_red && edno(d.dokument, r.cheklist_red)) || edno(d.dokument, r.ime));
+        // Декларациите и сертификатите за материали — извън речника и извън
+        // „Липсва ми“: те са много на обект, отделни по номер и дата, и се
+        // сравняват по материал, не по име (операторът, 26.11.2026). Отиват в
+        // таблицата „Вложени материали“ — отделна стъпка.
+        if (podobniEMaterial(r.ime)) continue;
+        // Стъпка 3 (26.11.2026): речникът знае ли името от подобния акт?
+        const poRechnik = typeof rechnikRedZaVid === 'function' ? rechnikRedZaVid(r.ime) : null;
+        const sashtiyat = vsichkiRedove.find(d => (poRechnik && edno(d.dokument, poRechnik.red))
+            || (r.cheklist_red && edno(d.dokument, r.cheklist_red)) || edno(d.dokument, r.ime));
         if (sashtiyat) {
-            sashtiyat.pri_podoben = (sashtiyat.pri_podoben || []).concat(r.pri);
+            sashtiyat.pri_podoben = (sashtiyat.pri_podoben || []).concat(
+                poRechnik ? r.pri.map(x => ({ ...x, prez_rechnik: poRechnik.kak })) : r.pri);
             continue;
         }
         const g = grupi.find(x => x.moment === podobniMomentZaRed(r));
         if (!g) { bez_myasto++; continue; }
         const red = { dokument: r.ime, uslovie: '', etap: g.moment === 'Протокол 2' ? 'начало' : 'подпис',
                       iskan_na: g.moment, ot_podoben: r.pri };
+        const blizak = typeof rechnikNaiBlizakRed === 'function' ? rechnikNaiBlizakRed(r.ime, redoveNaCheklista) : null;
+        if (blizak) red.predlozhenie_red = blizak.red;
+        // „За свързване“, докато не кажеш: свито долу, не сваля процента. „Искам
+        // го“ го прави истински ред — в основния списък и в процента.
+        if (iskani.has(kl(r.ime))) red.iskan = true; else red.za_svarzvane = true;
         red.sastoyanie = nalichni.includes(r.ime) ? 'налично' : (g.minal === false ? 'не му е времето' : 'очаква се');
         (g.dokumenti = g.dokumenti || []).push(red);
         vsichkiRedove.push(red);

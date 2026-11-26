@@ -40,7 +40,7 @@ const RK_UCHI_NAI_CHESTO = 24 * 3600 * 1000;   // ученето по броен
 const _rk = s => String(s || '').toLowerCase().replace(/[„“”"«»()\.,;:—–-]/g, ' ').replace(/\s+/g, ' ').trim();
 const _RK_STOP = new Set(['на', 'за', 'и', 'в', 'от', 'с', 'по', 'към', 'или', 'при', 'се', 'до', 'със', 'не', 'е']);
 const _RK_ROD = ['догово', 'станов', 'акт', 'проток', 'скица', 'нотари', 'удосто', 'разреш', 'запове', 'деклар', 'сертиф',
-                 'писмо', 'проект', 'план', 'виза', 'книга', 'диплом', 'застра', 'полица', 'списък', 'оценка', 'доклад',
+                 'писмо', 'проект', 'план', 'виза', 'книга', 'диплом', 'застра', 'полица', 'списък', 'оценка', 'доклад', 'инстру',
                  'паспор', 'заснем', 'решени', 'гаранц', 'ревизи', 'дневни', 'съглас'];
 const _rkDumi = s => _rk(s).split(' ').filter(w => w.length > 2 && !_RK_STOP.has(w)).map(w => w.slice(0, 6));
 function _rkRazlozhi(s) {
@@ -222,4 +222,51 @@ function rechnikNeE(vid, red) {
         const k = _rk(vid);
         if (r.chetec && r.chetec[k] && _rk(r.chetec[k].red) === _rk(red)) delete r.chetec[k];
     });
+}
+
+// ── Стъпка 3 (26.11.2026): подобният обект през записите ─────────────────────
+// Ред от подобния акт е „име“ като всяко друго: ако речникът го знае — сочи
+// към реда си; ако не — най-близкият ред от момента се ПРЕДЛАГА („същото като
+// …? ✔ това е · не е“). Същите правила като за досието: същ вид документ, поне
+// две общи думи, без различни образци, без забранени двойки.
+// Общ ред на чеклиста („Документи за асансьора“, „Протоколи за мълниезащитната
+// уредба“) събира няколко конкретни документа — „Сертификат за качество на
+// асансьора“, „Гаранционна карта“… Затова срещу общ ред видът не се иска еднакъв:
+// стига една обща съдържателна дума (26.11.2026, мярката на Радулов: 37 реда от
+// Денка, само 3 със „същото като…“, защото редовете на чеклиста са общи).
+const _RK_OBSHT = /^(документ|документи|документация|сертификати|протоколи)(?=\s|$)/;   // \b не знае кирилица
+const _RK_PRAZNI = new Set(['докуме', 'сертиф', 'проток', 'изпитв', 'измерв', 'контро', 'влаган', 'строит', 'обекта']);
+// Кой вид конкретен документ влиза в какъв общ ред (26.11.2026, след мярката:
+// „Акт обр. 12 по част Електро“ ⇒ „Протоколи за … ел. инсталациите“ и
+// „Договор с ВиК“ ⇒ „Документи за противопожарното водоснабдяване“ — грешни).
+// Акт по образец, договор, писмо, становище — никога в общ ред.
+const _RK_PRIEMA = {
+    'проток': ['проток'],
+    'сертиф': ['сертиф'],
+    'докуме': ['сертиф', 'гаранц', 'ревизи', 'проток', 'удосто', 'книга', 'нотари', 'инстру', 'паспор'],
+};
+function _rkShodstvoSObsht(ime, red) {
+    const m = _rk(red).match(_RK_OBSHT);
+    if (!m || _rkObrazec(ime)) return 0;
+    const priema = _RK_PRIEMA[m[1].slice(0, 6)] || [];
+    const rodIme = _rkRazlozhi(ime).rod;
+    if (!rodIme || !priema.some(x => x.startsWith(rodIme) || rodIme.startsWith(x.slice(0, 5)))) return 0;
+    const sad = s => new Set(_rkDumi(s).filter(w => !_RK_PRAZNI.has(w)));
+    const A = sad(ime), B = sad(red);
+    if (!B.size) return 0;
+    const obshto = [...B].filter(x => A.has(x)).length;
+    return obshto ? Math.max(RK_PRAG_PREDLOZHENIE, obshto / B.size) : 0;
+}
+
+function rechnikNaiBlizakRed(ime, redove) {
+    if (!_rechnik) return null;
+    const ne = new Set(_rechnik.ne || []);
+    let nai = null;
+    for (const red of redove || []) {
+        if (!red || _rk(red) === _rk(ime) || _rkRazlichniObrazci(ime, red)) continue;
+        if (ne.has(_rk(ime) + '|' + _rk(red))) continue;
+        const s = Math.max(_rkShodstvo(ime, red), _rkShodstvoSObsht(ime, red));
+        if (s >= RK_PRAG_PREDLOZHENIE && (!nai || s > nai.shodstvo)) nai = { red, shodstvo: s };
+    }
+    return nai;
 }
