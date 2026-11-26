@@ -214,8 +214,10 @@ t('казва къде излиза приетият — Акт 15 / Прото�
 // ── изчисти прочетеното (26.11.2026) ────────────────────────────────────────
 {
     const zz = a.w.dosieZhiv();
-    zz.st.dokumenti = [{ ime: 'Разрешение за строеж', nomer: '№ 1', ot: 'прочетен' }, { ime: 'Виза', nomer: '№ 2', ot: 'вписан на ръка' }];
-    zz.st.nadzor_otmetnati = ['Разрешение за строеж', 'Виза', 'Отметнато на ръка'];
+    zz.st.dokumenti = [{ ime: 'Разрешение за строеж', nomer: '№ 1', ot: 'прочетен' }, { ime: 'Виза', nomer: '№ 2', ot: 'вписан на ръка' },
+                       { ime: 'Скица на сграда', red: 'Скица на строежа, нанесен в КККР', nomer: '№ 15', ot: 'Skica na sgradata R30.pdf' }];
+    zz.st.nadzor_otmetnati = ['Скица на строежа, нанесен в КККР'];
+    zz.st.nadzor_otmetnati = ['Разрешение за строеж', 'Виза', 'Отметнато на ръка', 'Скица на строежа, нанесен в КККР'];
     let pitano = '';
     a.w.confirm = s => { pitano = s; return false; };
     const predi = (zz.s2.dokumenti || []).length;
@@ -229,6 +231,9 @@ t('казва къде излиза приетият — Акт 15 / Прото�
     t('„да“ — досието е празно, сверките също', !(zz2.s2.dokumenti || []).length && !Object.keys(zz2.s2.potvardeni || {}).length);
     t('махнати са и отметките, дошли от прочетено', !zz2.st.nadzor_otmetnati.includes('Разрешение за строеж')
       && !zz2.st.dokumenti.some(d => d.ot === 'прочетен'), [zz2.st.nadzor_otmetnati, zz2.st.dokumenti]);
+    t('махнат е и записът с името на файла (от досието) и отметката му — грешката от 26.11',
+      !zz2.st.dokumenti.some(d => /R30\.pdf/.test(d.ot || '')) && !zz2.st.nadzor_otmetnati.includes('Скица на строежа, нанесен в КККР'),
+      [zz2.st.dokumenti, zz2.st.nadzor_otmetnati]);
     t('вписаното и отметнатото на ръка — остават', zz2.st.nadzor_otmetnati.includes('Виза') && zz2.st.nadzor_otmetnati.includes('Отметнато на ръка')
       && zz2.st.dokumenti.some(d => d.ot === 'вписан на ръка'), [zz2.st.nadzor_otmetnati, zz2.st.dokumenti]);
 }

@@ -178,10 +178,13 @@ function dosieNamereni(z) {
 function dosieSpisakHtml(z) {
     const redove = dosieNamereni(z);
     if (!(z.s2.dokumenti || []).length) {
+        const ostanali = dosieOtProcheteno(z.st).length;
         return `<div class="kutiya-razdel">
             <div class="nadpis">Прочетени документи</div>
             <p>Още няма. Документите влизат тук, когато ги прочетеш на момента
-               или на проекта.</p></div>`;
+               или на проекта.</p>
+            ${ostanali ? `<p class="poyasnenie">В описа са останали ${ostanali} записа от по-рано прочетени файлове.
+               <button class="bt bt-tih" onclick="dosieIzchisti()">изчисти и тях</button></p>` : ''}</div>`;
     }
     if (!redove.length) {
         return `<div class="kutiya-razdel">
@@ -201,6 +204,10 @@ function dosieSpisakHtml(z) {
     </div>`;
 }
 
+function dosieOtProcheteno(st) {
+    return (st.dokumenti || []).filter(d => d.ot && d.ot !== 'вписан на ръка');
+}
+
 // ИЗЧИСТИ ПРОЧЕТЕНОТО (26.11.2026). Операторът: „да прочета отново всички
 // документи на Радулов, за да видим как се държи системата… като преди това
 // премахна прочетените“. По един — 52 пъти — е мъчение.
@@ -213,16 +220,20 @@ function dosieIzchisti() {
     const z = dosieZhiv();
     if (!z) return;
     const n = (z.s2.dokumenti || []).length, ch = (z.s2.chakat || []).length;
-    if (!n && !ch) return;
-    const ot = (z.st.dokumenti || []).filter(d => d.ot === 'прочетен');
+    // Дошло от прочетено е всеки запис в описа, чийто „ot“ не е „вписан на
+    // ръка“: „прочетен“ (от „✔ запиши“) или id на прочетения файл (от
+    // `_dokVpishiSverenite` — „Skica na sgradata R30.pdf“). Първата версия
+    // махаше само „прочетен“ и остави файловите (операторът, 26.11.2026).
+    const ot = dosieOtProcheteno(z.st);
+    if (!n && !ch && !ot.length) return;
     const NR = String.fromCharCode(10);
     if (!confirm(`Да изчистя ли прочетеното на „${z.p.nik || z.p.pi}“?` + NR + NR
         + `Махат се: ${n} прочетени документа, сверките им${ch ? `, ${ch} чакащи проверка` : ''}`
         + `${ot.length ? ` и ${ot.length} отметки, дошли от прочетено` : ''}.` + NR
         + 'Остават: вписаното и отметнатото на ръка, паспортът, собствеността, връзката с подобния.' + NR + NR
         + 'Връщане няма — само от резервно копие. Свалила ли си копие (плочка „Резервно копие“)?')) return;
-    const imena = new Set(ot.map(d => d.ime));
-    z.st.dokumenti = (z.st.dokumenti || []).filter(d => d.ot !== 'прочетен');
+    const imena = new Set(ot.flatMap(d => [d.ime, d.red]).filter(Boolean));
+    z.st.dokumenti = (z.st.dokumenti || []).filter(d => !ot.includes(d));
     z.st.nadzor_otmetnati = (z.st.nadzor_otmetnati || []).filter(x => !imena.has(x));
     z.s2.dokumenti = [];
     z.s2.potvardeni = {};
