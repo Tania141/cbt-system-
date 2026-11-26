@@ -935,3 +935,11 @@ body {
 .za-svarzvane { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 8px; }
 .za-svarzvane > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--blue); }
 .razdel-sivo-broy { color: var(--muted); font-weight: 500; }
+
+/* „Липсва ми“ = списъкът на подобния (26.11.2026) */
+.lipsva-razdel { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin: 14px 0 2px; }
+.lipsva-razdel:first-child { margin-top: 0; }
+.stariyat-spisak { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.stariyat-spisak > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.lipsva-red-zakon { border-left: 3px solid var(--red); padding-left: 10px; }
+.lipsva-zakon { color: var(--red); }

@@ -145,9 +145,11 @@ const GRUPI = () => [
     t('връзката е на строежа', JSON.stringify(JSON.parse(w.localStorage.getItem('akt_v5')).projects[0].podobni) === JSON.stringify([idDenka]));
     t('и се вижда като чип с категорията', /Жилищна сграда — Овча купел · 3 кат\./.test(vrazka()), vrazka());
     const red = ime => d.querySelector(`.lipsva-red[data-dokument="${ime}"]`);
-    t('ред, който чеклистът има, НЕ се дублира — до него „и при …: 24 бр.“',
+    // 26.11.2026: при свързан подобен редът носи ИМЕТО ОТ АКТА и казва кой ред на
+    // чеклиста е — един ред, не два.
+    t('ред, който чеклистът има — ЕДИН ред, с името от акта и „в чеклиста: …“',
       d.querySelectorAll('.lipsva-red[data-dokument="Акт обр. 7"]').length === 0
-      && /и при Жилищна сграда — Овча купел: 24 бр\. · от 24\.05\.2022 до 29\.12\.2022/.test(tx(red('Акт 7 и обр. 12 по част архитектура'))),
+      && /^Акт обр\. 7 при Жилищна сграда — Овча купел: 24 бр\. · от 24\.05\.2022 до 29\.12\.2022 · в чеклиста: „Акт 7 и обр\. 12/.test(tx(red('Акт 7 и обр. 12 по част архитектура'))),
       tx(red('Акт 7 и обр. 12 по част архитектура')));
     t('ред, който чеклистът няма, излиза в Акт 15 — „от подобния · при …: 9 бр.“',
       /от подобния · при Жилищна сграда — Овча купел: 9 бр\./.test(tx(red('Акт обр. 12 по част ВиК'))), tx(d.querySelector('.razdel-telo')));
@@ -158,17 +160,22 @@ const GRUPI = () => [
     const p2 = r2.grupi.find(g => g.moment === 'Протокол 2');
     t('Протокол 2 получава „Виза за проектиране“, етап „начало“',
       p2.dokumenti.some(x => x.dokument === 'Виза за проектиране' && x.etap === 'начало' && x.ot_podoben), p2.dokumenti);
-    // ОБЪРНАТО 26.11.2026: редовете от подобния са „за свързване“ — свити долу и
-    // НЕ се броят, докато не кажеш (операторът: „затрупахме с инфо“). „Искам го“
-    // ги прави истински ред — тогава се броят.
-    t('нерешените редове от подобния НЕ свалят процента', w.aktDveChisla(r2.grupi.find(g => g.moment === 'Акт 15'), []).podpis.ot === 2,
-      w.aktDveChisla(r2.grupi.find(g => g.moment === 'Акт 15'), []).podpis);
-    t('и стоят в свитата група „от подобния — за свързване“', /от подобния \(Жилищна сграда — Овча купел\) · \d+ — за свързване/.test(tx(d.querySelector('.za-svarzvane summary'))),
-      tx(d.querySelector('.za-svarzvane summary')));
-    t('бутонът казва колко са отделно', /Липсва ми · 2 · \d+ от подобния/.test(tx(d.querySelector('.razdel-bt'))), tx(d.querySelector('.razdel-bt')));
-    z.st.podobni_iskani = ['Акт обр. 12 по част ВиК'];
+    // ОБЪРНАТО ПАК 26.11.2026 (вечерта): заданието казва „Липсва ми = каквото е
+    // имал подобният − каквото имаш; чеклистът — само първият подобен“. Затова
+    // ОСНОВАТА е подобният (брои се), а редът от чеклиста, който подобният няма
+    // („Акт обр. 14“), отива „по стария списък“ и не се брои. Вж. и
+    // `proba_pva_spisak_podoben.js`.
+    const a15 = r2.grupi.find(g => g.moment === 'Акт 15');
+    t('основата е подобният: Акт 7 · Акт 12 ВиК · изпитване на вода · Акт обр. 6 (законовият под) — 4',
+      w.aktDveChisla(a15, []).podpis.ot === 4, w.aktDveChisla(a15, []).podpis);
+    t('„Акт обр. 14“ (подобният го няма) — по стария списък, не се брои',
+      a15.dokumenti.find(x => x.dokument === 'Акт обр. 14').izvan_podobniya === true);
+    t('на екрана — свито „по стария списък, не са в подобния · 1“', /по стария списък, не са в подобния · 1/.test(tx(d.querySelector('.stariyat-spisak summary'))),
+      tx(d.querySelector('.stariyat-spisak summary')));
+    t('бутонът казва колко са по стария списък', /Липсва ми · \d+ · 1 по стария списък/.test(tx(d.querySelector('.razdel-bt'))), tx(d.querySelector('.razdel-bt')));
+    z.st.podobni_iskani = ['Акт обр. 14'];
     const r2b = await w.aktNadzor(z.p, z.st);
-    t('„искам го“ → истински ред, брои се', w.aktDveChisla(r2b.grupi.find(g => g.moment === 'Акт 15'), []).podpis.ot === 3,
+    t('„искам го“ връща реда от стария списък — брои се', w.aktDveChisla(r2b.grupi.find(g => g.moment === 'Акт 15'), []).podpis.ot === 5,
       w.aktDveChisla(r2b.grupi.find(g => g.moment === 'Акт 15'), []).podpis);
     z.st.podobni_iskani = [];
     z.st.nadzor_otmetnati = [...(z.st.nadzor_otmetnati || []), 'Акт обр. 12 по част ВиК'];

@@ -66,6 +66,7 @@ async function podobniPodZaredi(ob) {
         podobniPod[ob.id] = { klyuch, greshka: e.message };
     }
     podobniRisuvai();
+    return podobniPod[ob.id];
 }
 
 function podobniPodHtml(ob) {
@@ -325,62 +326,104 @@ function podobniOpisPri(pri) {
     }).join(' · ');
 }
 
-// Редовете на свързаните подобни — в групите на моментите (на място).
-//   · ред, който отговаря на ред от чеклиста (вързан от кода или същото име),
-//     НЕ се добавя — до онзи ред пише „и при Петракиев: 28 бр.“;
-//   · останалите стават редове в момента си, с „при Петракиев: …“.
-// Наличието се смята като за всеки ред: вписано/отметнато/досие → „налично“.
+// „ЛИПСВА МИ“ = СПИСЪКЪТ НА ПОДОБНИЯ (26.11.2026). Заданието (ЗАДАНИЕ-ЕДИН-ЗАПИС,
+// 25.11): „Липсва ми = каквото е имал подобният − каквото имаш; днешният
+// чеклист — само първият подобен“. Първата версия беше обратното — целият
+// чеклист и подобният отгоре (~90 реда при ~30 документа); операторът: „защо
+// записваме решения, а после не ги спазваш?“. Сега, при свързан подобен:
+//   · ОСНОВАТА са документите на подобния (без декларациите — те са таблицата
+//     на материалите), подредени по разделите на неговия акт;
+//   · ред от чеклиста, който отговаря на документ от подобния (през речника,
+//     вързан от кода или същото име), е ЕДИН ред — с името от акта;
+//   · редовете от чеклиста, които подобният няма, отиват „по стария списък“ —
+//     свити, не се броят; „искам го“ ги връща; твоите редове остават;
+//   · законовият под: твърдо изискуемото, което подобният няма — червен ред.
+// Пазено от `probi/proba_pva_spisak_podoben.js`.
 function podobniVMomentite(p, st, grupi) {
     const svarzani = podobniNaStroezha(st);
-    if (!svarzani.length || !Array.isArray(grupi)) return { dobaveni: 0, bez_myasto: 0 };
+    if (!svarzani.length || !Array.isArray(grupi)) return { dobaveni: 0, stari: 0 };
+    const kl = x => String(x || '').trim().toLowerCase();
+    const edno = (a, b) => typeof rechnikEdnoLi === 'function' ? rechnikEdnoLi(a, b) : kl(a) === kl(b);
+    let nalichni = [];
+    try { nalichni = aktNalichni(st, p) || []; } catch (e) { nalichni = []; }
+    const sastoyanie = (ime, g) => nalichni.some(x => edno(x, ime)) ? 'налично' : (g && g.minal === false ? 'не му е времето' : 'очаква се');
+
+    // Документите на подобните — един запис на документ, по реда в акта.
     const po = new Map();
+    let poreden = 0;
     for (const ob of svarzani) {
         for (const r of podobniRedoveNaObekta(ob)) {
+            if (podobniEMaterial(r.ime)) continue;
             let s = po.get(r.klyuch);
-            if (!s) po.set(r.klyuch, (s = { ...r, pri: [] }));
+            if (!s) po.set(r.klyuch, (s = { ...r, pri: [], p_red: poreden++ }));
             if (!s.cheklist_red && r.cheklist_red) s.cheklist_red = r.cheklist_red;
             s.pri.push({ obekt_ime: ob.ime, broy: r.broy, ot: r.ot, do: r.do, razdel: r.razdel, ime: r.ime });
         }
     }
-    const kl = x => String(x || '').trim().toLowerCase();
-    const vsichkiRedove = grupi.flatMap(g => g.dokumenti || []);
-    let nalichni = [];
-    try { nalichni = aktNalichni(st, p) || []; } catch (e) { nalichni = []; }
-    const edno = (a, b) => typeof rechnikEdnoLi === 'function' ? rechnikEdnoLi(a, b) : kl(a) === kl(b);
-    let dobaveni = 0, bez_myasto = 0;
-    // Редовете на чеклиста (не на подобния) — срещу тях се търси „същото като…“.
-    const redoveNaCheklista = vsichkiRedove.map(d => d.dokument);
-    const iskani = new Set((st.podobni_iskani || []).map(kl));
+
+    const vsichki = grupi.flatMap(g => (g.dokumenti || []).map(d => ({ d, g })));
+    const zaPodobniya = new Set();
+    let dobaveni = 0;
     for (const r of po.values()) {
-        // Декларациите и сертификатите за материали — извън речника и извън
-        // „Липсва ми“: те са много на обект, отделни по номер и дата, и се
-        // сравняват по материал, не по име (операторът, 26.11.2026). Отиват в
-        // таблицата „Вложени материали“ — отделна стъпка.
-        if (podobniEMaterial(r.ime)) continue;
-        // Стъпка 3 (26.11.2026): речникът знае ли името от подобния акт?
         const poRechnik = typeof rechnikRedZaVid === 'function' ? rechnikRedZaVid(r.ime) : null;
-        const sashtiyat = vsichkiRedove.find(d => (poRechnik && edno(d.dokument, poRechnik.red))
-            || (r.cheklist_red && edno(d.dokument, r.cheklist_red)) || edno(d.dokument, r.ime));
-        if (sashtiyat) {
-            sashtiyat.pri_podoben = (sashtiyat.pri_podoben || []).concat(
-                poRechnik ? r.pri.map(x => ({ ...x, prez_rechnik: poRechnik.kak })) : r.pri);
+        const x = vsichki.find(({ d }) => !d.ot_podoben_nov && ((poRechnik && edno(d.dokument, poRechnik.red))
+            || (r.cheklist_red && edno(d.dokument, r.cheklist_red)) || edno(d.dokument, r.ime)));
+        if (x) {
+            Object.assign(x.d, { ot_podoben: r.pri, prikaz: r.ime, p_razdel: r.razdel, p_red: r.p_red });
+            zaPodobniya.add(x.d);
             continue;
         }
-        const g = grupi.find(x => x.moment === podobniMomentZaRed(r));
-        if (!g) { bez_myasto++; continue; }
+        const g = grupi.find(y => y.moment === podobniMomentZaRed(r));
+        if (!g) continue;
         const red = { dokument: r.ime, uslovie: '', etap: g.moment === 'Протокол 2' ? 'начало' : 'подпис',
-                      iskan_na: g.moment, ot_podoben: r.pri };
-        const blizak = typeof rechnikNaiBlizakRed === 'function' ? rechnikNaiBlizakRed(r.ime, redoveNaCheklista) : null;
+                      iskan_na: g.moment, ot_podoben: r.pri, ot_podoben_nov: true, p_razdel: r.razdel, p_red: r.p_red };
+        red.sastoyanie = sastoyanie(r.ime, g);
+        const blizak = typeof rechnikNaiBlizakRed === 'function'
+            ? rechnikNaiBlizakRed(r.ime, vsichki.filter(y => !y.d.ot_podoben_nov).map(y => y.d.dokument)) : null;
         if (blizak) red.predlozhenie_red = blizak.red;
-        // „За свързване“, докато не кажеш: свито долу, не сваля процента. „Искам
-        // го“ го прави истински ред — в основния списък и в процента.
-        if (iskani.has(kl(r.ime))) red.iskan = true; else red.za_svarzvane = true;
-        red.sastoyanie = nalichni.includes(r.ime) ? 'налично' : (g.minal === false ? 'не му е времето' : 'очаква се');
         (g.dokumenti = g.dokumenti || []).push(red);
-        vsichkiRedove.push(red);
+        zaPodobniya.add(red);
         dobaveni++;
     }
-    return { dobaveni, bez_myasto };
+
+    // Законовият под — твърдо изискуемото, което подобният няма (по категорията му).
+    const a15 = grupi.find(g => g.moment === 'Акт 15');
+    for (const ob of svarzani) {
+        const pod = podobniPodZaMomenta(ob);
+        if (!pod || !a15) continue;
+        for (const z of pod.lipsvat.filter(y => y.tvardo)) {
+            const x = vsichki.find(({ d }) => edno(d.dokument, z.ime));
+            if (x) { Object.assign(x.d, { zakon: true, tvardo: true, osnovanie: z.osnovanie }); zaPodobniya.add(x.d); continue; }
+            if ((a15.dokumenti || []).some(d => d.zakon && edno(d.dokument, z.ime))) continue;
+            const red = { dokument: z.ime, uslovie: '', etap: 'подпис', iskan_na: 'Акт 15', zakon: true, tvardo: true,
+                          osnovanie: z.osnovanie, p_red: -1 };
+            red.sastoyanie = sastoyanie(z.ime, a15);
+            a15.dokumenti.push(red);
+            zaPodobniya.add(red);
+        }
+    }
+
+    // Каквото подобният няма — „по стария списък“ (освен твоите редове и „искам го“).
+    const iskani = new Set((st.podobni_iskani || []).map(kl));
+    let stari = 0;
+    for (const g of grupi) for (const d of (g.dokumenti || [])) {
+        if (zaPodobniya.has(d) || d.sobstven || iskani.has(kl(d.dokument))) continue;
+        d.izvan_podobniya = true;
+        stari++;
+    }
+    return { dobaveni, stari };
+}
+
+// Законовият под на подобния — от кеша на библиотеката; няма ли го, се смята и
+// моментът се прережда (само веднъж на обект).
+function podobniPodZaMomenta(ob) {
+    if (!ob.kategoria) return null;
+    const s = podobniPod[ob.id];
+    if (s && s.klyuch === _podobniPodKlyuch(ob) && s.rez) return s.rez;
+    if (!s || s.klyuch !== _podobniPodKlyuch(ob)) {
+        podobniPodZaredi(ob).then(() => { if (typeof momentZaredi === 'function') momentZaredi(); });
+    }
+    return null;
 }
 
 // В момента, над „Липсва ми“: с кого се сравнява и как се сменя.

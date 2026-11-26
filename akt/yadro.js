@@ -574,8 +574,8 @@ function aktDveChisla(grupa, neotnasya) {
     const imam = r => r.sastoyanie === AKT_IMAM || mahnati.has(r.dokument);
     // Твой ред „за преценка“ (приет от „Видени, но неописани“) не сваля процента,
     // докато не решиш: имаш го → брои се; „не се отнася“ → брои се като имаш.
-    // Ред от подобния „за свързване“ (още нерешен) — също не сваля процента.
-    const redove = ((grupa && grupa.dokumenti) || []).filter(r => (!r.za_precenka && !r.za_svarzvane) || imam(r));
+    // „По стария списък“ (подобният го няма) — не се брои (26.11.2026).
+    const redove = ((grupa && grupa.dokumenti) || []).filter(r => (!r.za_precenka || imam(r)) && !r.izvan_podobniya);
     const vezna = spisak => ({
         imam: spisak.filter(imam).length,
         ot: spisak.length,

@@ -113,7 +113,7 @@ function momentRisuvai() {
 // Разминаването от сверката личи и върху затворения бутон.
 function momentRazdeliHtml(z, dve) {
     const lipsvatVsichki = momentRedove().filter(r => !momentImam(r) && r.sastoyanie !== 'не му е времето');
-    const lipsvat = lipsvatVsichki.filter(r => !r.za_svarzvane);
+    const lipsvat = lipsvatVsichki.filter(r => !r.izvan_podobniya);
     const zaSv = lipsvatVsichki.length - lipsvat.length;
     const imam = momentRedove().filter(r => momentImam(r));
     const chakat = aktChakat(z.st);
@@ -128,7 +128,7 @@ function momentRazdeliHtml(z, dve) {
         : momentLipsvaHtml(dve);
     return `
     <div class="razdeli-prevkl">
-        ${buton('lipsva', `Липсва ми · ${lipsvat.length}${zaSv ? ` <span class="razdel-sivo-broy">· ${zaSv} от подобния</span>` : ''}${lipsvaSv
+        ${buton('lipsva', `Липсва ми · ${lipsvat.length}${zaSv ? ` <span class="razdel-sivo-broy">· ${zaSv} по стария списък</span>` : ''}${lipsvaSv
             ? ` <span class="razdel-cherveno-broy">· ${lipsvaSv} актът вече ${lipsvaSv === 1 ? 'го изрежда' : 'ги изрежда'}</span>` : ''}`)}
         ${buton('imam', `Имам · ${imam.length}${cherveno(sv.broiNePishe.length)}`)}
         ${chakat.length ? buton('chakat', `Чака проверка · ${chakat.length}`, 'razdel-bt-zlato') : ''}
@@ -635,11 +635,11 @@ function momentSverkaOtmetni(k) {
 function momentLipsvaHtml(dve) {
     const vsichkiLipsvat = momentRedove().filter(r => !momentImam(r)
         && r.sastoyanie !== 'не му е времето');
-    // Редовете от подобния „за свързване“ — отделно, свити долу (26.11.2026).
-    const zaSvarzvane = vsichkiLipsvat.filter(r => r.za_svarzvane);
-    const lipsvat = vsichkiLipsvat.filter(r => !r.za_svarzvane);
-    const neEVremeto = momentRedove().filter(r => r.sastoyanie === 'не му е времето').length;
-    const grupa = momentZaSvarzvaneHtml(zaSvarzvane);
+    // „По стария списък“ — каквото подобният няма (26.11.2026): отделно, свито.
+    const stari = vsichkiLipsvat.filter(r => r.izvan_podobniya);
+    let lipsvat = vsichkiLipsvat.filter(r => !r.izvan_podobniya);
+    const neEVremeto = momentRedove().filter(r => r.sastoyanie === 'не му е времето' && !r.izvan_podobniya).length;
+    const grupa = momentStariyatSpisakHtml(stari);
     if (!lipsvat.length) {
         // „Нищо“ значи нищо, на което МУ Е ВРЕМЕТО. Редовете, чийто ред още не
         // е дошъл, се броят в подписа и затова се казват отделно — иначе
@@ -648,33 +648,39 @@ function momentLipsvaHtml(dve) {
             <p>Нищо, на което му е времето.${neEVremeto
                 ? ` ${neEVremeto} чака${neEVremeto === 1 ? '' : 'т'} реда си.` : ''}</p>${grupa}</div>`;
     }
+    // При свързан подобен — по разделите на неговия акт; законовият под — отгоре.
+    const poPodoben = lipsvat.some(r => r.p_red !== undefined);
+    let redove = '';
+    if (poPodoben) {
+        lipsvat = lipsvat.slice().sort((a, b) => (a.p_red ?? 1e6) - (b.p_red ?? 1e6));
+        let razdel = null;
+        for (const r of lipsvat) {
+            const ra = r.zakon && r.p_red === -1 ? 'Нормата го иска, подобният го няма'
+                : (r.p_razdel || (r.p_red === undefined ? 'Твоите редове' : ''));
+            if (ra !== razdel) { redove += `<div class="lipsva-razdel">${_e(ra || '—')}</div>`; razdel = ra; }
+            redove += momentLipsvashtRed(r);
+        }
+    } else redove = lipsvat.map(r => momentLipsvashtRed(r)).join('');
     return `
     <div class="kutiya-razdel razdel-telo">
-        ${lipsvat.map(r => momentLipsvashtRed(r)).join('')}
+        ${redove}
         ${neEVremeto ? `<p class="poyasnenie">${neEVremeto} още — не им е времето.</p>` : ''}
         ${grupa}
     </div>`;
 }
 
-// ОТ ПОДОБНИЯ — ЗА СВЪРЗВАНЕ (26.11.2026). Каквото подобният е имал, а то не
-// намира ред в чеклиста: свито долу, не сваля процента. Всеки ред се топи с
-// едно: ✔ това е (предложеното) · същото като… (избираш ред) · искам го (става
-// истински ред) · не се отнася. Каквото свържеш — речникът го помни за всички.
-function momentZaSvarzvaneHtml(redove) {
+// ПО СТАРИЯ СПИСЪК (26.11.2026). При свързан подобен основата е неговият акт;
+// редовете на чеклиста, които той няма, стоят тук — свити, не се броят. Ако
+// нещо от тях ти трябва — „искам го“ го връща в списъка.
+function momentStariyatSpisakHtml(redove) {
     if (!redove.length) return '';
-    const obshti = momentRedove().filter(r => !r.ot_podoben).map(r => r.dokument);
-    const opcii = obshti.map(x => `<option value="${_e(x)}">${_e(x)}</option>`).join('');
-    const ime = (redove[0].ot_podoben[0] || {}).obekt_ime || 'подобния';
-    return `<details class="za-svarzvane"><summary>от подобния (${_e(String(ime).slice(0, 40))}) · ${redove.length} — за свързване</summary>
-        <p class="poyasnenie">Каквото подобният е имал, а чеклистът го няма с това име. Не сваля процента, докато не кажеш.</p>
+    return `<details class="stariyat-spisak"><summary>по стария списък, не са в подобния · ${redove.length}</summary>
+        <p class="poyasnenie">Редове от днешния чеклист, които подобният обект не е имал. Не се броят, докато не кажеш „искам го“.</p>
         ${redove.map(r => {
             const k = encodeURIComponent(r.dokument);
-            return `<div class="lipsva-red lipsva-red-podoben" data-dokument="${_e(r.dokument)}">
-                <div class="lipsva-ime">${_e(r.dokument)}${momentPodobenHtml(r)}</div>
-                ${momentRechnikHtml(r)}
+            return `<div class="lipsva-red lipsva-red-star" data-dokument="${_e(r.dokument)}">
+                <div class="lipsva-ime">${_e(r.dokument)}</div>
                 <div class="lipsva-zhestove">
-                    <select class="podoben-vid-izbor" onchange="this.value && rechnikTovaE('${k}', encodeURIComponent(this.value))">
-                        <option value="">същото като…</option>${opcii}</select>
                     <button class="bt" onclick="podobniIskamGo('${k}')">искам го</button>
                     <button class="bt bt-tih" onclick="momentNeSeOtnasya('${k}')">— не се отнася</button>
                 </div>
@@ -737,7 +743,10 @@ function momentSverkaZaLipsva(red) {
 
 // От подобния обект (25.11.2026): редът казва при кого го е имало и колко.
 function momentPodobenHtml(r) {
+    if (r.zakon) return `<span class="otkade lipsva-zakon">${r.p_red === -1 ? 'нормата го иска, подобният го няма · ' : 'по закон · '}${_e(r.osnovanie || '')}</span>`;
     if (typeof podobniOpisPri !== 'function') return '';
+    if (r.ot_podoben && r.prikaz && r.prikaz !== r.dokument)
+        return `<span class="otkade lipsva-podoben">${_e(podobniOpisPri(r.ot_podoben))} · в чеклиста: „${_e(r.dokument)}“</span>`;
     if (r.ot_podoben) return `<span class="otkade lipsva-podoben">от подобния · ${_e(podobniOpisPri(r.ot_podoben))}</span>`;
     if (r.pri_podoben) return `<span class="otkade lipsva-podoben">и ${_e(podobniOpisPri(r.pri_podoben))}</span>`;
     return '';
@@ -769,7 +778,7 @@ function momentLipsvashtRed(r) {
     const kade = momentKadeSeRazhda(r.dokument);
     if (kade) return `
     <div class="lipsva-red lipsva-prashta${r.ot_podoben ? ' lipsva-red-podoben' : ''}" data-dokument="${_e(r.dokument)}">
-        <div class="lipsva-ime">${_e(r.dokument)}${momentPodobenHtml(r)}</div>
+        <div class="lipsva-ime">${_e(r.prikaz || r.dokument)}${momentPodobenHtml(r)}</div>
         <a class="kam" href="${kade.href}">към ${_e(kade.ime)} →</a>
         ${momentRechnikHtml(r)}
         ${momentSverkaZaLipsva(r.dokument)}
@@ -779,9 +788,9 @@ function momentLipsvashtRed(r) {
     const svoy = r.sobstven ? `<span class="otkade lipsva-svoy">твой ред${r.za_precenka
         ? ' · за преценка — „не се отнася“, ако не важи' : ''} · ${_e(r.osnovanie || 'добавен от теб')}</span>` : '';
     return `
-    <div class="lipsva-red${r.sobstven ? ' lipsva-red-svoy' : ''}${r.ot_podoben ? ' lipsva-red-podoben' : ''}" data-dokument="${_e(r.dokument)}">
-        <div class="lipsva-ime">${_e(r.dokument)}
-            ${r.uslovie && r.uslovie !== 'винаги'
+    <div class="lipsva-red${r.sobstven ? ' lipsva-red-svoy' : ''}${r.ot_podoben ? ' lipsva-red-podoben' : ''}${r.zakon ? ' lipsva-red-zakon' : ''}" data-dokument="${_e(r.dokument)}">
+        <div class="lipsva-ime">${_e(r.prikaz || r.dokument)}
+            ${r.uslovie && r.uslovie !== 'винаги' && !r.ot_podoben
                 ? `<span class="otkade">${_e(r.uslovie)}</span>` : ''}${svoy}${momentPodobenHtml(r)}</div>
         <div class="lipsva-zhestove">
             <button class="bt" onclick="momentKachi('${k}')">📎 качи</button>
