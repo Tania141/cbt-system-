@@ -255,6 +255,7 @@ function dosieRedHtml(d, potv) {
                 // Избереш ли четец, той не е резервен — той е избраният, а
                 // основният не е опитван. (28.10.2026)
                 ? ' · чел го е ' + _e(String(d.chetec).replace(/\s*\(резервен\)/, ''))
+                  + (d.model ? ' <span class="otkade-inline">(' + _e(d.model) + ')</span>' : '')
                   + (d.chetec_izbran ? ' <strong>— избран от теб</strong>'
                      : d.zashto_rezerven ? ' — резервен, защото основният отказа' : '')
                 : ''}
