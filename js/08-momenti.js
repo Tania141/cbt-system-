@@ -2201,10 +2201,15 @@ function _a15Vpisan(p, kak) {
 // намерено — празно и сървърът оставя точки.
 function _a15PoIme(p, st, kak) {
     const t = v => String(v || '').trim();
+    // Дата в полето за номер не е номер (27.11.2026, Радулов: договорът вписан
+    // с „14.11.2023“ излезе „Договор за строителство № 14.11.2023 от 14.11.2023 г.“).
+    const DATA = /^\d{1,2}[./]\d{1,2}[./]\d{2,4}\s*(г\.?)?$/i;
     const izvadi = (nomer, data) => {
         const nd = _a15NomerData(nomer);
-        return { nomer: nd.nomer || (/№/.test(t(nomer)) ? '' : t(nomer).replace(/\s+от\s+.*$/i, '')),
-                 data: t(data) || nd.data };
+        let n = nd.nomer || (/№/.test(t(nomer)) ? '' : t(nomer).replace(/\s+от\s+.*$/i, ''));
+        let dt = t(data) || nd.data;
+        if (DATA.test(n)) { if (!dt) dt = n.replace(/\s*г\.?$/i, ''); n = ''; }
+        return { nomer: n, data: dt };
     };
     const d = ((p && p.dokumenti) || []).find(x => kak.test(t(x.ime)));
     if (d) return izvadi(d.nomer, d.data);
@@ -2460,6 +2465,12 @@ function _a15VidoveNaRed(r) {
     return v;
 }
 
+// Има ли редът № или дата (дд.мм.гггг или „от 2023 г.“).
+function _a15ImaNomerIliData(r) {
+    const s = String(r || '');
+    return /№\s*\S/.test(s) || /\d{1,2}[./]\d{1,2}[./]\d{2,4}/.test(s) || /(?<!\d)(19|20)\d{2}\s*г/.test(s);
+}
+
 function _a15Prilozhenia(p, st) {
     // Познава се по ИМЕТО, без номера и датата след него: „Протокол обр. 2“ и
     // „Протокол обр. 2 — № 1 от 29.03.2026 г.“ са един документ.
@@ -2467,6 +2478,12 @@ function _a15Prilozhenia(p, st) {
     const dobavi = red => {
         const r = String(red || '').trim();
         if (!r) return;
+        // САМО ДОКУМЕНТ С № И/ИЛИ ДАТА (операторът, 26.11.2026). Име на ред
+        // („Одобрени инвестиционни проекти“, „Заповедна книга на строежа“, „Акт
+        // обр. 15“) или документ без номер и дата не е опис — излизаше до
+        // истинския „ЗАПОВЕДНА КНИГА, № 1156“. Маркерът на таблицата с актовете
+        // обр. 7 и заглавието ѝ минават — сървърът ги подменя с таблицата.
+        if (r !== _A15_AKT7_MARKER && r !== _A15_AKT7_ZAGLAVIE && !_a15ImaNomerIliData(r)) return;
         const ki = _dokKlyuchIme(r), kn = _dokKlyuchNomer(_dokNomerOtTekst(r));
         if (vidyani.has(ki) || (kn.length > 1 && nomera.has(kn))) return;
         // ЕДИН ДОКУМЕНТ — ЕДИН РЕД. „Акт Образец 14 от 13.05.2025“,
